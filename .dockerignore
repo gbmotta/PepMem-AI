@@ -1,0 +1,8 @@
+__pycache__
+.venv
+venv
+.git
+data/raw
+*.md
+!README.md
+.streamlit/secrets.toml

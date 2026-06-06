@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: pepmem-ai
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: PYTHONPATH
+        value: /app

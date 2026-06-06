@@ -1,0 +1,6 @@
+{
+  "model": "facebook/esm2_t6_8M_UR50D",
+  "scope": "all",
+  "n_peptides": 3316,
+  "embedding_dim": 320
+}

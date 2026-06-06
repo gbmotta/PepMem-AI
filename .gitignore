@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.streamlit/secrets.toml
+
+# Dados brutos (regerar com scripts/download_*.py)
+data/raw/
+
+# Deploy staging
+.deploy_hf/
+
+# Documentos internos (não necessários no Space)
+*.pdf
+*.tex
+dataset_list.txt
+
+# Artefatos locais grandes opcionais
+*.log

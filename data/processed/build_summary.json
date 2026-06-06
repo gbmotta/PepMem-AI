@@ -1,0 +1,9 @@
+{
+  "membrane_targets_rows": 34,
+  "pepmem_base_project_rows": 12,
+  "pepmem_base_apd_rows": 3304,
+  "pepmem_base_total_rows": 3316,
+  "pepmem_endpoints_rows": 144,
+  "pepmem_endpoints_literature_rows": 24,
+  "opm_primary_structures": 8950
+}

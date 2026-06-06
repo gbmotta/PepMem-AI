@@ -1,0 +1,46 @@
+{
+  "n_samples": 12,
+  "positive_rate": 0.6666666666666666,
+  "loo_auc": 0.75,
+  "loo_classification_report": {
+    "0": {
+      "precision": 0.6,
+      "recall": 0.75,
+      "f1-score": 0.6666666666666666,
+      "support": 4.0
+    },
+    "1": {
+      "precision": 0.8571428571428571,
+      "recall": 0.75,
+      "f1-score": 0.8,
+      "support": 8.0
+    },
+    "accuracy": 0.75,
+    "macro avg": {
+      "precision": 0.7285714285714285,
+      "recall": 0.75,
+      "f1-score": 0.7333333333333334,
+      "support": 12.0
+    },
+    "weighted avg": {
+      "precision": 0.7714285714285714,
+      "recall": 0.75,
+      "f1-score": 0.7555555555555555,
+      "support": 12.0
+    }
+  },
+  "features": [
+    "q_peptide",
+    "h_peptide",
+    "mu_h_peptide",
+    "surface_charge",
+    "anionic_fraction",
+    "cholesterol",
+    "lps",
+    "peptidoglycan",
+    "ergosterol",
+    "viral_envelope",
+    "pmi"
+  ],
+  "label_rule": "MIC <= 3.4 uM => alta atividade"
+}

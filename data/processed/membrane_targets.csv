@@ -1,0 +1,35 @@
+opm_id,membrane_name,primary_structures_count,short_name,abbrevation,topology_in,topology_out,lipid_references,lipid_pubmed,source,dataset,target_type_mapped,target_id,target,target_type,surface_charge,anionic_fraction,lps,peptidoglycan,teichoic_acid,cholesterol,ergosterol,viral_envelope,opm_membrane_id,opm_membrane_name
+1.0,Archaebacterial membrane,179.0,Archaebac.,,cytoplasmic side ,extracellular side,,,OPM,Membrane-Targets-OPM,arquea,,,,,,,,,,,,,
+2.0,Bacterial Gram-negative inner membrane,1251.0,Gram-neg. inner,,cytoplasmic side,periplasm,"Pandit, K. R. and J. B. Klauda (2012). ""Membrane models of E. coli containing cyclic moieties in the aliphatic lipid chain."" Biochim Biophys Acta 1818(5): 1205-1210.",22274566,OPM,Membrane-Targets-OPM,Gram-,,,,,,,,,,,,,
+3.0,Bacterial Gram-negative outer membrane,421.0,Gram-neg. outer,,periplasm,extracellular side,"Wu, E. L., P. J. Fleming, M. S. Yeom, G. Widmalm, J. B. Klauda, K. G. Fleming and W. Im (2014). ""E. coli outer membrane and interactions with OmpLA."" Biophys J 106(11): 2493-2502.",24896129,OPM,Membrane-Targets-OPM,Gram-,,,,,,,,,,,,,
+8.0,Bacterial Gram-positive plasma membrane,374.0,Gram-pos. inner,,cytoplasmic side,periplasm,,,OPM,Membrane-Targets-OPM,Gram+,,,,,,,,,,,,,
+19.0,Bacterial Gram-positive outer membrane,10.0,Gram-pos. outer,,periplasm,extracellular side,,,OPM,Membrane-Targets-OPM,Gram+,,,,,,,,,,,,,
+4.0,Eukaryotic plasma membrane,3316.0,Eykaryo. plasma,,cytoplasmic side,extracellular side,"Ingolfsson, H. I., M. N. Melo, F. J. van Eerden, C. Arnarez, C. A. Lopez, T. A. Wassenaar, X. Periole, A. H. de Vries, D. P. Tieleman and S. J. Marrink (2014). ""Lipid organization of the plasma membrane."" J Am Chem Soc 136(41): 14554-14559.; Rivel, T., C. Ramseyer and S. Yesylevskyy (2019). ""The asymmetry of plasma membranes and their cholesterol content influence the uptake of cisplatin."" Sci Rep 9(1): 5627.",25229711;30948733,OPM,Membrane-Targets-OPM,eucariota,,,,,,,,,,,,,
+6.0,Endoplasmic reticulum membrane,548.0,Endoplasm. reticulum,,cytoplasmic side,lumenal side,,,OPM,Membrane-Targets-OPM,eucariota,,,,,,,,,,,,,
+9.0,Golgi membrane,102.0,Golgi,,cytoplasmic side,lumenal side,,,OPM,Membrane-Targets-OPM,eucariota,,,,,,,,,,,,,
+10.0,Nuclear inner membrane,6.0,Nuclear inner,,nucleus matrix side,intermembrane space,,,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+22.0,Nuclear outer membrane,16.0,Nuclear outer,,cytoplasmic side,intermembrane space,,,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+5.0,Mitochondrial inner membrane,347.0,Mitochon. inner,,mitochondrial matrix,intermembrane space,"Horvath, S. E. and G. Daum (2013). ""Lipids of mitochondria."" Prog Lipid Res 52(4): 590-614.; Wilson, B. A., A. Ramanathan and C. F. Lopez (2019). ""Cardiolipin-Dependent Properties of Model Mitochondrial Membranes from Molecular Simulations."" Biophys J 117(3): 429-444.",24007978;31349988,OPM,Membrane-Targets-OPM,organelle,,,,,,,,,,,,,
+18.0,Mitochondrial outer membrane,69.0,Mitochon. outer,,cytoplasmic side ,intermembrane space,"Horvath, S. E. and G. Daum (2013). ""Lipids of mitochondria."" Prog Lipid Res 52(4): 590-614.; Wilson, B. A., A. Ramanathan and C. F. Lopez (2019). ""Cardiolipin-Dependent Properties of Model Mitochondrial Membranes from Molecular Simulations."" Biophys J 117(3): 429-444.",24007978;31349988,OPM,Membrane-Targets-OPM,organelle,,,,,,,,,,,,,
+12.0,Endosome membrane,97.0,Endosome,,cytoplasmic side,lumenal side,,,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+21.0,Lysosome membrane,102.0,Lysosome,,cytoplasmic side,lumenal side,,,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+11.0,Peroxisome membrane,27.0,Peroxisome,,cytoplasmic side,lumenal side,,,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+13.0,Vacuole membrane,82.0,Vacuole,,cytoplasmic side,lumenal side,,,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+14.0,Vesicle membrane,42.0,Vesicle,,cytoplasmic side,lumenal side,,,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+24.0,Cytoplasmic granule membrane,2.0,Granule,,cytoplasmic side,intermembrane space,,,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+7.0,Thylakoid membrane,192.0,Thylakoid,,stroma,thylakoid space,"van Eerden, F. J., D. H. de Jong, A. H. de Vries, T. A. Wassenaar and S. J. Marrink (2015). ""Characterization of thylakoid lipid membranes from cyanobacteria and higher plants by molecular dynamics simulations."" Biochim Biophys Acta 1848(6): 1319-1330.",25749153,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+16.0,Chloroplast inner membrane,7.0,Chloroplast inner,,stroma,intermembrane space,,,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+17.0,Chloroplast outer membrane,4.0,Chloroplast outer,,cytoplasmic side,intermembrane space,,,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+15.0,Viral membrane,176.0,Viral,,intravirion side,virion surface,,,OPM,Membrane-Targets-OPM,vírus/membrana,,,,,,,,,,,,,
+20.0,Secreted,1360.0,Secreted,,inner side,outer side,,,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+23.0,Undefined,185.0,Undefined,,inner side,outer side,,,OPM,Membrane-Targets-OPM,outro,,,,,,,,,,,,,
+,,,,,,,,,PepMem_project,Membrane-Targets-Project,,S_aureus_ATCC29213,Staphylococcus aureus ATCC 29213,Gram+,-0.8,0.6,0.0,1.0,1.0,0.0,0.0,0.0,8.0,Bacterial Gram-positive plasma membrane
+,,,,,,,,,PepMem_project,Membrane-Targets-Project,,S_epidermidis_ATCC12228,Staphylococcus epidermidis ATCC 12228,Gram+,-0.8,0.6,0.0,1.0,1.0,0.0,0.0,0.0,8.0,Bacterial Gram-positive plasma membrane
+,,,,,,,,,PepMem_project,Membrane-Targets-Project,,E_coli_ATCC25922,Escherichia coli ATCC 25922,Gram-,-0.9,0.65,1.0,1.0,0.0,0.0,0.0,0.0,2.0,Bacterial Gram-negative inner membrane
+,,,,,,,,,PepMem_project,Membrane-Targets-Project,,P_aeruginosa_ATCC27853,Pseudomonas aeruginosa ATCC 27853,Gram-,-0.9,0.65,1.0,1.0,0.0,0.0,0.0,0.0,2.0,Bacterial Gram-negative inner membrane
+,,,,,,,,,PepMem_project,Membrane-Targets-Project,,Candida_spp,Candida spp.,fungo,-0.4,0.25,0.0,0.0,0.0,0.0,1.0,0.0,4.0,Eukaryotic plasma membrane
+,,,,,,,,,PepMem_project,Membrane-Targets-Project,,T_cruzi,Trypanosoma cruzi,parasita,-0.5,0.3,0.0,0.0,0.0,0.0,1.0,0.0,4.0,Eukaryotic plasma membrane
+,,,,,,,,,PepMem_project,Membrane-Targets-Project,,Zika_PE243,Zika virus PE243,vírus envelopado,-0.3,0.2,0.0,0.0,0.0,1.0,0.0,1.0,4.0,Eukaryotic plasma membrane
+,,,,,,,,,PepMem_project,Membrane-Targets-Project,,HSV1,Herpes simplex virus type 1,vírus envelopado,-0.3,0.2,0.0,0.0,0.0,1.0,0.0,1.0,4.0,Eukaryotic plasma membrane
+,,,,,,,,,PepMem_project,Membrane-Targets-Project,,cell_normal,célula mamífera normal,mamífero normal,-0.1,0.1,0.0,0.0,0.0,1.0,0.0,0.0,4.0,Eukaryotic plasma membrane
+,,,,,,,,,PepMem_project,Membrane-Targets-Project,,cell_tumor,célula tumoral,célula tumoral,-0.4,0.25,0.0,0.0,0.0,1.0,0.0,0.0,4.0,Eukaryotic plasma membrane

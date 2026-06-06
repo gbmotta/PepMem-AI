@@ -1,0 +1,13 @@
+peptide_id,name,parent,sequence_raw,sequence,net_charge,molecular_mass_kda,hydrophobicity,hydrophobic_moment,isoelectric_point,c_terminal,source,dataset,embedding_esm2,embedding_protbert,apd_id,length,net_charge_computed,cationic_fraction,hydrophobic_fraction,hydrophobicity_computed
+P01,Stigmurin_analog_1,Stigmurin,FFSLIP*LV*GLISAFK,FFSLIPSLVGGLISAFK,3,1.9,0.78,0.67,9.54,NH2,CNPq_proposal_2025,PepMem-Base-Project,,,,17,1.0,0.0588,0.6471,1.5353
+P02,Stigmurin_analog_2,Stigmurin,FFSLIP*LVG*LISAFK,FFSLIPSLVGLISAFK,4,1.9,0.78,0.65,9.54,NH2,CNPq_proposal_2025,PepMem-Base-Project,,,,16,1.0,0.0625,0.6875,1.6562
+P03,Stigmurin_analog_3,Stigmurin,FF*LIP*LV*GLISAFK,FFSLIPSLVGGLISAFK,4,1.95,0.72,0.72,9.66,NH2,CNPq_proposal_2025,PepMem-Base-Project,,,,17,1.0,0.0588,0.6471,1.5353
+P04,Stigmurin_analog_4,Stigmurin,FFSLIP*LVG*LI*AFK,FFSLIPSLVGLISAFK,5,1.95,0.72,0.7,9.66,NH2,CNPq_proposal_2025,PepMem-Base-Project,,,,16,1.0,0.0625,0.6875,1.6562
+P05,TsAP2_native,TsAP-2,FLGMIPGLIGGLISAFK,FLGMIPGLIGGLISAFK,2,1.73,0.9,0.59,9.07,NH2,CNPq_proposal_2025,PepMem-Base-Project,,,,17,1.0,0.0588,0.6471,1.5471
+P06,TsAP2_analog_1,TsAP-2,FL*MIPGLI*GLI*AF*,FLGMIPGLIGGLISAFK,5,2.03,0.72,0.75,12.32,NH2,CNPq_proposal_2025,PepMem-Base-Project,,,,17,1.0,0.0588,0.6471,1.5471
+P07,TsAP2_analog_2,TsAP-2,FL*MIP*LIGGLI*AF*,FLGMIPGLIGGLISAFK,3,1.9,0.78,0.7,11.84,NH2,CNPq_proposal_2025,PepMem-Base-Project,,,,17,1.0,0.0588,0.6471,1.5471
+P08,TsAP2_analog_3,TsAP-2,FLGMIP*LI*GLI*AF*,FLGMIPGLIGGLISAFK,5,2.0,0.78,0.7,12.14,NH2,CNPq_proposal_2025,PepMem-Base-Project,,,,17,1.0,0.0588,0.6471,1.5471
+P09,TsAP2_analog_4,TsAP-2,FL*MIP*LI**LISAF*,FLGMIPGLIGGLISAFK,6,2.07,0.66,0.77,11.85,NH2,CNPq_proposal_2025,PepMem-Base-Project,,,,17,1.0,0.0588,0.6471,1.5471
+P10,Stigmurin_native,Stigmurin,FFSLIPSLVGGLISAFK,FFSLIPSLVGGLISAFK,3,1.9,0.78,0.67,9.54,NH2,CNPq_proposal_2025,PepMem-Base-Project,,,AP02531,17,1.0,0.0588,0.6471,1.5353
+P11,StigA6,Stigmurin,FFSLIPKLVKGLISAFK,FFSLIPKLVKGLISAFK,3,,,,,NH2,Parente_2022_thesis,PepMem-Base-Project,,,,17,3.0,0.1765,0.6471,1.1471
+P12,StigA16,Stigmurin,FFKLIPKLVKGLISAFK,FFKLIPKLVKGLISAFK,4,,,,,NH2,Parente_2022_thesis,PepMem-Base-Project,,,,17,4.0,0.2353,0.6471,0.9647

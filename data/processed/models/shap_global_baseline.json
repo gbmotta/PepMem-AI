@@ -1,0 +1,146 @@
+{
+  "model": "baseline_mic_rf",
+  "n_samples": 12,
+  "n_features_raw": 11,
+  "global_importance": [
+    {
+      "feature": "q_peptide",
+      "label": "Carga peptídeo (q)",
+      "shap_value": 0.33747173528859603,
+      "group": "classic",
+      "mean_abs_shap": 0.33747173528859603
+    },
+    {
+      "feature": "anionic_fraction",
+      "label": "Fração aniónica membrana",
+      "shap_value": 0.03367496082662708,
+      "group": "classic",
+      "mean_abs_shap": 0.03367496082662708
+    },
+    {
+      "feature": "surface_charge",
+      "label": "Carga superficial membrana",
+      "shap_value": 0.023364197870250788,
+      "group": "classic",
+      "mean_abs_shap": 0.023364197870250788
+    },
+    {
+      "feature": "lps",
+      "label": "LPS (Gram−)",
+      "shap_value": 0.019144059831483495,
+      "group": "classic",
+      "mean_abs_shap": 0.019144059831483495
+    },
+    {
+      "feature": "h_peptide",
+      "label": "Hidrofobicidade peptídeo",
+      "shap_value": 0.0,
+      "group": "classic",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "mu_h_peptide",
+      "label": "Momento hidrofóbico",
+      "shap_value": 0.0,
+      "group": "classic",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "cholesterol",
+      "label": "Colesterol",
+      "shap_value": 0.0,
+      "group": "classic",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "peptidoglycan",
+      "label": "Peptidoglicano (Gram+)",
+      "shap_value": 0.0,
+      "group": "classic",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "ergosterol",
+      "label": "Ergosterol (fungo)",
+      "shap_value": 0.0,
+      "group": "classic",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "viral_envelope",
+      "label": "Envelope viral",
+      "shap_value": 0.0,
+      "group": "classic",
+      "mean_abs_shap": 0.0
+    },
+    {
+      "feature": "pmi",
+      "label": "PMI",
+      "shap_value": 0.0,
+      "group": "classic",
+      "mean_abs_shap": 0.0
+    }
+  ],
+  "training_pairs": [
+    {
+      "peptide_id": "P11",
+      "target_id": "S_aureus_UFPEDA1040",
+      "mic_value": 4.7
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "S_aureus_UFPEDA1051",
+      "mic_value": 2.3
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "S_aureus_UFPEDA1058",
+      "mic_value": 2.3
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "S_aureus_UFPEDA1059",
+      "mic_value": 4.7
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "P_aeruginosa_UFPEDA261",
+      "mic_value": 4.7
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "P_aeruginosa_UFPEDA262",
+      "mic_value": 4.7
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "S_aureus_UFPEDA1040",
+      "mic_value": 2.3
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "S_aureus_UFPEDA1051",
+      "mic_value": 2.3
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "S_aureus_UFPEDA1058",
+      "mic_value": 2.3
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "S_aureus_UFPEDA1059",
+      "mic_value": 2.3
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "P_aeruginosa_UFPEDA261",
+      "mic_value": 3.4
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "P_aeruginosa_UFPEDA262",
+      "mic_value": 3.4
+    }
+  ]
+}
