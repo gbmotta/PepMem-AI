@@ -489,7 +489,12 @@ PepMem-AI/
 
 Para publicar o dashboard online e compartilhar um link, siga o guia **[DEPLOY.md](DEPLOY.md)**.
 
-Resumo rápido:
+**Deploy em 2 comandos** (após criar repo GitHub e token HF):
+
+```bash
+./scripts/deploy_github.sh SEU_USUARIO GitHub && git push -u origin main
+hf auth login && python scripts/deploy_hf_space.py SEU_USUARIO_HF
+```
 
 | Plataforma | Custo | Melhor para |
 |------------|-------|-------------|

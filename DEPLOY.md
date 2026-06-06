@@ -17,7 +17,45 @@ O dashboard já cobre o uso típico. A API pode ficar local ou ir para o Render 
 
 ---
 
-## Opção 1 — Hugging Face Spaces (recomendada)
+## Deploy rápido (recomendado)
+
+### Passo A — GitHub
+
+1. Crie um repo **vazio** em [github.com/new](https://github.com/new) (ex.: `PepMem-AI`, público).
+2. No terminal:
+
+```bash
+cd /home/gab/Documentos/PepMem-AI
+./scripts/deploy_github.sh SEU_USUARIO_GITHUB PepMem-AI
+git push -u origin main
+```
+
+O commit inicial já está pronto localmente (`main`, ~8 MB de `data/processed/`).
+
+### Passo B — Hugging Face Space
+
+1. Crie token em [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) (permissão **write**).
+2. Login e deploy:
+
+```bash
+hf auth login
+python scripts/deploy_hf_space.py SEU_USUARIO_HF --space pepmem-ai
+```
+
+URL final: `https://huggingface.co/spaces/SEU_USUARIO_HF/pepmem-ai`
+
+O script monta `.deploy_hf/` (~8 MB), usa PyTorch **CPU** (`requirements-space.txt`) e o README com frontmatter do Space.
+
+Para só testar o pacote localmente sem upload:
+
+```bash
+python scripts/deploy_hf_space.py testuser --build-only
+ls .deploy_hf/
+```
+
+---
+
+## Opção 1 — Hugging Face Spaces (manual)
 
 Melhor para projetos de ML: CPU gratuita, link estável, fácil de compartilhar.
 
