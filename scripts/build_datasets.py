@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from bench_mic import bench_endpoints_records, load_bench_mic, load_bench_peptides, resolve_peptides
 from peptide_utils import add_descriptor_columns, parse_fasta
 
 # PepMem target types used in experimental validation (from project docs)
@@ -319,6 +320,20 @@ def build_pepmem_base(root: Path, out_dir: Path) -> tuple[pd.DataFrame, pd.DataF
         )
 
     project_df = add_descriptor_columns(pd.DataFrame(project_rows))
+
+    bench_pep = load_bench_peptides()
+    bench_mic = load_bench_mic()
+    resolved_bench_mic = pd.DataFrame()
+    if not bench_pep.empty or not bench_mic.empty:
+        project_df, resolved_bench_mic, new_ids = resolve_peptides(
+            bench_mic if not bench_mic.empty else pd.DataFrame(),
+            project_df,
+            bench_pep,
+        )
+        project_df = add_descriptor_columns(project_df)
+        if new_ids:
+            print(f"  bancada: novos peptídeos {', '.join(new_ids)}")
+
     project_df.to_parquet(out_dir / "pepmem_base_project.parquet", index=False)
     project_df.to_csv(out_dir / "pepmem_base_project.csv", index=False)
 
@@ -332,6 +347,10 @@ def build_pepmem_base(root: Path, out_dir: Path) -> tuple[pd.DataFrame, pd.DataF
     full_df = pd.concat([project_df, apd_df], ignore_index=True, sort=False)
     full_df.to_parquet(out_dir / "pepmem_base.parquet", index=False)
     full_df.to_csv(out_dir / "pepmem_base.csv", index=False)
+    # Cache resolved MIC for endpoints build (avoids losing peptide_id resolution)
+    if not resolved_bench_mic.empty:
+        cache = out_dir / "_bench_mic_resolved.parquet"
+        resolved_bench_mic.to_parquet(cache, index=False)
     return project_df, apd_df, full_df
 
 
@@ -377,10 +396,47 @@ def build_pepmem_endpoints(project_df: pd.DataFrame, out_dir: Path) -> pd.DataFr
         )
     literature_df = pd.DataFrame(lit_rows)
 
-    endpoints_df = pd.concat([scaffold_df, literature_df], ignore_index=True, sort=False)
+    resolved_path = out_dir / "_bench_mic_resolved.parquet"
+    if resolved_path.exists():
+        bench_mic = pd.read_parquet(resolved_path)
+        resolved_path.unlink(missing_ok=True)
+    else:
+        bench_pep = load_bench_peptides()
+        bench_mic = load_bench_mic()
+        if not bench_mic.empty:
+            _, bench_mic, _ = resolve_peptides(bench_mic, project_df, bench_pep)
+
+    bench_df = pd.DataFrame()
+    if not bench_mic.empty:
+        # Fill missing sequences from project map
+        seq_map = project_df.set_index("peptide_id")["sequence"].to_dict()
+        if "sequence" not in bench_mic.columns or bench_mic["sequence"].isna().any():
+            bench_mic = bench_mic.copy()
+            bench_mic["sequence"] = bench_mic.apply(
+                lambda r: r["sequence"] if pd.notna(r.get("sequence")) else seq_map.get(str(r["peptide_id"])),
+                axis=1,
+            )
+        bench_df = pd.DataFrame(bench_endpoints_records(bench_mic))
+        print(f"  bancada: {len(bench_df)} endpoints ({int((bench_df['endpoint'] == 'MIC').sum())} MICs)")
+
+    experimental_parts = [literature_df]
+    if not bench_df.empty:
+        experimental_parts.append(bench_df)
+    experimental_df = pd.concat(experimental_parts, ignore_index=True, sort=False)
+    if not experimental_df.empty:
+        experimental_df = experimental_df.drop_duplicates(
+            subset=["peptide_id", "target_id", "endpoint"],
+            keep="last",
+        )
+
+    endpoints_df = pd.concat([scaffold_df, experimental_df], ignore_index=True, sort=False)
     endpoints_df.to_parquet(out_dir / "pepmem_endpoints.parquet", index=False)
     endpoints_df.to_csv(out_dir / "pepmem_endpoints.csv", index=False)
     literature_df.to_parquet(out_dir / "pepmem_endpoints_literature.parquet", index=False)
+    if not bench_df.empty:
+        bench_dir = Path(__file__).resolve().parents[1] / "data" / "bench"
+        bench_dir.mkdir(parents=True, exist_ok=True)
+        bench_df.to_parquet(bench_dir / "mic_bench_normalized.parquet", index=False)
     return endpoints_df
 
 
@@ -423,6 +479,7 @@ def main() -> None:
         "pepmem_base_total_rows": len(peptides_df),
         "pepmem_endpoints_rows": len(endpoints_df),
         "pepmem_endpoints_literature_rows": len(LITERATURE_ENDPOINTS),
+        "pepmem_endpoints_bench_rows": len(load_bench_mic()),
         "opm_primary_structures": len(load_json(opm_dir / "primary_structures.json")),
     }
     with (out_dir / "build_summary.json").open("w", encoding="utf-8") as fh:

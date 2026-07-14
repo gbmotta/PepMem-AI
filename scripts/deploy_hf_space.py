@@ -61,16 +61,43 @@ def deploy(username: str, space_name: str, token: str | None) -> str:
     who = api.whoami(token=token)
     print(f"Logado como: {who.get('name', who)}")
 
-    api.create_repo(
-        repo_id=repo_id,
-        repo_type="space",
-        space_sdk="streamlit",
-        exist_ok=True,
-        token=token,
-    )
-
     stage = build_stage()
-    print(f"Enviando para Space {repo_id}...")
+    use_docker = False
+
+    try:
+        api.create_repo(
+            repo_id=repo_id,
+            repo_type="space",
+            space_sdk="streamlit",
+            exist_ok=True,
+            token=token,
+        )
+    except Exception as exc:
+        print(f"Streamlit SDK indisponível ({exc}), usando Docker...")
+        use_docker = True
+        api.create_repo(
+            repo_id=repo_id,
+            repo_type="space",
+            space_sdk="docker",
+            exist_ok=True,
+            token=token,
+        )
+        shutil.copy2(ROOT / "Dockerfile", stage / "Dockerfile")
+        dockerfile = (stage / "Dockerfile").read_text(encoding="utf-8")
+        dockerfile = dockerfile.replace("8501", "7860")
+        if "STREAMLIT_SERVER_FILE_WATCHER" not in dockerfile:
+            dockerfile = dockerfile.replace(
+                "ENV PYTHONPATH=/app",
+                "ENV PYTHONPATH=/app\nENV STREAMLIT_SERVER_FILE_WATCHER=none",
+            )
+        (stage / "Dockerfile").write_text(dockerfile, encoding="utf-8")
+        readme = (stage / "README.md").read_text(encoding="utf-8")
+        readme = readme.replace("sdk: streamlit", "sdk: docker").replace(
+            'app_file: dashboard/app.py\n', ""
+        )
+        (stage / "README.md").write_text(readme, encoding="utf-8")
+
+    print(f"Enviando para Space {repo_id} ({'docker' if use_docker else 'streamlit'})...")
     api.upload_folder(
         folder_path=str(stage),
         repo_id=repo_id,
@@ -87,11 +114,26 @@ def deploy(username: str, space_name: str, token: str | None) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Deploy PepMem-AI no Hugging Face Spaces")
-    parser.add_argument("username", help="Seu usuário Hugging Face (ex.: gabriel-motta)")
-    parser.add_argument("--space", default="pepmem-ai", help="Nome do Space (padrão: pepmem-ai)")
+    parser.add_argument("username", nargs="?", default=os.environ.get("HF_USERNAME"), help="Usuário HF")
+    parser.add_argument("--space", default=os.environ.get("HF_SPACE", "pepmem-ai"), help="Nome do Space")
     parser.add_argument("--token", default=os.environ.get("HF_TOKEN"), help="Token HF (ou env HF_TOKEN)")
     parser.add_argument("--build-only", action="store_true", help="Só monta .deploy_hf/, sem upload")
     args = parser.parse_args()
+
+    env_file = ROOT / ".env"
+    if env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key, val = key.strip(), val.strip().strip('"').strip("'")
+            if key == "HF_TOKEN" and not args.token:
+                args.token = val
+            elif key == "HF_USERNAME" and not args.username:
+                args.username = val
+            elif key == "HF_SPACE" and args.space == "pepmem-ai":
+                args.space = val
 
     if args.build_only:
         build_stage()
@@ -99,15 +141,29 @@ def main() -> None:
 
     if not args.token:
         print(
-            "Token ausente. Faça login:\n"
-            "  hf auth login\n"
-            "ou export HF_TOKEN=hf_...\n"
-            "Depois rode novamente este script.",
+            "Token ausente.\n\n"
+            "1. Crie token: https://huggingface.co/settings/tokens (Write)\n"
+            "2. Opção A — login:\n"
+            "     hf auth login\n"
+            "     python scripts/deploy_hf_space.py SEU_USUARIO\n"
+            "   Opção B — arquivo .env na raiz do projeto:\n"
+            "     HF_USERNAME=seu_usuario\n"
+            "     HF_TOKEN=hf_...\n"
+            "     python scripts/deploy_hf_space.py\n",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    deploy(args.username, args.space, args.token)
+    from huggingface_hub import HfApi
+
+    api = HfApi(token=args.token)
+    who = api.whoami(token=args.token)
+    username = args.username or who.get("name") or who.get("fullname")
+    if not username:
+        print("Não foi possível detectar usuário HF. Passe como argumento.", file=sys.stderr)
+        sys.exit(1)
+
+    deploy(username, args.space, args.token)
 
 
 if __name__ == "__main__":

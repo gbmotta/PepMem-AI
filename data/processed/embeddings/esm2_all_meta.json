@@ -1,6 +1,14 @@
 {
   "model": "facebook/esm2_t6_8M_UR50D",
   "scope": "all",
-  "n_peptides": 3316,
-  "embedding_dim": 320
+  "n_peptides": 3322,
+  "embedding_dim": 320,
+  "updated_with_missing": [
+    "P13",
+    "P14",
+    "P15",
+    "P16",
+    "P17",
+    "P18"
+  ]
 }

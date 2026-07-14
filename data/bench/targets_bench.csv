@@ -1,0 +1,9 @@
+target_id,target,target_type,surface_charge,anionic_fraction,lps,peptidoglycan,ergosterol,viral_envelope,cholesterol
+E_faecalis_ATCC29212,Enterococcus faecalis ATCC 29212,Gram+,-0.8,0.6,0,1,0,0,0
+E_cloacae_ATCC13047,Enterobacter cloacae ATCC 13047,Gram-,-0.9,0.65,1,1,0,0,0
+C_albicans_ATCC90028,Candida albicans ATCC 90028,fungo,-0.4,0.25,0,0,1,0,0
+C_glabrata_ATCC90030,Candida glabrata ATCC 90030,fungo,-0.4,0.25,0,0,1,0,0
+C_krusei_ATCC6258,Candida krusei ATCC 6258,fungo,-0.4,0.25,0,0,1,0,0
+B_cereus_ATCC11778,Bacillus cereus ATCC 11778,Gram+,-0.8,0.6,0,1,0,0,0
+K_pneumoniae_ATCC23357,Klebsiella pneumoniae ATCC 23357,Gram-,-0.9,0.65,1,1,0,0,0
+C_freundii_ATCC8090,Citrobacter freundii ATCC 8090,Gram-,-0.9,0.65,1,1,0,0,0

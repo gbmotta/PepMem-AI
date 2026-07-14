@@ -15,6 +15,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from pmi import compute_pmi, compute_pmi_sel, peptide_h, peptide_mu_h, peptide_q
 
 
+from bench_mic import load_bench_targets
+
+
 LITERATURE_TARGETS = [
     {"target_id": "S_aureus_UFPEDA1040", "target": "Staphylococcus aureus UFPEDA1040", "target_type": "Gram+", "surface_charge": -0.80, "anionic_fraction": 0.60, "lps": 0, "peptidoglycan": 1, "teichoic_acid": 1, "cholesterol": 0, "ergosterol": 0, "viral_envelope": 0},
     {"target_id": "S_aureus_UFPEDA1051", "target": "Staphylococcus aureus UFPEDA1051", "target_type": "Gram+", "surface_charge": -0.80, "anionic_fraction": 0.60, "lps": 0, "peptidoglycan": 1, "teichoic_acid": 1, "cholesterol": 0, "ergosterol": 0, "viral_envelope": 0},
@@ -28,7 +31,11 @@ LITERATURE_TARGETS = [
 def load_project_targets() -> pd.DataFrame:
     project = pd.read_parquet(ROOT / "data" / "processed" / "project_membrane_targets.parquet")
     literature = pd.DataFrame(LITERATURE_TARGETS)
-    return pd.concat([project, literature], ignore_index=True).drop_duplicates(subset=["target_id"])
+    frames = [project, literature]
+    bench = load_bench_targets()
+    if not bench.empty:
+        frames.append(bench)
+    return pd.concat(frames, ignore_index=True).drop_duplicates(subset=["target_id"])
 
 
 def build_pairs() -> pd.DataFrame:

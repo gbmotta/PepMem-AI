@@ -1,67 +1,74 @@
 {
   "model": "baseline_mic_rf",
-  "n_samples": 12,
+  "n_samples": 90,
   "n_features_raw": 11,
   "global_importance": [
     {
       "feature": "q_peptide",
       "label": "Carga peptídeo (q)",
-      "shap_value": 0.33747173528859603,
+      "shap_value": 0.1257423936215625,
       "group": "classic",
-      "mean_abs_shap": 0.33747173528859603
+      "mean_abs_shap": 0.1257423936215625
     },
     {
-      "feature": "anionic_fraction",
-      "label": "Fração aniónica membrana",
-      "shap_value": 0.03367496082662708,
+      "feature": "pmi",
+      "label": "PMI",
+      "shap_value": 0.07461270555557058,
       "group": "classic",
-      "mean_abs_shap": 0.03367496082662708
+      "mean_abs_shap": 0.07461270555557058
     },
     {
       "feature": "surface_charge",
       "label": "Carga superficial membrana",
-      "shap_value": 0.023364197870250788,
+      "shap_value": 0.07085858683101474,
       "group": "classic",
-      "mean_abs_shap": 0.023364197870250788
-    },
-    {
-      "feature": "lps",
-      "label": "LPS (Gram−)",
-      "shap_value": 0.019144059831483495,
-      "group": "classic",
-      "mean_abs_shap": 0.019144059831483495
-    },
-    {
-      "feature": "h_peptide",
-      "label": "Hidrofobicidade peptídeo",
-      "shap_value": 0.0,
-      "group": "classic",
-      "mean_abs_shap": 0.0
-    },
-    {
-      "feature": "mu_h_peptide",
-      "label": "Momento hidrofóbico",
-      "shap_value": 0.0,
-      "group": "classic",
-      "mean_abs_shap": 0.0
-    },
-    {
-      "feature": "cholesterol",
-      "label": "Colesterol",
-      "shap_value": 0.0,
-      "group": "classic",
-      "mean_abs_shap": 0.0
+      "mean_abs_shap": 0.07085858683101474
     },
     {
       "feature": "peptidoglycan",
       "label": "Peptidoglicano (Gram+)",
-      "shap_value": 0.0,
+      "shap_value": 0.05369846476744258,
       "group": "classic",
-      "mean_abs_shap": 0.0
+      "mean_abs_shap": 0.05369846476744258
+    },
+    {
+      "feature": "anionic_fraction",
+      "label": "Fração aniónica membrana",
+      "shap_value": 0.05318144642493548,
+      "group": "classic",
+      "mean_abs_shap": 0.05318144642493548
+    },
+    {
+      "feature": "h_peptide",
+      "label": "Hidrofobicidade peptídeo",
+      "shap_value": 0.050883793639776215,
+      "group": "classic",
+      "mean_abs_shap": 0.050883793639776215
+    },
+    {
+      "feature": "lps",
+      "label": "LPS (Gram−)",
+      "shap_value": 0.04022681373388709,
+      "group": "classic",
+      "mean_abs_shap": 0.04022681373388709
     },
     {
       "feature": "ergosterol",
       "label": "Ergosterol (fungo)",
+      "shap_value": 0.03206392926495969,
+      "group": "classic",
+      "mean_abs_shap": 0.03206392926495969
+    },
+    {
+      "feature": "mu_h_peptide",
+      "label": "Momento hidrofóbico",
+      "shap_value": 0.028830863333981434,
+      "group": "classic",
+      "mean_abs_shap": 0.028830863333981434
+    },
+    {
+      "feature": "cholesterol",
+      "label": "Colesterol",
       "shap_value": 0.0,
       "group": "classic",
       "mean_abs_shap": 0.0
@@ -72,17 +79,130 @@
       "shap_value": 0.0,
       "group": "classic",
       "mean_abs_shap": 0.0
-    },
-    {
-      "feature": "pmi",
-      "label": "PMI",
-      "shap_value": 0.0,
-      "group": "classic",
-      "mean_abs_shap": 0.0
     }
   ],
   "training_pairs": [
     {
+      "peptide_id": "P05",
+      "target_id": "S_aureus_ATCC29213",
+      "mic_value": 9.98
+    },
+    {
+      "peptide_id": "P05",
+      "target_id": "S_epidermidis_ATCC12228",
+      "mic_value": 9.0
+    },
+    {
+      "peptide_id": "P05",
+      "target_id": "E_coli_ATCC25922",
+      "mic_value": 160.0
+    },
+    {
+      "peptide_id": "P05",
+      "target_id": "P_aeruginosa_ATCC27853",
+      "mic_value": 160.0
+    },
+    {
+      "peptide_id": "P05",
+      "target_id": "S_aureus_UFPEDA1051",
+      "mic_value": 24.98
+    },
+    {
+      "peptide_id": "P05",
+      "target_id": "S_aureus_UFPEDA1058",
+      "mic_value": 24.98
+    },
+    {
+      "peptide_id": "P05",
+      "target_id": "S_aureus_UFPEDA1059",
+      "mic_value": 21.96
+    },
+    {
+      "peptide_id": "P05",
+      "target_id": "E_faecalis_ATCC29212",
+      "mic_value": 20.2
+    },
+    {
+      "peptide_id": "P05",
+      "target_id": "B_cereus_ATCC11778",
+      "mic_value": 18.0
+    },
+    {
+      "peptide_id": "P05",
+      "target_id": "K_pneumoniae_ATCC23357",
+      "mic_value": 160.0
+    },
+    {
+      "peptide_id": "P05",
+      "target_id": "C_freundii_ATCC8090",
+      "mic_value": 144.25
+    },
+    {
+      "peptide_id": "P10",
+      "target_id": "S_aureus_ATCC29213",
+      "mic_value": 9.4
+    },
+    {
+      "peptide_id": "P10",
+      "target_id": "S_epidermidis_ATCC12228",
+      "mic_value": 9.4
+    },
+    {
+      "peptide_id": "P10",
+      "target_id": "E_coli_ATCC25922",
+      "mic_value": 150.0
+    },
+    {
+      "peptide_id": "P10",
+      "target_id": "P_aeruginosa_ATCC27853",
+      "mic_value": 150.0
+    },
+    {
+      "peptide_id": "P10",
+      "target_id": "E_faecalis_ATCC29212",
+      "mic_value": 150.0
+    },
+    {
+      "peptide_id": "P10",
+      "target_id": "E_cloacae_ATCC13047",
+      "mic_value": 150.0
+    },
+    {
+      "peptide_id": "P10",
+      "target_id": "C_albicans_ATCC90028",
+      "mic_value": 37.5
+    },
+    {
+      "peptide_id": "P10",
+      "target_id": "C_glabrata_ATCC90030",
+      "mic_value": 150.0
+    },
+    {
+      "peptide_id": "P10",
+      "target_id": "C_krusei_ATCC6258",
+      "mic_value": 150.0
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "S_aureus_ATCC29213",
+      "mic_value": 2.34
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "S_epidermidis_ATCC12228",
+      "mic_value": 1.17
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "E_coli_ATCC25922",
+      "mic_value": 4.69
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "P_aeruginosa_ATCC27853",
+      "mic_value": 9.38
+    },
+    {
       "peptide_id": "P11",
       "target_id": "S_aureus_UFPEDA1040",
       "mic_value": 4.7
@@ -113,6 +233,51 @@
       "mic_value": 4.7
     },
     {
+      "peptide_id": "P11",
+      "target_id": "E_faecalis_ATCC29212",
+      "mic_value": 1.17
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "E_cloacae_ATCC13047",
+      "mic_value": 18.75
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "C_albicans_ATCC90028",
+      "mic_value": 9.38
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "C_glabrata_ATCC90030",
+      "mic_value": 18.75
+    },
+    {
+      "peptide_id": "P11",
+      "target_id": "C_krusei_ATCC6258",
+      "mic_value": 37.5
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "S_aureus_ATCC29213",
+      "mic_value": 2.34
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "S_epidermidis_ATCC12228",
+      "mic_value": 1.17
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "E_coli_ATCC25922",
+      "mic_value": 2.34
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "P_aeruginosa_ATCC27853",
+      "mic_value": 1.37
+    },
+    {
       "peptide_id": "P12",
       "target_id": "S_aureus_UFPEDA1040",
       "mic_value": 2.3
@@ -141,6 +306,231 @@
       "peptide_id": "P12",
       "target_id": "P_aeruginosa_UFPEDA262",
       "mic_value": 3.4
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "E_faecalis_ATCC29212",
+      "mic_value": 1.17
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "E_cloacae_ATCC13047",
+      "mic_value": 9.38
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "C_albicans_ATCC90028",
+      "mic_value": 4.69
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "C_glabrata_ATCC90030",
+      "mic_value": 9.38
+    },
+    {
+      "peptide_id": "P12",
+      "target_id": "C_krusei_ATCC6258",
+      "mic_value": 9.38
+    },
+    {
+      "peptide_id": "P13",
+      "target_id": "S_aureus_ATCC29213",
+      "mic_value": 2.34
+    },
+    {
+      "peptide_id": "P13",
+      "target_id": "S_epidermidis_ATCC12228",
+      "mic_value": 1.17
+    },
+    {
+      "peptide_id": "P13",
+      "target_id": "E_coli_ATCC25922",
+      "mic_value": 2.34
+    },
+    {
+      "peptide_id": "P13",
+      "target_id": "P_aeruginosa_ATCC27853",
+      "mic_value": 4.68
+    },
+    {
+      "peptide_id": "P13",
+      "target_id": "S_aureus_UFPEDA1058",
+      "mic_value": 1.87
+    },
+    {
+      "peptide_id": "P14",
+      "target_id": "S_aureus_ATCC29213",
+      "mic_value": 2.34
+    },
+    {
+      "peptide_id": "P14",
+      "target_id": "S_epidermidis_ATCC12228",
+      "mic_value": 1.17
+    },
+    {
+      "peptide_id": "P14",
+      "target_id": "E_coli_ATCC25922",
+      "mic_value": 2.34
+    },
+    {
+      "peptide_id": "P14",
+      "target_id": "P_aeruginosa_ATCC27853",
+      "mic_value": 9.37
+    },
+    {
+      "peptide_id": "P14",
+      "target_id": "S_aureus_UFPEDA1058",
+      "mic_value": 1.87
+    },
+    {
+      "peptide_id": "P15",
+      "target_id": "S_aureus_ATCC29213",
+      "mic_value": 1.2
+    },
+    {
+      "peptide_id": "P15",
+      "target_id": "S_epidermidis_ATCC12228",
+      "mic_value": 2.3
+    },
+    {
+      "peptide_id": "P15",
+      "target_id": "E_coli_ATCC25922",
+      "mic_value": 2.3
+    },
+    {
+      "peptide_id": "P15",
+      "target_id": "P_aeruginosa_ATCC27853",
+      "mic_value": 4.7
+    },
+    {
+      "peptide_id": "P15",
+      "target_id": "E_faecalis_ATCC29212",
+      "mic_value": 4.7
+    },
+    {
+      "peptide_id": "P15",
+      "target_id": "E_cloacae_ATCC13047",
+      "mic_value": 18.8
+    },
+    {
+      "peptide_id": "P15",
+      "target_id": "C_albicans_ATCC90028",
+      "mic_value": 9.4
+    },
+    {
+      "peptide_id": "P15",
+      "target_id": "C_glabrata_ATCC90030",
+      "mic_value": 9.4
+    },
+    {
+      "peptide_id": "P15",
+      "target_id": "C_krusei_ATCC6258",
+      "mic_value": 9.4
+    },
+    {
+      "peptide_id": "P16",
+      "target_id": "S_aureus_ATCC29213",
+      "mic_value": 2.3
+    },
+    {
+      "peptide_id": "P16",
+      "target_id": "S_epidermidis_ATCC12228",
+      "mic_value": 2.3
+    },
+    {
+      "peptide_id": "P16",
+      "target_id": "E_coli_ATCC25922",
+      "mic_value": 1.2
+    },
+    {
+      "peptide_id": "P16",
+      "target_id": "P_aeruginosa_ATCC27853",
+      "mic_value": 2.3
+    },
+    {
+      "peptide_id": "P16",
+      "target_id": "E_faecalis_ATCC29212",
+      "mic_value": 1.2
+    },
+    {
+      "peptide_id": "P16",
+      "target_id": "E_cloacae_ATCC13047",
+      "mic_value": 4.7
+    },
+    {
+      "peptide_id": "P16",
+      "target_id": "C_albicans_ATCC90028",
+      "mic_value": 4.7
+    },
+    {
+      "peptide_id": "P16",
+      "target_id": "C_glabrata_ATCC90030",
+      "mic_value": 4.7
+    },
+    {
+      "peptide_id": "P16",
+      "target_id": "C_krusei_ATCC6258",
+      "mic_value": 4.7
+    },
+    {
+      "peptide_id": "P17",
+      "target_id": "S_aureus_ATCC29213",
+      "mic_value": 2.51
+    },
+    {
+      "peptide_id": "P17",
+      "target_id": "E_coli_ATCC25922",
+      "mic_value": 2.51
+    },
+    {
+      "peptide_id": "P17",
+      "target_id": "P_aeruginosa_ATCC27853",
+      "mic_value": 2.51
+    },
+    {
+      "peptide_id": "P17",
+      "target_id": "S_aureus_UFPEDA1059",
+      "mic_value": 2.51
+    },
+    {
+      "peptide_id": "P17",
+      "target_id": "E_faecalis_ATCC29212",
+      "mic_value": 2.51
+    },
+    {
+      "peptide_id": "P17",
+      "target_id": "K_pneumoniae_ATCC23357",
+      "mic_value": 4.97
+    },
+    {
+      "peptide_id": "P18",
+      "target_id": "S_aureus_ATCC29213",
+      "mic_value": 2.56
+    },
+    {
+      "peptide_id": "P18",
+      "target_id": "E_coli_ATCC25922",
+      "mic_value": 2.56
+    },
+    {
+      "peptide_id": "P18",
+      "target_id": "P_aeruginosa_ATCC27853",
+      "mic_value": 5.12
+    },
+    {
+      "peptide_id": "P18",
+      "target_id": "S_aureus_UFPEDA1059",
+      "mic_value": 2.5
+    },
+    {
+      "peptide_id": "P18",
+      "target_id": "E_faecalis_ATCC29212",
+      "mic_value": 5.12
+    },
+    {
+      "peptide_id": "P18",
+      "target_id": "K_pneumoniae_ATCC23357",
+      "mic_value": 10.2
     }
   ]
 }

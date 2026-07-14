@@ -1,0 +1,7 @@
+peptide_id,name,parent,sequence,sequence_raw,net_charge,molecular_mass_kda,hydrophobic_moment,isoelectric_point,c_terminal,source,dataset
+P13,StigA8,Stigmurin,FFSLIPKLVGKLISAFK,FFSLIPKLVGKLISAFK,4,1.9074,0.65,10.3,NH2,literatura_grupo_docx,PepMem-Base-Project
+P14,StigA18,Stigmurin,FFSLIPKLVGKLIKAFK,FFSLIPKLVGKLIKAFK,5,1.9495,0.7,10.48,NH2,literatura_grupo_docx,PepMem-Base-Project
+P15,StigA25,Stigmurin,FFSLIPSLVKKLIKAFK,FFSLIPSLVKKLIKAFK,5,1.9795,0.7,10.48,NH2,literatura_grupo_docx,PepMem-Base-Project
+P16,StigA31,Stigmurin,FFKLIPKLVKKLIKAFK,FFKLIPKLVKKLIKAFK,7,2.0617,0.8,10.7,NH2,literatura_grupo_docx,PepMem-Base-Project
+P17,TsAP-2-A16,TsAP-2,FLRMIPGLIRGLIRAFR,FLRMIPGLIRGLIRAFR,5,2.0295,0.75,12.48,NH2,literatura_grupo_docx,PepMem-Base-Project
+P18,TsAP-2-A41,TsAP-2,FLKMIPRLIKRLISAFK,FLKMIPRLIKRLISAFK,6,2.0747,0.77,12.02,NH2,literatura_grupo_docx,PepMem-Base-Project

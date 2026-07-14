@@ -45,12 +45,28 @@ def main() -> None:
     parser.add_argument("--scope", choices=["project", "all"], default="all")
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument(
+        "--missing-only",
+        action="store_true",
+        help="Só embute peptídeos ausentes em esm2_all.npz e faz merge (mais rápido na bancada).",
+    )
     args = parser.parse_args()
 
     out_dir = ROOT / "data" / "processed" / "embeddings"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     peptides = load_peptides(args.scope)
+    all_path = out_dir / "esm2_all.npz"
+
+    if args.missing_only and all_path.exists():
+        existing = np.load(all_path, allow_pickle=True)
+        have = set(existing["peptide_ids"].tolist())
+        peptides = peptides[~peptides["peptide_id"].isin(have)].copy()
+        if peptides.empty:
+            print("Nenhum embedding faltando — mantendo", all_path)
+            return
+        print(f"Embeddings faltando: {len(peptides)} ({', '.join(peptides['peptide_id'].astype(str).tolist()[:20])}…)")
+
     sequences = peptides["sequence"].tolist()
     ids = peptides["peptide_id"].tolist()
 
@@ -68,21 +84,34 @@ def main() -> None:
 
     matrix = np.vstack(all_emb)
     tag = args.scope
-    np.savez_compressed(out_dir / f"esm2_{tag}.npz", peptide_ids=np.array(ids), embeddings=matrix)
 
-    meta = {
-        "model": args.model,
-        "scope": args.scope,
-        "n_peptides": len(ids),
-        "embedding_dim": matrix.shape[1],
-    }
-    (out_dir / f"esm2_{tag}_meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
-
-    # Índice parquet (sem vetor completo — vetor fica no npz)
-    index_df = peptides[["peptide_id", "sequence", "dataset"]].copy()
-    index_df["embedding_file"] = f"esm2_{tag}.npz"
-    index_df.to_parquet(out_dir / f"esm2_{tag}_index.parquet", index=False)
-    print(f"Embeddings salvos: {out_dir / f'esm2_{tag}.npz'} ({matrix.shape})")
+    if args.missing_only and all_path.exists():
+        existing = np.load(all_path, allow_pickle=True)
+        merged_ids = np.concatenate([existing["peptide_ids"], np.array(ids, dtype=object)])
+        merged_emb = np.vstack([existing["embeddings"], matrix])
+        np.savez_compressed(all_path, peptide_ids=merged_ids, embeddings=merged_emb)
+        meta = {
+            "model": args.model,
+            "scope": "all",
+            "n_peptides": int(len(merged_ids)),
+            "embedding_dim": int(merged_emb.shape[1]),
+            "updated_with_missing": ids,
+        }
+        (out_dir / "esm2_all_meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        print(f"Embeddings merge: {all_path} ({merged_emb.shape})")
+    else:
+        np.savez_compressed(out_dir / f"esm2_{tag}.npz", peptide_ids=np.array(ids), embeddings=matrix)
+        meta = {
+            "model": args.model,
+            "scope": args.scope,
+            "n_peptides": len(ids),
+            "embedding_dim": matrix.shape[1],
+        }
+        (out_dir / f"esm2_{tag}_meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        index_df = peptides[["peptide_id", "sequence", "dataset"]].copy()
+        index_df["embedding_file"] = f"esm2_{tag}.npz"
+        index_df.to_parquet(out_dir / f"esm2_{tag}_index.parquet", index=False)
+        print(f"Embeddings salvos: {out_dir / f'esm2_{tag}.npz'} ({matrix.shape})")
 
 
 if __name__ == "__main__":

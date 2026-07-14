@@ -126,8 +126,9 @@ flowchart LR
 |-------|----------|--------------|
 | **[OPM](https://opm.phar.umich.edu/)** | Proteínas e tipos de membrana (8.950 estruturas, 24 membranas) | API REST (`scripts/download_opm.py`) |
 | **[APD6](https://aps.unmc.edu/downloads)** | 3.306 peptídeos antimicrobianos naturais (FASTA 2024) | Download direto (`scripts/download_apd.py`) |
-| **Projeto CNPq** | Análogos Stigmurina / TsAP-2 | `pepmem_base_project` |
+| **Projeto CNPq** | Análogos Stigmurina / TsAP-2 (P01–P18) | `pepmem_base_project` |
 | **Parente 2022** | StigA6, StigA16 + MIC/MBC (cepas MDR) | `pepmem_endpoints` (literatura) |
+| **Literatura do grupo** | MICs ATCC/clínicos (Stigmurin, StigA*, TsAP-2*) | `data/bench/` → import |
 | **CAMP** | AMPs com MIC (24k+) | *Pendente* — site sem bulk download público |
 
 ---
@@ -138,13 +139,13 @@ Arquivos principais em `data/processed/`:
 
 | Arquivo | Linhas | Descrição |
 |---------|--------|-----------|
-| `pepmem_base.parquet` | 3.316 | Projeto (12) + APD (3.304), deduplicados por sequência |
-| `pepmem_base_project.parquet` | 12 | Peptídeos escorpiônicos do projeto |
+| `pepmem_base.parquet` | 3.322 | Projeto (18) + APD (3.304), deduplicados por sequência |
+| `pepmem_base_project.parquet` | 18 | Peptídeos escorpiônicos do projeto (P01–P18) |
 | `pepmem_base_apd.parquet` | 3.304 | Peptídeos naturais do APD6 |
-| `membrane_targets.parquet` | 34 | 24 membranas OPM + 10 alvos experimentais |
-| `pepmem_endpoints.parquet` | 144 | Scaffold + 24 endpoints da literatura (MIC/MBC) |
-| `pepmem_pairs.parquet` | 192 | Pares peptídeo–membrana com PMI e MIC quando disponível |
-| `embeddings/esm2_all.npz` | 3.316 × 320 | Embeddings ESM-2 (`facebook/esm2_t6_8M_UR50D`) |
+| `membrane_targets.parquet` | 34+ | Membranas OPM + alvos experimentais (+ bancada) |
+| `pepmem_endpoints.parquet` | 282 | Scaffold + 24 literatura + 78 bancada (MIC) |
+| `pepmem_pairs.parquet` | 432 | Pares peptídeo–membrana com PMI (**90** com MIC) |
+| `embeddings/esm2_all.npz` | 3.322 × 320 | Embeddings ESM-2 (`facebook/esm2_t6_8M_UR50D`) |
 | `models/multimodal_mic_rf.joblib` | — | Modelo multimodal treinado |
 | `models/project_ranking_baseline.csv` | — | Ranking pré-calculado do projeto |
 
@@ -250,11 +251,14 @@ PYTHONPATH=. streamlit run dashboard/app.py
 | `download_apd.py` | Download listas FASTA APD6 |
 | `build_datasets.py` | Monta PepMem-Base, Membrane-Targets, Endpoints |
 | `build_pairs.py` | Pares peptídeo–membrana + PMI + MIC |
-| `generate_embeddings.py` | Embeddings ESM-2 (`--scope project\|all`) |
+| `generate_embeddings.py` | Embeddings ESM-2 (`--scope project\|all`, `--missing-only`) |
 | `train_baseline.py` | Random Forest (11 features clássicas) |
 | `train_multimodal.py` | Random Forest (331 features: clássicas + ESM-2) |
 | `compute_shap.py` | SHAP TreeExplainer — relatórios globais JSON |
+| `bench_mic.py` | Validação/carga da planilha de bancada (lib) |
+| `import_bench_mic.py` | Importa MICs (`data/bench/`) + rebuild + retreino opcional |
 | `run_pipeline.py` | Orquestra todo o fluxo acima |
+| `deploy_hf_space.py` / `deploy_github.sh` | Publicação HF Spaces / GitHub |
 | `peptide_utils.py` | Parsing FASTA, descritores, normalização |
 | `pmi.py` | Cálculo PMI / PMI_sel |
 
@@ -292,17 +296,17 @@ print(explanation["shap_contributions"][:3])
 ### Baseline (`baseline_mic_rf.joblib`)
 
 - **Features:** 11 descritores clássicos + PMI
-- **Treino:** 12 MICs experimentais (StigA6/StigA16 × 6 cepas MDR)
-- **Rótulo:** alta atividade se MIC ≤ 3,4 µM
-- **Validação:** Leave-One-Out (LOO) AUC ≈ **0,75**
+- **Treino:** **90** pares MIC (literatura Parente + bancada do grupo)
+- **Rótulo:** alta atividade se MIC ≤ 3,4 µM (~44% positivos)
+- **Validação:** Leave-One-Out (LOO) AUC ≈ **0,88** · acurácia ≈ **83%**
 
 ### Multimodal (`multimodal_mic_rf.joblib`)
 
 - **Features:** 11 clássicas + **320 dimensões ESM-2**
 - **Modelo:** Random Forest (300 árvores, `max_depth=6`)
-- **LOO AUC ≈ 0,875** (amostra pequena — resultado preliminar)
+- **LOO AUC ≈ 0,85** (mesmas 90 amostras)
 
-> **Atenção:** com apenas 12 amostras rotuladas, as probabilidades do modelo podem ser instáveis. Use **PMI_sel** e **final_score** como critérios complementares até a incorporação de mais dados da bancada.
+> **Atenção:** o conjunto rotulado cresceu (12 → 90 MICs), mas ainda é limitado para calibração fina. Use **PMI_sel** e **final_score** junto com a probabilidade do RF.
 
 ### PMI (Peptide–Membrane Interaction Index)
 
@@ -409,6 +413,7 @@ Abas:
 |-----|--------|
 | **Predição** | Um par peptídeo × membrana com PMI e probabilidade |
 | **Ranking** | Ordenação por alvo + gráfico de scores |
+| **XAI (SHAP)** | Explicação local + beeswarm global |
 | **Datasets** | Estatísticas e tabela dos peptídeos do projeto |
 | **API** | Documentação e exemplos curl |
 
@@ -419,15 +424,25 @@ Abas:
 | ID | Nome | Sequência | Origem |
 |----|------|-----------|--------|
 | P10 | Stigmurin nativo | `FFSLIPSLVGGLISAFK` | APD AP02531 / CNPq |
-| P11 | StigA6 | `FFSLIPKLVKGLISAFK` | Parente 2022 |
-| P12 | StigA16 | `FFKLIPKLVKGLISAFK` | Parente 2022 |
-| P01–P09 | Análogos Stigmurina / TsAP-2 | ver `pepmem_base_project.csv` | CNPq / patentes INPI |
+| P11 | StigA6 | `FFSLIPKLVKGLISAFK` | Parente 2018/2022 |
+| P12 | StigA16 | `FFKLIPKLVKGLISAFK` | Parente 2018/2022 |
+| P13 | StigA8 | `FFSLIPKLVGKLISAFK` | Furtado 2022 |
+| P14 | StigA18 | `FFSLIPKLVGKLIKAFK` | Furtado 2022 |
+| P15 | StigA25 | `FFSLIPSLVKKLIKAFK` | Amorim-Carmo 2019 |
+| P16 | StigA31 | `FFKLIPKLVKKLIKAFK` | Amorim-Carmo 2019 |
+| P05 | TsAP-2 nativo | `FLGMIPGLIGGLISAFK` | Daniele-Silva 2016 |
+| P17 | TsAP-2-A16 | `FLRMIPGLIRGLIRAFR` | Da Costa 2025 |
+| P18 | TsAP-2-A41 | `FLKMIPRLIKRLISAFK` | Da Costa 2025 |
+| P01–P09 | Análogos CNPq / patentes | ver `pepmem_base_project.csv` | CNPq / INPI |
+
+Documento consolidado (físico-química + MICs + mapa de estudos): [`docs/peptideos/`](docs/peptideos/).
 
 **Alvos experimentais (validação in vitro):**
 
-- Gram+: *S. aureus*, *S. epidermidis*
-- Gram−: *E. coli*, *P. aeruginosa*
-- Fungo: *Candida* spp.
+- Gram+: *S. aureus*, *S. epidermidis*, *E. faecalis*, *B. cereus*
+- Gram−: *E. coli*, *P. aeruginosa*, *E. cloacae*, *K. pneumoniae*, *C. freundii*
+- Fungo: *C. albicans*, *C. glabrata*, *C. krusei*
+- Clínicos: cepas UFPEDA (*S. aureus*, *P. aeruginosa*)
 - Parasita: *Trypanosoma cruzi*
 - Vírus: Zika PE243, HSV-1
 - Citotoxicidade: célula normal vs tumoral
@@ -439,55 +454,39 @@ Abas:
 ```
 PepMem-AI/
 ├── README.md
+├── DEPLOY.md                     # Atalho → docs/DEPLOY.md
 ├── requirements.txt
-├── dataset_list.txt              # Link OPM
-├── PepMem_AI_Pipeline_*.tex      # Documentação científica (slides)
+├── requirements-space.txt
+├── Dockerfile / render.yaml
 │
 ├── pepmem/                       # Biblioteca de inferência
-│   ├── __init__.py
-│   ├── predictor.py              # PepMemPredictor
-│   └── features.py               # Engenharia de features
+├── api/                          # FastAPI
+├── dashboard/                    # Streamlit
+├── scripts/                      # Pipeline (download → treino → deploy)
+├── deploy/                       # README do Space (HF)
 │
-├── api/
-│   └── main.py                   # FastAPI
+├── data/
+│   ├── raw/                      # OPM / APD (gitignore)
+│   ├── processed/                # datasets, embeddings, models
+│   └── bench/                    # MICs da bancada (editável)
 │
-├── dashboard/
-│   └── app.py                    # Streamlit PoC
-│
-├── scripts/
-│   ├── download_opm.py
-│   ├── download_apd.py
-│   ├── build_datasets.py
-│   ├── build_pairs.py
-│   ├── generate_embeddings.py
-│   ├── train_baseline.py
-│   ├── train_multimodal.py
-│   ├── run_pipeline.py
-│   ├── peptide_utils.py
-│   └── pmi.py
-│
-└── data/
-    ├── raw/
-    │   ├── opm/                  # JSON da API OPM
-    │   └── apd/                  # FASTA APD6
-    └── processed/
-        ├── pepmem_base*.parquet
-        ├── membrane_targets.parquet
-        ├── pepmem_endpoints.parquet
-        ├── pepmem_pairs.parquet
-        ├── embeddings/
-        │   └── esm2_all.npz
-        └── models/
-            ├── baseline_mic_rf.joblib
-            ├── multimodal_mic_rf.joblib
-            └── project_ranking_baseline.csv
+└── docs/                         # Documentação e materiais do grupo
+    ├── DEPLOY.md
+    ├── peptideos/                # Doc consolidado T. stigmurus
+    ├── legado/                   # Word originais (backup)
+    ├── pipeline/                 # LaTeX / PDF InovAI
+    ├── proposta/                 # PDF CNPq
+    ├── referencias/              # Papers / tese de apoio
+    └── fontes/                   # Links de bases públicas
 ```
+
+Índice completo: [`docs/README.md`](docs/README.md).
 
 ---
 
 ## Deploy gratuito (colaboradores)
 
-Para publicar o dashboard online e compartilhar um link, siga o guia **[DEPLOY.md](DEPLOY.md)**.
+Para publicar o dashboard online e compartilhar um link, siga o guia **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
 **Deploy em 2 comandos** (após criar repo GitHub e token HF):
 
@@ -506,20 +505,43 @@ Arquivo principal do dashboard: `dashboard/app.py`. Dados necessários: pasta `d
 
 ---
 
+## Inserir MICs da bancada
+
+Planilha editável: **`data/bench/mic_bench.csv`** (guia completo em [`data/bench/README.md`](data/bench/README.md)).
+
+```bash
+# Validar
+python scripts/import_bench_mic.py --check
+
+# Importar + retreinar RF e SHAP
+python scripts/import_bench_mic.py --retrain
+```
+
+Exemplo — Stigmurin (P10) vs *E. coli*:
+
+```csv
+peptide_id,sequence,name,net_charge,target_id,target,target_type,endpoint,value,unit,assay,reference,date,notes
+P10,,,,E_coli_ATCC25922,,Gram-,MIC,1.8,uM,microdilution,bancada_jun2025,2025-06-03,
+```
+
+Quanto mais MICs rotulados, mais confiáveis ficam as **probabilidades do RF** e os gráficos **SHAP**.
+
+---
+
 ## Limitações e próximos passos
 
 | Limitação | Próximo passo |
 |-----------|---------------|
-| Apenas 12 MICs rotulados | Incorporar MICs do APD/literatura e dados da bancada |
+| 90 MICs (ainda pouco vs. diversidade) | Extrair StigA15, TanP, TisTH, CC50/biofilme das papers do mapa |
 | CAMP não integrado | Scraping paginado ou dados suplementares CAMPR4 |
 | Modelo RF simples | Encoder multimodal PyTorch (ProtBERT + MLP membrana) |
 | Sem teste externo robusto | Split por cluster de sequência + teste prospectivo |
-| Probabilidades instáveis | Calibrar com mais dados; priorizar PMI_sel no ranking |
-| Endpoints limitados a MIC | IC50, CC50, EC50, SI multitarefa |
+| Alguns análogos CNPq com sequência placeholder | Curar P01–P09 com sequências reais das patentes |
+| Endpoints limitados a MIC | IC50, CC50, EC50, SI, biofilme |
 
 **Roadmap sugerido:**
 
-1. Curto prazo — enriquecer `pepmem_endpoints` com literatura
+1. Curto prazo — completar endpoints do mapa de estudos (`docs/peptideos/`)
 2. Médio prazo — modelo multimodal PyTorch; ~~XAI (SHAP)~~ **SHAP integrado** (RF + dashboard)
 3. Longo prazo — validação experimental + *active learning* + publicação do dataset (Zenodo/DOI)
 
@@ -532,7 +554,7 @@ Arquivo principal do dashboard: `dashboard/app.py`. Dados necessários: pasta `d
 - Lin et al. **ESM-2** — Evolutionary scale modeling. *Science* (2023).
 - Parente (2022). *Structural evaluation and antimicrobial activity of analog peptides from Stigmurin*. UFRN.
 - Lee et al. (2016). Mapping membrane activity with machine learning. *PNAS*.
-- Documentação interna: `PepMem_AI_Pipeline_LaTeX_InovAI_entregaveis_logo_v9.tex`
+- Documentação interna: [`docs/pipeline/`](docs/pipeline/) · peptídeos do grupo: [`docs/peptideos/`](docs/peptideos/)
 
 ---
 

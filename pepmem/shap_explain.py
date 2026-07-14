@@ -172,6 +172,10 @@ def compute_training_shap(
     return *_aggregate_matrix_for_display(X, sv, names), meta
 
 
+def _short_label(label: str, max_len: int = 26) -> str:
+    return label if len(label) <= max_len else f"{label[: max_len - 1]}…"
+
+
 def plot_beeswarm(
     pipeline: Pipeline,
     use_embeddings: bool,
@@ -188,17 +192,17 @@ def plot_beeswarm(
     order = np.argsort(np.mean(np.abs(sv), axis=0))[::-1]
     x_display = x_display[:, order]
     sv = sv[:, order]
-    labels = [labels[i] for i in order]
+    labels = [_short_label(labels[i]) for i in order]
 
-    fig_height = max(5.0, len(labels) * 0.55)
-    plt.figure(figsize=(11, fig_height))
+    fig_height = max(4.0, len(labels) * 0.45)
+    plt.figure(figsize=(5.8, fig_height))
     shap.summary_plot(
         sv,
         x_display,
         feature_names=labels,
         plot_type="dot",
         show=False,
-        color_bar_label="Valor do descritor",
+        color_bar=False,
         max_display=len(labels),
     )
     fig = plt.gcf()
@@ -297,28 +301,18 @@ def plot_contributions(contributions: list[dict[str, Any]], title: str = "SHAP")
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    labels = [c["label"] for c in reversed(contributions)]
+    labels = [_short_label(c["label"]) for c in reversed(contributions)]
     values = [c["shap_value"] for c in reversed(contributions)]
     colors = ["#d62728" if v < 0 else "#2ca02c" for v in values]
 
-    height = max(3.5, len(labels) * 0.5)
-    fig, ax = plt.subplots(figsize=(10, height))
-    bars = ax.barh(labels, values, color=colors, edgecolor="white", linewidth=0.5)
+    height = max(3.0, len(labels) * 0.45)
+    fig, ax = plt.subplots(figsize=(5.8, height), layout="constrained")
+    ax.barh(labels, values, color=colors, edgecolor="white", linewidth=0.5)
     ax.axvline(0, color="#333333", linewidth=1.0)
     ax.set_xlabel("Contribuição SHAP → alta atividade")
-    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.set_title(_short_label(title, 48), fontsize=12, fontweight="bold")
     ax.grid(axis="x", alpha=0.25)
-    for bar, val in zip(bars, values):
-        x = bar.get_width()
-        ax.text(
-            x + (0.01 if x >= 0 else -0.01),
-            bar.get_y() + bar.get_height() / 2,
-            f"{val:+.3f}",
-            va="center",
-            ha="left" if x >= 0 else "right",
-            fontsize=8,
-        )
-    fig.tight_layout()
+    ax.margins(x=0.08)
     return fig
 
 
@@ -330,25 +324,16 @@ def plot_global_importance(importance: list[dict[str, Any]], title: str = "Impor
     import matplotlib.pyplot as plt
 
     sorted_rows = sorted(importance, key=lambda r: r["mean_abs_shap"])
-    labels = [r["label"] for r in sorted_rows]
+    labels = [_short_label(r["label"]) for r in sorted_rows]
     values = [r["mean_abs_shap"] for r in sorted_rows]
     groups = [r.get("group", "classic") for r in sorted_rows]
     colors = ["#1f77b4" if g == "classic" else "#9467bd" for g in groups]
 
-    height = max(3.5, len(labels) * 0.5)
-    fig, ax = plt.subplots(figsize=(10, height))
-    bars = ax.barh(labels, values, color=colors, edgecolor="white", linewidth=0.5)
+    height = max(3.0, len(labels) * 0.45)
+    fig, ax = plt.subplots(figsize=(5.8, height), layout="constrained")
+    ax.barh(labels, values, color=colors, edgecolor="white", linewidth=0.5)
     ax.set_xlabel("Média |SHAP| (12 MICs de treino)")
-    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.set_title(_short_label(title, 48), fontsize=12, fontweight="bold")
     ax.grid(axis="x", alpha=0.25)
-    for bar, val in zip(bars, values):
-        ax.text(
-            bar.get_width() + 0.002,
-            bar.get_y() + bar.get_height() / 2,
-            f"{val:.3f}",
-            va="center",
-            ha="left",
-            fontsize=8,
-        )
-    fig.tight_layout()
+    ax.margins(x=0.08)
     return fig

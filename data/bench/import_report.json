@@ -1,0 +1,12 @@
+{
+  "bench_mic_rows": 78,
+  "training_mic_pairs": 90,
+  "new_peptide_ids": [
+    "P13",
+    "P14",
+    "P15",
+    "P16",
+    "P17",
+    "P18"
+  ]
+}

@@ -3,10 +3,16 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.local
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
 .streamlit/secrets.toml
+
+# Segredos locais (nunca versionar)
+.secrets/
+*token*.txt
+huggin_token.txt
 
 # Dados brutos (regerar com scripts/download_*.py)
 data/raw/
@@ -14,10 +20,9 @@ data/raw/
 # Deploy staging
 .deploy_hf/
 
-# Documentos internos (não necessários no Space)
+# Documentos internos pesados (PDFs/TeX em docs/; não necessários no Space)
 *.pdf
 *.tex
-dataset_list.txt
 
 # Artefatos locais grandes opcionais
 *.log
