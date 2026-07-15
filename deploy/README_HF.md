@@ -1,23 +1,22 @@
 ---
 title: PepMem-AI
 emoji: 🧬
-colorFrom: blue
-colorTo: green
-sdk: streamlit
-sdk_version: "1.41.0"
-app_file: dashboard/app.py
+colorFrom: yellow
+colorTo: blue
+sdk: docker
 pinned: false
 license: mit
 ---
 
 # PepMem-AI
 
-PoC de **predição peptídeo–membrana** (InovAI Lab / UFRN).
+Predição **peptídeo–membrana** (InovAI Lab / UFRN).
 
 - **Predição** — PMI + probabilidade de alta atividade (MIC)
-- **Ranking** — compara um peptídeo em várias membranas-alvo
+- **Ranking** — multi-alvo com score de priorização
 - **XAI (SHAP)** — beeswarm + explicações locais
+- Atalhos: peptídeos **no banco** e **fora do treino**
 
-**Exemplo:** StigA6 `FFSLIPKLVKGLISAFK` · Stigmurin `FFSLIPSLVGGLISAFK`
+**Exemplos:** StigA6 `FFSLIPKLVKGLISAFK` · mutante novo `FFSLIPKLVAGLISAFK`
 
-> Modelo treinado com dados preliminares (12 MICs). Use PMI_sel como critério complementar.
+> Treino atual: ~90 MICs (literatura + bancada). Use PMI_sel junto com a probabilidade do RF.

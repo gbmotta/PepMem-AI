@@ -19,27 +19,18 @@ Uma linha = um resultado experimental.
 | `peptide_id` | peptide_id **ou** sequence | `P10` ou `P13` |
 | `sequence` | peptide_id **ou** sequence | `FFSLIPSLVGGLISAFK` |
 | `target_id` | sim | `E_coli_ATCC25922` |
-| `endpoint` | sim | `MIC` ou `MBC` |
-| `value` | sim | `2.3` (µM) |
-| `unit` | não | `uM` (padrão) |
+| `endpoint` | sim | `MIC`, `MBC`, `CC50`, `IC50`, `HEMOLYSIS`, `BIOFILM_INHIB` |
+| `value` | sim | `2.3` (µM) ou `%` para hemólise/biofilme |
+| `unit` | não | `uM` ou `percent` |
 | `reference` | não | `bancada_2025-06` |
 | `date` | não | `2025-06-03` |
 | `notes` | não | `réplica 3, 37°C` |
 
-### Exemplos
-
-**Peptídeo já cadastrado (P10 Stigmurin) vs E. coli:**
+### Exemplo — hemólise (Parente 2018)
 
 ```csv
 peptide_id,sequence,name,net_charge,target_id,target,target_type,endpoint,value,unit,assay,reference,date,notes
-P10,,,,E_coli_ATCC25922,,Gram-,MIC,1.8,uM,microdilution,bancada_jun2025,2025-06-03,
-```
-
-**Peptídeo novo (só sequência — vira P13 automaticamente):**
-
-```csv
-,,Meu_analogo,3,S_aureus_ATCC29213,,Gram+,MIC,4.2,uM,microdilution,bancada_jun2025,2025-06-03,
-,,Meu_analogo,3,S_aureus_ATCC29213,,Gram+,MBC,8.0,uM,microdilution,bancada_jun2025,2025-06-03,
+P11,FFSLIPKLVKGLISAFK,StigA6,3,RBC_human,Hemácias humanas,mamífero (hemólise),HEMOLYSIS,30,percent,hemolysis_75uM,Parente_2018,,hemolysis_%_at_75uM_1h
 ```
 
 ### Alvos já disponíveis (`target_id`)
@@ -52,6 +43,7 @@ P10,,,,E_coli_ATCC25922,,Gram-,MIC,1.8,uM,microdilution,bancada_jun2025,2025-06-
 | `P_aeruginosa_ATCC27853` | P. aeruginosa |
 | `Candida_spp` | Candida |
 | `cell_normal` | célula mamífera normal (toxicidade) |
+| `RBC_human` | hemácias (hemólise) |
 | `S_aureus_UFPEDA1040` … `P_aeruginosa_UFPEDA262` | cepas MDR (Parente 2022) |
 
 ---
@@ -100,3 +92,18 @@ python scripts/import_bench_mic.py --retrain
 - Dados da bancada **substituem** literatura se mesmo par peptídeo×alvo×endpoint
 
 Relatório gerado: `data/bench/import_report.json` (via `build_summary` / pares).
+
+---
+
+## Fontes externas (teste held-out, opcional)
+
+Não misturar no treino do projeto sem controle de homologia. Úteis como **benchmark externo**:
+
+| Fonte | Conteúdo | Link |
+|-------|----------|------|
+| AMPBench-MT | MIC + HC50/hemólise; splits por homologia | https://huggingface.co/datasets/ZihengZhou06/AMPBench-MT |
+| ANIA | MIC *E. coli / S. aureus / P. aeruginosa* | https://github.com/SilverGojo4/ANIA |
+| DBAASP | MIC + citotox + sinergismo | https://www.dbaasp.org |
+| DRAMP | AMP bulk + atividades | https://dramp.cpu-bioinfor.org |
+
+Validação interna preferida: **leave-one-peptide-out** (já no treino) — a família Stigmurin tem identidade ~70–94%.

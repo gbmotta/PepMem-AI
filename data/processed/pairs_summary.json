@@ -1,4 +1,5 @@
 {
-  "pairs_rows": 432,
-  "with_mic": 90
+  "pairs_rows": 450,
+  "with_mic": 90,
+  "with_hemolysis": 5
 }

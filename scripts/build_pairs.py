@@ -87,19 +87,25 @@ def build_pairs() -> pd.DataFrame:
         axis=1,
     )
 
-    # Anexar MIC/MBC da literatura (colunas separadas, sem duplicar linhas)
+    # Anexar endpoints experimentais (MIC/MBC/CC50/hemólise/…)
     ep = pd.read_parquet(ROOT / "data" / "processed" / "pepmem_endpoints.parquet")
     ep = ep.dropna(subset=["endpoint", "value"])
-    for endpoint_name in ("MIC", "MBC"):
-        sub = ep[ep["endpoint"] == endpoint_name][["peptide_id", "target_id", "value", "unit", "source", "confidence"]]
-        sub = sub.rename(columns={
-            "value": f"{endpoint_name.lower()}_value",
-            "unit": f"{endpoint_name.lower()}_unit",
-            "source": f"{endpoint_name.lower()}_source",
-            "confidence": f"{endpoint_name.lower()}_confidence",
-        })
-        merged = pairs.merge(sub, on=["peptide_id", "target_id"], how="left")
-        pairs = merged
+    for endpoint_name in ("MIC", "MBC", "CC50", "IC50", "HEMOLYSIS", "BIOFILM_INHIB"):
+        sub = ep[ep["endpoint"] == endpoint_name][
+            ["peptide_id", "target_id", "value", "unit", "source", "confidence"]
+        ]
+        if sub.empty:
+            continue
+        prefix = endpoint_name.lower()
+        sub = sub.rename(
+            columns={
+                "value": f"{prefix}_value",
+                "unit": f"{prefix}_unit",
+                "source": f"{prefix}_source",
+                "confidence": f"{prefix}_confidence",
+            }
+        )
+        pairs = pairs.merge(sub, on=["peptide_id", "target_id"], how="left")
 
     out = ROOT / "data" / "processed"
     pairs.to_parquet(out / "pepmem_pairs.parquet", index=False)
@@ -112,6 +118,9 @@ def main() -> None:
     summary = {
         "pairs_rows": len(pairs),
         "with_mic": int(pairs["mic_value"].notna().sum()) if "mic_value" in pairs.columns else 0,
+        "with_hemolysis": int(pairs["hemolysis_value"].notna().sum())
+        if "hemolysis_value" in pairs.columns
+        else 0,
     }
     out = ROOT / "data" / "processed" / "pairs_summary.json"
     out.write_text(json.dumps(summary, indent=2), encoding="utf-8")

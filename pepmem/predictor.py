@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -20,12 +19,24 @@ ROOT = project_root()
 ESM_MODEL = "facebook/esm2_t6_8M_UR50D"
 
 
+def _seq_identity(a: str, b: str) -> float:
+    a, b = a.upper(), b.upper()
+    n = max(len(a), len(b))
+    if n == 0:
+        return 0.0
+    m = min(len(a), len(b))
+    same = sum(x == y for x, y in zip(a[:m], b[:m]))
+    return same / n
+
+
 class PepMemPredictor:
     def __init__(self, use_embeddings: bool = True) -> None:
         self.use_embeddings = use_embeddings
         self.targets = load_targets()
         self._embeddings_cache = self._load_embedding_index()
         self._model = self._load_model()
+        self._calibrator = self._load_calibrator()
+        self._mic_index = self._load_mic_index()
         self._esm = None
         self._tokenizer = None
 
@@ -42,7 +53,7 @@ class PepMemPredictor:
         for pid, emb in zip(ids, embs):
             seq = id_to_seq.get(pid)
             if seq:
-                by_seq[seq.upper()] = emb
+                by_seq[str(seq).upper()] = emb
         return by_seq
 
     def _load_model(self):
@@ -53,6 +64,37 @@ class PepMemPredictor:
             path = models_dir / "baseline_mic_rf.joblib"
             self.use_embeddings = False
         return joblib.load(path)
+
+    def _load_calibrator(self):
+        models_dir = ROOT / "data" / "processed" / "models"
+        name = (
+            "multimodal_mic_calibrator.joblib"
+            if self.use_embeddings
+            else "baseline_mic_calibrator.joblib"
+        )
+        path = models_dir / name
+        if not path.exists():
+            alt = models_dir / "baseline_mic_calibrator.joblib"
+            path = alt if alt.exists() else path
+        if not path.exists():
+            return None
+        return joblib.load(path)
+
+    def _load_mic_index(self) -> pd.DataFrame:
+        path = ROOT / "data" / "processed" / "pepmem_pairs.parquet"
+        if not path.exists():
+            return pd.DataFrame()
+        pairs = pd.read_parquet(path)
+        mic = pairs[pairs["mic_value"].notna()].copy()
+        if mic.empty:
+            return mic
+        proj = ROOT / "data" / "processed" / "pepmem_base_project.csv"
+        names = {}
+        if proj.exists():
+            pdf = pd.read_csv(proj)
+            names = pdf.set_index("peptide_id")["name"].to_dict()
+        mic["name"] = mic["peptide_id"].map(names)
+        return mic
 
     def _load_esm(self) -> None:
         if self._esm is not None:
@@ -73,7 +115,24 @@ class PepMemPredictor:
             mask = inputs["attention_mask"].unsqueeze(-1)
             hidden = out.last_hidden_state
             emb = (hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1)
-        return emb.squeeze().cpu().numpy()
+        vec = emb.squeeze().cpu().numpy()
+        self._embeddings_cache[seq] = vec
+        return vec
+
+    def _raw_and_calibrated_prob(self, x: np.ndarray) -> tuple[float, float, float]:
+        """Return raw_prob, calibrated_prob, tree_std."""
+        raw = float(self._model.predict_proba(x.reshape(1, -1))[0, 1])
+        # incerteza entre árvores
+        scaler = self._model.named_steps["scaler"]
+        clf = self._model.named_steps["clf"]
+        xt = scaler.transform(x.reshape(1, -1))
+        tree_probs = np.array([est.predict_proba(xt)[0, 1] for est in clf.estimators_])
+        std = float(tree_probs.std())
+        if self._calibrator is not None:
+            cal = float(self._calibrator.predict([raw])[0])
+        else:
+            cal = raw
+        return raw, cal, std
 
     def predict_pair(
         self,
@@ -82,11 +141,85 @@ class PepMemPredictor:
         net_charge: float | None = None,
     ) -> dict[str, Any]:
         x, _, feats = self._feature_vector(sequence, target_id, net_charge=net_charge)
-        prob = float(self._model.predict_proba(x.reshape(1, -1))[0, 1])
+        raw, cal, std = self._raw_and_calibrated_prob(x)
+        lo = max(0.0, cal - std)
+        hi = min(1.0, cal + std)
+        out = {
+            **feats,
+            "pred_high_activity_prob_raw": raw,
+            "pred_high_activity_prob": cal,
+            "pred_uncertainty_std": std,
+            "pred_interval_low": lo,
+            "pred_interval_high": hi,
+            "calibrated": self._calibrator is not None,
+        }
         return {
             k: (None if isinstance(v, float) and np.isnan(v) else v)
-            for k, v in {**feats, "pred_high_activity_prob": prob}.items()
+            for k, v in out.items()
         }
+
+    def find_neighbors(
+        self,
+        sequence: str,
+        k: int = 5,
+        target_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Vizinhos do treino por identidade de sequência (+ cosine ESM se disponível)."""
+        if self._mic_index.empty:
+            return []
+        seq = "".join(c for c in sequence.upper() if c.isalpha())
+        uniq = (
+            self._mic_index.groupby("peptide_id", as_index=False)
+            .agg(
+                sequence=("sequence", "first"),
+                name=("name", "first"),
+                n_mic=("mic_value", "count"),
+                mic_median=("mic_value", "median"),
+                mic_min=("mic_value", "min"),
+                frac_high=("mic_value", lambda s: float((s <= 3.4).mean())),
+            )
+        )
+        q_emb = None
+        try:
+            q_emb = self.embed_sequence(seq)
+            q_norm = np.linalg.norm(q_emb) + 1e-9
+        except Exception:
+            q_emb = None
+
+        rows = []
+        for _, r in uniq.iterrows():
+            other = str(r["sequence"]).upper()
+            if other == seq:
+                continue
+            ident = _seq_identity(seq, other)
+            cosine = None
+            if q_emb is not None and other in self._embeddings_cache:
+                o = self._embeddings_cache[other]
+                cosine = float(np.dot(q_emb, o) / (q_norm * (np.linalg.norm(o) + 1e-9)))
+            score = 0.6 * ident + 0.4 * (cosine if cosine is not None else ident)
+            row = {
+                "peptide_id": r["peptide_id"],
+                "name": r["name"],
+                "sequence": other,
+                "identity": round(ident, 3),
+                "embedding_cosine": None if cosine is None else round(cosine, 3),
+                "neighbor_score": round(score, 3),
+                "n_mic": int(r["n_mic"]),
+                "mic_median_uM": round(float(r["mic_median"]), 3),
+                "mic_min_uM": round(float(r["mic_min"]), 3),
+                "frac_high_activity": round(float(r["frac_high"]), 3),
+            }
+            if target_id:
+                sub = self._mic_index[
+                    (self._mic_index["peptide_id"] == r["peptide_id"])
+                    & (self._mic_index["target_id"] == target_id)
+                ]
+                if not sub.empty:
+                    row["mic_on_target_uM"] = round(float(sub["mic_value"].iloc[0]), 3)
+            rows.append(row)
+
+        rows.sort(key=lambda d: d["neighbor_score"], reverse=True)
+        return rows[:k]
 
     def _feature_vector(
         self,
@@ -123,11 +256,15 @@ class PepMemPredictor:
             bg = None
 
         explanation = explain_instance(self._model, x, names, background=bg)
+        raw, cal, std = self._raw_and_calibrated_prob(x)
         return {
             **feats,
-            "pred_high_activity_prob": explanation["pred_high_activity_prob"],
+            "pred_high_activity_prob_raw": raw,
+            "pred_high_activity_prob": cal,
+            "pred_uncertainty_std": std,
             "expected_value_logit": explanation["expected_value_logit"],
             "shap_contributions": explanation["contributions"],
+            "calibrated": self._calibrator is not None,
         }
 
     def global_shap_report(self) -> dict[str, Any] | None:

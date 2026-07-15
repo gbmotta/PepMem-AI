@@ -54,6 +54,7 @@ def _dir_size(path: Path) -> float:
 
 def deploy(username: str, space_name: str, token: str | None) -> str:
     from huggingface_hub import HfApi
+    from huggingface_hub.utils import RepositoryNotFoundError
 
     repo_id = f"{username}/{space_name}"
     api = HfApi(token=token)
@@ -62,42 +63,52 @@ def deploy(username: str, space_name: str, token: str | None) -> str:
     print(f"Logado como: {who.get('name', who)}")
 
     stage = build_stage()
-    use_docker = False
+    use_docker = True  # HF free/PRO: sdk streamlit removido; Spaces de app usam docker/gradio
 
+    # Reaproveita Space existente (não tenta create_repo — Docker novo exige PRO)
+    space_exists = False
     try:
-        api.create_repo(
-            repo_id=repo_id,
-            repo_type="space",
-            space_sdk="streamlit",
-            exist_ok=True,
-            token=token,
-        )
-    except Exception as exc:
-        print(f"Streamlit SDK indisponível ({exc}), usando Docker...")
-        use_docker = True
-        api.create_repo(
-            repo_id=repo_id,
-            repo_type="space",
-            space_sdk="docker",
-            exist_ok=True,
-            token=token,
-        )
-        shutil.copy2(ROOT / "Dockerfile", stage / "Dockerfile")
-        dockerfile = (stage / "Dockerfile").read_text(encoding="utf-8")
-        dockerfile = dockerfile.replace("8501", "7860")
-        if "STREAMLIT_SERVER_FILE_WATCHER" not in dockerfile:
-            dockerfile = dockerfile.replace(
-                "ENV PYTHONPATH=/app",
-                "ENV PYTHONPATH=/app\nENV STREAMLIT_SERVER_FILE_WATCHER=none",
-            )
-        (stage / "Dockerfile").write_text(dockerfile, encoding="utf-8")
-        readme = (stage / "README.md").read_text(encoding="utf-8")
-        readme = readme.replace("sdk: streamlit", "sdk: docker").replace(
-            'app_file: dashboard/app.py\n', ""
-        )
-        (stage / "README.md").write_text(readme, encoding="utf-8")
+        info = api.repo_info(repo_id=repo_id, repo_type="space", token=token)
+        space_exists = True
+        print(f"Space existente: {repo_id}")
+        _ = info
+    except RepositoryNotFoundError:
+        space_exists = False
 
-    print(f"Enviando para Space {repo_id} ({'docker' if use_docker else 'streamlit'})...")
+    if not space_exists:
+        try:
+            api.create_repo(
+                repo_id=repo_id,
+                repo_type="space",
+                space_sdk="docker",
+                exist_ok=True,
+                token=token,
+            )
+            print(f"Space criado: {repo_id} (docker)")
+        except Exception as exc:
+            raise SystemExit(
+                "Não foi possível criar o Space (HF pode exigir PRO para Docker).\n"
+                f"Detalhe: {exc}\n"
+                "Crie manualmente em https://huggingface.co/new-space (Docker) "
+                "ou reutilize um Space já existente e rode o deploy de novo."
+            ) from exc
+
+    shutil.copy2(ROOT / "Dockerfile", stage / "Dockerfile")
+    dockerfile = (stage / "Dockerfile").read_text(encoding="utf-8")
+    dockerfile = dockerfile.replace("8501", "7860")
+    if "STREAMLIT_SERVER_FILE_WATCHER" not in dockerfile:
+        dockerfile = dockerfile.replace(
+            "ENV PYTHONPATH=/app",
+            "ENV PYTHONPATH=/app\nENV STREAMLIT_SERVER_FILE_WATCHER=none",
+        )
+    (stage / "Dockerfile").write_text(dockerfile, encoding="utf-8")
+    readme = (stage / "README.md").read_text(encoding="utf-8")
+    readme = readme.replace("sdk: streamlit", "sdk: docker").replace(
+        "app_file: dashboard/app.py\n", ""
+    )
+    (stage / "README.md").write_text(readme, encoding="utf-8")
+
+    print(f"Enviando para Space {repo_id} (docker)...")
     api.upload_folder(
         folder_path=str(stage),
         repo_id=repo_id,
@@ -108,7 +119,7 @@ def deploy(username: str, space_name: str, token: str | None) -> str:
 
     url = f"https://huggingface.co/spaces/{repo_id}"
     print(f"\nSpace publicado: {url}")
-    print("Aguarde 10–20 min para o build (PyTorch na 1ª vez).")
+    print("Aguarde o rebuild no HF (pode levar alguns minutos).")
     return url
 
 

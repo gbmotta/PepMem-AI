@@ -77,3 +77,8 @@ P17,FLRMIPGLIRGLIRAFR,TsAP-2-A16,,S_aureus_UFPEDA1059,Staphylococcus aureus UFPE
 P18,FLKMIPRLIKRLISAFK,TsAP-2-A41,,S_aureus_UFPEDA1059,Staphylococcus aureus UFPEDA1059,Gram+,MIC,2.5,uM,microdilution,Da_Costa_2025,,clinical_isolate_from_docx
 P13,FFSLIPKLVGKLISAFK,StigA8,,S_aureus_UFPEDA1058,Staphylococcus aureus UFPEDA1058,Gram+,MIC,1.87,uM,microdilution,Furtado_2022,,clinical_isolate_from_docx
 P14,FFSLIPKLVGKLIKAFK,StigA18,,S_aureus_UFPEDA1058,Staphylococcus aureus UFPEDA1058,Gram+,MIC,1.87,uM,microdilution,Furtado_2022,,clinical_isolate_from_docx
+P10,FFSLIPSLVGGLISAFK,Stigmurin,3.0,RBC_human,Hemácias humanas (eritócitos),mamífero (hemólise),HEMOLYSIS,5.8,percent,hemolysis_150uM,Amorim-Carmo_2019,,hemolysis_%_at_150uM
+P11,FFSLIPKLVKGLISAFK,StigA6,3.0,RBC_human,Hemácias humanas (eritócitos),mamífero (hemólise),HEMOLYSIS,30.0,percent,hemolysis_75uM,Parente_2018,,hemolysis_%_at_75uM_1h
+P12,FFKLIPKLVKGLISAFK,StigA16,4.0,RBC_human,Hemácias humanas (eritócitos),mamífero (hemólise),HEMOLYSIS,30.0,percent,hemolysis_75uM,Parente_2018,,hemolysis_%_at_75uM_1h
+P15,FFSLIPSLVKKLIKAFK,StigA25,5.0,RBC_human,Hemácias humanas (eritócitos),mamífero (hemólise),HEMOLYSIS,18.5,percent,hemolysis_9.4uM,Amorim-Carmo_2019,,hemolysis_%_at_9.4uM
+P16,FFKLIPKLVKKLIKAFK,StigA31,7.0,RBC_human,Hemácias humanas (eritócitos),mamífero (hemólise),HEMOLYSIS,11.2,percent,hemolysis_9.4uM,Amorim-Carmo_2019,,hemolysis_%_at_9.4uM

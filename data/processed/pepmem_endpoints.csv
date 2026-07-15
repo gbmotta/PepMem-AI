@@ -281,3 +281,8 @@ P17,FLRMIPGLIRGLIRAFR,S_aureus_UFPEDA1059,Staphylococcus aureus UFPEDA1059,Gram+
 P18,FLKMIPRLIKRLISAFK,S_aureus_UFPEDA1059,Staphylococcus aureus UFPEDA1059,Gram+,MIC,2.5,uM,microdilution,Da_Costa_2025,bancada,experimental,bench,,clinical_isolate_from_docx
 P13,FFSLIPKLVGKLISAFK,S_aureus_UFPEDA1058,Staphylococcus aureus UFPEDA1058,Gram+,MIC,1.87,uM,microdilution,Furtado_2022,bancada,experimental,bench,,clinical_isolate_from_docx
 P14,FFSLIPKLVGKLIKAFK,S_aureus_UFPEDA1058,Staphylococcus aureus UFPEDA1058,Gram+,MIC,1.87,uM,microdilution,Furtado_2022,bancada,experimental,bench,,clinical_isolate_from_docx
+P10,FFSLIPSLVGGLISAFK,RBC_human,Hemácias humanas (eritócitos),mamífero (hemólise),HEMOLYSIS,5.8,percent,hemolysis_150uM,Amorim-Carmo_2019,bancada,experimental,bench,,hemolysis_%_at_150uM
+P11,FFSLIPKLVKGLISAFK,RBC_human,Hemácias humanas (eritócitos),mamífero (hemólise),HEMOLYSIS,30.0,percent,hemolysis_75uM,Parente_2018,bancada,experimental,bench,,hemolysis_%_at_75uM_1h
+P12,FFKLIPKLVKGLISAFK,RBC_human,Hemácias humanas (eritócitos),mamífero (hemólise),HEMOLYSIS,30.0,percent,hemolysis_75uM,Parente_2018,bancada,experimental,bench,,hemolysis_%_at_75uM_1h
+P15,FFSLIPSLVKKLIKAFK,RBC_human,Hemácias humanas (eritócitos),mamífero (hemólise),HEMOLYSIS,18.5,percent,hemolysis_9.4uM,Amorim-Carmo_2019,bancada,experimental,bench,,hemolysis_%_at_9.4uM
+P16,FFKLIPKLVKKLIKAFK,RBC_human,Hemácias humanas (eritócitos),mamífero (hemólise),HEMOLYSIS,11.2,percent,hemolysis_9.4uM,Amorim-Carmo_2019,bancada,experimental,bench,,hemolysis_%_at_9.4uM

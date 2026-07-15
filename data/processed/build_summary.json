@@ -3,8 +3,8 @@
   "pepmem_base_project_rows": 18,
   "pepmem_base_apd_rows": 3304,
   "pepmem_base_total_rows": 3322,
-  "pepmem_endpoints_rows": 282,
+  "pepmem_endpoints_rows": 287,
   "pepmem_endpoints_literature_rows": 24,
-  "pepmem_endpoints_bench_rows": 78,
+  "pepmem_endpoints_bench_rows": 83,
   "opm_primary_structures": 8950
 }

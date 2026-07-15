@@ -1,5 +1,6 @@
 {
   "n_samples": 90,
+  "n_peptides": 10,
   "n_features": 331,
   "feature_names": [
     "q_peptide",
@@ -335,6 +336,19 @@
     "esm2_319"
   ],
   "loo_auc": 0.845,
+  "leave_one_peptide_auc": 0.8085,
+  "per_peptide_auc": {
+    "P05": null,
+    "P10": null,
+    "P11": 0.9,
+    "P12": 0.9545454545454546,
+    "P13": 0.875,
+    "P14": 0.875,
+    "P15": 0.8333333333333334,
+    "P16": 0.95,
+    "P17": 0.8,
+    "P18": 0.6666666666666667
+  },
   "loo_classification_report": {
     "0": {
       "precision": 0.8478260869565217,
@@ -362,6 +376,34 @@
       "support": 90.0
     }
   },
+  "leave_one_peptide_classification_report": {
+    "0": {
+      "precision": 0.8666666666666667,
+      "recall": 0.52,
+      "f1-score": 0.65,
+      "support": 50.0
+    },
+    "1": {
+      "precision": 0.6,
+      "recall": 0.9,
+      "f1-score": 0.72,
+      "support": 40.0
+    },
+    "accuracy": 0.6888888888888889,
+    "macro avg": {
+      "precision": 0.7333333333333334,
+      "recall": 0.71,
+      "f1-score": 0.685,
+      "support": 90.0
+    },
+    "weighted avg": {
+      "precision": 0.7481481481481482,
+      "recall": 0.6888888888888889,
+      "f1-score": 0.6811111111111111,
+      "support": 90.0
+    }
+  },
   "label_rule": "MIC <= 3.4 uM => alta atividade",
+  "calibration": "isotonic_on_leave_one_peptide_oof",
   "model_type": "RandomForest + ESM-2 embeddings"
 }

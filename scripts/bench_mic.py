@@ -71,13 +71,28 @@ def validate_mic_df(df: pd.DataFrame) -> pd.DataFrame:
             raise ValueError(f"Linha {i + 2}: informe peptide_id ou sequence")
 
         endpoint = str(row["endpoint"]).strip().upper()
-        if endpoint not in {"MIC", "MBC", "CC50", "IC50"}:
-            raise ValueError(f"Linha {i + 2}: endpoint inválido '{endpoint}' (use MIC, MBC, …)")
+        allowed = {"MIC", "MBC", "CC50", "IC50", "HEMOLYSIS", "BIOFILM_INHIB"}
+        if endpoint not in allowed:
+            raise ValueError(
+                f"Linha {i + 2}: endpoint inválido '{endpoint}' "
+                f"(use {', '.join(sorted(allowed))})"
+            )
 
         try:
             value = float(row["value"])
         except (TypeError, ValueError) as exc:
             raise ValueError(f"Linha {i + 2}: value numérico inválido") from exc
+
+        # Unidades padrão por endpoint
+        default_unit = {
+            "MIC": "uM",
+            "MBC": "uM",
+            "CC50": "uM",
+            "IC50": "uM",
+            "HEMOLYSIS": "percent",
+            "BIOFILM_INHIB": "percent",
+        }.get(endpoint, "uM")
+        unit = default_unit if pd.isna(row.get("unit")) else str(row.get("unit")).strip()
 
         target_id = str(row["target_id"]).strip()
         rows.append(
@@ -91,7 +106,7 @@ def validate_mic_df(df: pd.DataFrame) -> pd.DataFrame:
                 "target_type": None if pd.isna(row.get("target_type")) else str(row.get("target_type")).strip(),
                 "endpoint": endpoint,
                 "value": value,
-                "unit": "uM" if pd.isna(row.get("unit")) else str(row.get("unit")).strip(),
+                "unit": unit,
                 "assay": "microdilution" if pd.isna(row.get("assay")) else str(row.get("assay")).strip(),
                 "reference": "bancada" if pd.isna(row.get("reference")) else str(row.get("reference")).strip(),
                 "date": None if pd.isna(row.get("date")) else str(row.get("date")).strip(),

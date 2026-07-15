@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Train baseline classifiers on literature MIC endpoints."""
+"""Train baseline RF on MIC endpoints with leave-one-peptide-out + calibration."""
 
 from __future__ import annotations
 
@@ -7,102 +7,84 @@ import json
 import sys
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, roc_auc_score
-from sklearn.model_selection import LeaveOneOut
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 
 ROOT = Path(__file__).resolve().parents[1]
-FEATURES = [
-    "q_peptide",
-    "h_peptide",
-    "mu_h_peptide",
-    "surface_charge",
-    "anionic_fraction",
-    "cholesterol",
-    "lps",
-    "peptidoglycan",
-    "ergosterol",
-    "viral_envelope",
-    "pmi",
-]
+sys.path.insert(0, str(ROOT / "scripts"))
 
-
-def load_training_data() -> pd.DataFrame:
-    pairs = pd.read_parquet(ROOT / "data" / "processed" / "pepmem_pairs.parquet")
-    mic = pairs[pairs["mic_value"].notna()].copy()
-    if mic.empty:
-        raise SystemExit("Sem dados MIC na literatura para treino.")
-    mic["label_high_activity"] = (mic["mic_value"] <= 3.4).astype(int)
-    return mic
+from train_utils import (
+    CLASSIC_FEATURES,
+    evaluate_leave_one_peptide_out,
+    evaluate_sample_loo,
+    fit_isotonic_calibrator,
+    load_mic_pairs,
+    make_rf_pipeline,
+)
 
 
 def main() -> None:
-    df = load_training_data()
-    X = df[FEATURES].fillna(0).values
+    df = load_mic_pairs()
+    X = df[CLASSIC_FEATURES].fillna(0).values
     y = df["label_high_activity"].values
+    groups = df["peptide_id"].astype(str).values
 
-    print(f"Amostras MIC: {len(df)} | alta atividade (MIC<=3.4): {y.sum()}/{len(y)}")
+    print(f"Amostras MIC: {len(df)} | peptídeos: {len(np.unique(groups))} | alta atividade: {y.sum()}/{len(y)}")
 
-    loo = LeaveOneOut()
-    preds = np.zeros(len(y))
-    probs = np.zeros(len(y))
+    factory = lambda: make_rf_pipeline(n_estimators=200)
+    sample = evaluate_sample_loo(X, y, factory)
+    peptide = evaluate_leave_one_peptide_out(X, y, groups, factory)
 
-    for train_idx, test_idx in loo.split(X):
-        pipe = Pipeline(
-            [
-                ("scaler", StandardScaler()),
-                ("clf", RandomForestClassifier(n_estimators=200, random_state=42, class_weight="balanced")),
-            ]
-        )
-        pipe.fit(X[train_idx], y[train_idx])
-        preds[test_idx] = pipe.predict(X[test_idx])
-        probs[test_idx] = pipe.predict_proba(X[test_idx])[:, 1]
+    print(f"LOO amostra AUC: {sample['auc']:.4f}" if sample["auc"] else "LOO amostra AUC: n/a")
+    print(f"Leave-one-peptide AUC: {peptide['auc']:.4f}" if peptide["auc"] else "Leave-one-peptide AUC: n/a")
 
-    report = classification_report(y, preds, output_dict=True, zero_division=0)
-    auc = roc_auc_score(y, probs) if len(np.unique(y)) > 1 else None
+    calibrator = fit_isotonic_calibrator(peptide["probs"], y)
+    cal_probs = calibrator.predict(peptide["probs"])
 
     out_dir = ROOT / "data" / "processed" / "models"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Modelo final em todos os dados
-    final = Pipeline(
-        [
-            ("scaler", StandardScaler()),
-            ("clf", RandomForestClassifier(n_estimators=200, random_state=42, class_weight="balanced")),
-        ]
-    )
+    final = make_rf_pipeline(n_estimators=200)
     final.fit(X, y)
+    joblib.dump(final, out_dir / "baseline_mic_rf.joblib")
+    joblib.dump(calibrator, out_dir / "baseline_mic_calibrator.joblib")
 
     metrics = {
         "n_samples": len(y),
+        "n_peptides": int(len(np.unique(groups))),
         "positive_rate": float(y.mean()),
-        "loo_auc": auc,
-        "loo_classification_report": report,
-        "features": FEATURES,
+        "loo_auc": sample["auc"],
+        "leave_one_peptide_auc": peptide["auc"],
+        "per_peptide_auc": peptide["per_peptide_auc"],
+        "loo_classification_report": sample["report"],
+        "leave_one_peptide_classification_report": peptide["report"],
+        "features": CLASSIC_FEATURES,
         "label_rule": "MIC <= 3.4 uM => alta atividade",
+        "calibration": "isotonic_on_leave_one_peptide_oof",
+        "model_type": "RandomForest baseline (clássicas + PMI)",
     }
     (out_dir / "baseline_mic_loo.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 
-    import joblib
+    oof = df[["peptide_id", "target_id", "mic_value", "label_high_activity"]].copy()
+    oof["prob_raw_lope"] = peptide["probs"]
+    oof["prob_calibrated_lope"] = cal_probs
+    oof.to_csv(out_dir / "baseline_oof_probs.csv", index=False)
 
-    joblib.dump(final, out_dir / "baseline_mic_rf.joblib")
-
-    # Ranking dos pares do projeto sem endpoint
     all_pairs = pd.read_parquet(ROOT / "data" / "processed" / "pepmem_pairs.parquet")
     project_pairs = all_pairs.copy()
-    X_all = project_pairs[FEATURES].fillna(0).values
-    project_pairs["pred_high_activity_prob"] = final.predict_proba(X_all)[:, 1]
+    X_all = project_pairs[CLASSIC_FEATURES].fillna(0).values
+    raw = final.predict_proba(X_all)[:, 1]
+    project_pairs["pred_high_activity_prob"] = calibrator.predict(raw)
+    project_pairs["pred_high_activity_prob_raw"] = raw
     project_pairs["pred_pmi_rank"] = project_pairs.groupby("target_id")["pmi"].rank(ascending=False)
-
-    ranking = project_pairs.sort_values(["target_id", "pred_high_activity_prob"], ascending=[True, False])
+    ranking = project_pairs.sort_values(
+        ["target_id", "pred_high_activity_prob"], ascending=[True, False]
+    )
     ranking.to_parquet(out_dir / "project_ranking_baseline.parquet", index=False)
     ranking.to_csv(out_dir / "project_ranking_baseline.csv", index=False)
 
-    print("LOO AUC:", auc)
+    print("Calibrador isotônico salvo.")
     print("Ranking salvo em", out_dir / "project_ranking_baseline.csv")
 
 
