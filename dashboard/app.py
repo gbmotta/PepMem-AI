@@ -24,7 +24,7 @@ if str(ROOT) not in sys.path:
 
 from pepmem.predictor import PepMemPredictor, torch_available
 from pepmem.shap_explain import plot_beeswarm, plot_contributions, plot_global_importance
-from pepmem.narrative import llm_status, narrate_batch, narrate_single
+from pepmem.narrative import llm_status, narrate_batch, narrate_shap_overview, narrate_single
 from pepmem.paths import project_root
 
 # Garante ROOT consistente com o restante do pacote
@@ -505,6 +505,9 @@ with st.sidebar:
                 "last_single_narrative",
                 "last_batch",
                 "last_batch_narrative",
+                "last_shap_overview_narrative",
+                "last_xai_local",
+                "last_xai_narrative",
             ):
                 st.session_state.pop(k, None)
             st.rerun()
@@ -1142,6 +1145,22 @@ with tab_xai:
         json.loads(baseline_path.read_text(encoding="utf-8")) if baseline_path.exists() else None
     )
 
+    with st.container(border=True):
+        tile_title("Explicação em português", "Panorama SHAP global")
+        narrative_engine_caption()
+        if st.button("Explicar panorama SHAP", type="primary", key="btn_narrate_shap_global"):
+            with st.spinner("Gerando explicação…"):
+                out = narrate_shap_overview(
+                    n_train=n_train,
+                    baseline_importance=(baseline_report or {}).get("global_importance"),
+                    multimodal_importance=(global_report or {}).get("global_importance"),
+                    prefer_llm=True,
+                )
+                st.session_state["last_shap_overview_narrative"] = out
+        if st.session_state.get("last_shap_overview_narrative"):
+            out = st.session_state["last_shap_overview_narrative"]
+            render_narrative_box(out["text"], out["source"])
+
     g1, g2 = st.columns(2)
     with g1:
         with st.container(border=True):
@@ -1206,10 +1225,43 @@ with tab_xai:
         if st.button("Calcular SHAP local", type="primary", key="xai_btn"):
             try:
                 expl = cached_explain(xai_seq, xai_target, charge_xai)
-                render_result_banner(float(expl["pred_high_activity_prob"]), lookup_sequence(xai_seq))
-                render_shap_block(expl, target_options[xai_target])
+                st.session_state["last_xai_local"] = {
+                    "expl": expl,
+                    "sequence": xai_seq,
+                    "target_id": xai_target,
+                    "target_label": target_options[xai_target],
+                    "charge": charge_xai,
+                    "hit": lookup_sequence(xai_seq),
+                }
+                st.session_state.pop("last_xai_narrative", None)
             except Exception as e:
                 st.error(str(e))
+
+        if st.session_state.get("last_xai_local"):
+            snap = st.session_state["last_xai_local"]
+            expl = snap["expl"]
+            render_result_banner(float(expl["pred_high_activity_prob"]), snap.get("hit"))
+            render_shap_block(expl, snap["target_label"])
+
+            st.markdown("---")
+            tile_title("Explicação em português", "SHAP local desta instância")
+            narrative_engine_caption()
+            if st.button("Explicar SHAP local", key="btn_narrate_shap_local"):
+                with st.spinner("Gerando explicação…"):
+                    out = narrate_single(
+                        sequence=snap["sequence"],
+                        target_label=snap["target_label"],
+                        prob=float(expl["pred_high_activity_prob"]),
+                        pmi=float(expl["pmi"]) if expl.get("pmi") is not None else None,
+                        q_peptide=float(expl["q_peptide"]) if expl.get("q_peptide") is not None else None,
+                        shap_top=expl.get("shap_contributions"),
+                        in_project=snap.get("hit") is not None,
+                        prefer_llm=True,
+                    )
+                    st.session_state["last_xai_narrative"] = out
+            if st.session_state.get("last_xai_narrative"):
+                out = st.session_state["last_xai_narrative"]
+                render_narrative_box(out["text"], out["source"])
 
 # --- aba Datasets ---
 with tab_data:

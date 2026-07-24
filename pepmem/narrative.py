@@ -231,6 +231,93 @@ def template_explain_batch(
     return " ".join(parts)
 
 
+def template_explain_shap_overview(
+    *,
+    n_train: int,
+    baseline_importance: list[dict[str, Any]] | None = None,
+    multimodal_importance: list[dict[str, Any]] | None = None,
+) -> str:
+    """Narrativa do panorama SHAP global (barras + beeswarm)."""
+    parts = [
+        f"No treino atual ({n_train} pares MIC), o SHAP global mostra quais descritores "
+        "mais influenciam a predição de alta atividade (MIC ≤ 3,4 µM) no Random Forest."
+    ]
+
+    def _top_labels(rows: list[dict[str, Any]] | None, k: int = 3) -> list[str]:
+        if not rows:
+            return []
+        ranked = sorted(
+            rows,
+            key=lambda r: float(r.get("mean_abs_shap") or r.get("abs_shap") or abs(float(r.get("shap_value") or 0))),
+            reverse=True,
+        )
+        out = []
+        for r in ranked[:k]:
+            lab = r.get("label") or r.get("feature") or "?"
+            out.append(str(lab))
+        return out
+
+    base_top = _top_labels(baseline_importance)
+    multi_top = _top_labels(multimodal_importance)
+    if base_top:
+        parts.append(
+            "No baseline (clássicas + PMI), os fatores de maior |SHAP| médio são: "
+            + ", ".join(base_top)
+            + "."
+        )
+    if multi_top:
+        parts.append(
+            "No multimodal, destacam-se: "
+            + ", ".join(multi_top)
+            + "."
+        )
+    parts.append(
+        "Barras/valores positivos empurram para alta atividade; negativos, para o contrário. "
+        "No beeswarm, cada ponto é um par MIC: a cor indica o valor do descritor e a posição "
+        "horizontal o impacto SHAP. Use isso para interpretar o modelo, não como prova biológica."
+    )
+    parts.append("Use isso para priorizar ensaios in vitro.")
+    return " ".join(parts)
+
+
+def narrate_shap_overview(
+    *,
+    n_train: int,
+    baseline_importance: list[dict[str, Any]] | None = None,
+    multimodal_importance: list[dict[str, Any]] | None = None,
+    prefer_llm: bool = True,
+) -> dict[str, str]:
+    """Explica o SHAP global; GGUF opcional + fallback template."""
+    tmpl = template_explain_shap_overview(
+        n_train=n_train,
+        baseline_importance=baseline_importance,
+        multimodal_importance=multimodal_importance,
+    )
+    if not prefer_llm:
+        return {"text": tmpl, "source": "template"}
+
+    lines = [f"n_train={n_train}"]
+    for tag, rows in (
+        ("baseline", baseline_importance or []),
+        ("multimodal", multimodal_importance or []),
+    ):
+        for i, r in enumerate(rows[:6]):
+            lines.append(
+                f"{tag}{i}={r.get('label')}:mean_abs={r.get('mean_abs_shap', r.get('shap_value'))}"
+            )
+    user = (
+        "Explique o panorama SHAP global do PepMem-AI em português. "
+        "Não invente números.\n\n"
+        + "\n".join(lines)
+        + "\n\nRascunho factual:\n"
+        + tmpl
+    )
+    llm_text = _gguf_complete(user)
+    if llm_text:
+        return {"text": llm_text, "source": "qwen-gguf"}
+    return {"text": tmpl, "source": "template"}
+
+
 def _context_single(**kwargs: Any) -> str:
     """Serializa contexto factual para o LLM (só leitura)."""
     lines = [
