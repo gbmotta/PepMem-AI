@@ -1285,10 +1285,28 @@ A soma das contribuições + valor-base do modelo aproxima a saída bruta do RF
 3. **SHAP local** — barras para **uma** sequência × membrana que você escolher:
    a história daquela predição específica.
 
+### O que é o ESM-2
+**ESM-2** (*Evolutionary Scale Modeling*) é um modelo de linguagem de proteínas
+treinado em dezenas de milhões de sequências. Dada uma sequência de aminoácidos,
+ele produz um **embedding** — um vetor numérico que resume padrões evolutivos e
+estruturais aprendidos (sem ser uma estrutura 3D explícita).
+
+No PepMem-AI usamos a variante leve **`facebook/esm2_t6_8M_UR50D`**:
+- a sequência passa pelo ESM-2 e fazemos **mean-pooling** das representações dos resíduos;
+- no modelo **multimodal**, esse vetor (~320 dimensões) entra junto com as features clássicas
+  (carga, PMI, LPS, etc.) no Random Forest;
+- no SHAP, as muitas dimensões ESM costumam aparecer agregadas como
+  **“ESM-2 (embedding agregado)”**, para a leitura ficar interpretável.
+
+**Para quê serve aqui:** capturar similaridade de sequência além dos descritores
+físico-químicos manuais — útil para análogos e mutantes, mas **não substitui** MIC
+nem o PMI. No **Cloud leve** (sem PyTorch) o app usa só o **baseline**; o multimodal
+com ESM-2 roda no Space HF / ambiente local com `requirements-space.txt`.
+
 ### Baseline × multimodal
 - **Baseline:** descritores clássicos + PMI (o que o Cloud leve costuma usar).
-- **Multimodal:** clássicas + bloco agregado do embedding ESM-2 (quando o Space/local
-  tem PyTorch). No Cloud sem torch, o beeswarm multimodal pode ser só o PNG pré-computado.
+- **Multimodal:** clássicas + embedding ESM-2 (quando há PyTorch). No Cloud sem torch,
+  o beeswarm multimodal pode ser só o PNG pré-computado.
 
 ### Limites importantes
 - SHAP explica o **modelo treinado**, não prova mecanismo biológico nem substitui MIC.
