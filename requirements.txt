@@ -1,5 +1,5 @@
-# Streamlit Community Cloud — leve (sem PyTorch).
-# O dashboard usa o RF baseline + PMI; multimodal (ESM-2) fica no HF Space.
+# Streamlit Community Cloud / Render — leve (sem PyTorch).
+# Dashboard usa RF baseline + PMI; multimodal (ESM-2) fica no HF Space.
 #
 # Advanced settings → Python 3.11 ou 3.12
 streamlit==1.37.1

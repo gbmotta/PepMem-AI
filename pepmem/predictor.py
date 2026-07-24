@@ -118,11 +118,17 @@ class PepMemPredictor:
         mic = pairs[pairs["mic_value"].notna()].copy()
         if mic.empty:
             return mic
-        proj = ROOT / "data" / "processed" / "pepmem_base_project.csv"
+        proj = ROOT / "data" / "processed" / "pepmem_base_project.parquet"
         names = {}
         if proj.exists():
-            pdf = pd.read_csv(proj)
-            names = pdf.set_index("peptide_id")["name"].to_dict()
+            pdf = pd.read_parquet(proj)
+            if "peptide_id" in pdf.columns and "name" in pdf.columns:
+                names = pdf.set_index("peptide_id")["name"].to_dict()
+        else:
+            csv_path = ROOT / "data" / "processed" / "pepmem_base_project.csv"
+            if csv_path.exists():
+                pdf = pd.read_csv(csv_path)
+                names = pdf.set_index("peptide_id")["name"].to_dict()
         mic["name"] = mic["peptide_id"].map(names)
         return mic
 

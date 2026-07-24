@@ -17,12 +17,17 @@ huggin_token.txt
 # Dados brutos (regerar com scripts/download_*.py)
 data/raw/
 
+# Espelhos CSV de parquet (fonte canônica = .parquet)
+/data/processed/*.csv
+
 # Deploy staging
 .deploy_hf/
 
-# Documentos internos pesados (PDFs/TeX em docs/; não necessários no Space)
+# Documentos internos pesados / exports regeneráveis
 *.pdf
 *.tex
+docs/exports/
+docs/legado/
 
 # Artefatos locais grandes opcionais
 *.log

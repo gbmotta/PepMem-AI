@@ -55,11 +55,8 @@ def peptide_row_from_sequence(sequence: str, net_charge: float | None = None) ->
 
     Se ``net_charge`` for informado, prevalece sobre a carga estimada.
     """
-    import sys
-
-    sys.path.insert(0, str(ROOT / "scripts"))
-    from peptide_utils import add_descriptor_columns, normalize_sequence
-    from pmi import hydrophobic_moment, peptide_q
+    from pepmem.peptide_utils import add_descriptor_columns, normalize_sequence
+    from pepmem.pmi import hydrophobic_moment, peptide_q
 
     seq = normalize_sequence(sequence)
     if not seq:
@@ -83,10 +80,7 @@ def peptide_row_from_sequence(sequence: str, net_charge: float | None = None) ->
 
 def pair_features(peptide: dict[str, Any], target: pd.Series) -> dict[str, Any]:
     """Junta descritores do peptídeo e do alvo e calcula o PMI do par."""
-    import sys
-
-    sys.path.insert(0, str(ROOT / "scripts"))
-    from pmi import compute_pmi
+    from pepmem.pmi import compute_pmi
 
     # Hidrofobicidade de membrana proxy (constante no baseline atual)
     h_m = 0.5

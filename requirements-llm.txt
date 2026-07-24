@@ -1,5 +1,0 @@
-# Dependência opcional para narrativa Qwen GGUF (sem API).
-# No Space: descomente a linha em requirements-space.txt OU
-#   pip install -r requirements-llm.txt
-# Depois coloque o .gguf em models/llm/ ou PEPMEM_LLM_AUTO_DOWNLOAD=1
-llama-cpp-python==0.3.4

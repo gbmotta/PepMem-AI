@@ -164,10 +164,14 @@ def get_predictor() -> PepMemPredictor:
 @st.cache_data
 def load_project_peptides() -> pd.DataFrame:
     """Catálogo PepMem-Base-Project (IDs PXX e sequências de referência)."""
-    path = ROOT / "data" / "processed" / "pepmem_base_project.csv"
+    path = ROOT / "data" / "processed" / "pepmem_base_project.parquet"
     if not path.exists():
+        # fallback legado
+        csv_path = ROOT / "data" / "processed" / "pepmem_base_project.csv"
+        if csv_path.exists():
+            return pd.read_csv(csv_path)
         return pd.DataFrame()
-    return pd.read_csv(path)
+    return pd.read_parquet(path)
 
 
 @st.cache_data(show_spinner="Gerando beeswarm SHAP...")
@@ -450,8 +454,7 @@ def _decode_upload_bytes(raw: bytes) -> str:
 
 def load_fasta_from_text(text: str, source: str = "colar") -> list[dict]:
     """Parseia texto FASTA / multi-FASTA → registros com sequência válida."""
-    sys.path.insert(0, str(ROOT / "scripts"))
-    from peptide_utils import parse_fasta_text
+    from pepmem.peptide_utils import parse_fasta_text
 
     records = parse_fasta_text(text or "")
     out: list[dict] = []

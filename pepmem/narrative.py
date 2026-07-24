@@ -450,3 +450,78 @@ def narrate_batch(
     if llm_text:
         return {"text": llm_text, "source": "qwen-gguf"}
     return {"text": tmpl, "source": "template"}
+
+
+def template_explain_ranking(
+    *,
+    sequence: str,
+    lambda_tox: float,
+    rows: list[dict[str, Any]],
+) -> str:
+    """Narrativa do ranking multi-alvo."""
+    seq_short = sequence if len(sequence) <= 24 else f"{sequence[:21]}…"
+    n = len(rows)
+    parts = [
+        f"Ranking do peptídeo {seq_short} em {n} membrana(s), com penalização de "
+        f"toxicidade λ = {lambda_tox:.2f}."
+    ]
+    ranked = sorted(
+        [r for r in rows if r.get("final_score") is not None],
+        key=lambda r: float(r["final_score"]),
+        reverse=True,
+    )
+    if ranked:
+        top = ranked[:3]
+        bits = []
+        for r in top:
+            tid = r.get("target_id") or r.get("alvo") or "?"
+            prob = r.get("pred_high_activity_prob")
+            score = float(r["final_score"])
+            pmi_sel = r.get("pmi_sel")
+            bit = f"{tid} (score {score:.3f}"
+            if prob is not None:
+                try:
+                    bit += f", prob {float(prob):.0%}"
+                except (TypeError, ValueError):
+                    bit += f", prob {prob}"
+            if pmi_sel is not None:
+                bit += f", PMI_sel {float(pmi_sel):.3f}"
+            bit += ")"
+            bits.append(bit)
+        parts.append("Topo sugerido para priorizar ensaios: " + "; ".join(bits) + ".")
+    parts.append(
+        "O score final combina probabilidade de alta atividade, penalização de toxicidade "
+        "(proxy em célula normal) e bônus de PMI seletivo. Ajuste λ se quiser mais ou menos "
+        "cautela toxicológica."
+    )
+    parts.append("Use isso para priorizar ensaios in vitro.")
+    return " ".join(parts)
+
+
+def narrate_ranking(
+    *,
+    sequence: str,
+    lambda_tox: float,
+    rows: list[dict[str, Any]],
+    prefer_llm: bool = True,
+) -> dict[str, str]:
+    """Narrativa de ranking; GGUF opcional + fallback template."""
+    tmpl = template_explain_ranking(sequence=sequence, lambda_tox=lambda_tox, rows=rows)
+    if not prefer_llm:
+        return {"text": tmpl, "source": "template"}
+    lines = [f"sequence={sequence}", f"lambda={lambda_tox}", f"n={len(rows)}"]
+    for i, r in enumerate(rows[:10]):
+        lines.append(
+            f"row{i}: alvo={r.get('target_id')}; score={r.get('final_score')}; "
+            f"prob={r.get('pred_high_activity_prob')}; pmi_sel={r.get('pmi_sel')}"
+        )
+    user = (
+        "Explique este ranking PepMem-AI em português. Não invente números.\n\n"
+        + "\n".join(lines)
+        + "\n\nRascunho factual:\n"
+        + tmpl
+    )
+    llm_text = _gguf_complete(user, max_tokens=320)
+    if llm_text:
+        return {"text": llm_text, "source": "qwen-gguf"}
+    return {"text": tmpl, "source": "template"}

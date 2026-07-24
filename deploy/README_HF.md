@@ -26,6 +26,6 @@ Predição **peptídeo–membrana** (InovAI Lab / UFRN).
 
 A narrativa **não altera** PMI/probabilidade. Sem modelo, usa template.
 
-1. Instale `llama-cpp-python` (`pip install -r requirements-llm.txt` ou descomente no `requirements-space.txt`).
+1. Instale `llama-cpp-python` (opcional: `pip install llama-cpp-python==0.3.4`).
 2. Coloque um GGUF em `models/llm/` (ex.: `qwen2.5-0.5b-instruct-q4_k_m.gguf`) **ou**
 3. Defina `PEPMEM_GGUF_PATH` / `PEPMEM_LLM_AUTO_DOWNLOAD=1` nos Secrets do Space.

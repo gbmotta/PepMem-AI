@@ -1,19 +1,8 @@
 # HF Spaces / local com ESM-2 (PyTorch CPU)
+# Inclui o stack Cloud + torch/transformers.
+-r requirements.txt
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.2.2+cpu
-numpy==1.26.4
-pandas==2.2.2
-pyarrow==16.1.0
-scikit-learn==1.5.1
-joblib==1.4.2
 transformers==4.44.2
 huggingface-hub==0.24.6
-streamlit==1.37.1
-shap==0.46.0
-matplotlib==3.9.2
-tqdm==4.66.5
-requests==2.32.3
-# Opcional (Qwen GGUF local): descomente se o Space tiver RAM/CPU de sobra
-# llama-cpp-python==0.3.4
-python-docx==1.1.2
-fpdf2==2.8.1
+# Opcional (Qwen GGUF local): pip install llama-cpp-python==0.3.4

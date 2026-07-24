@@ -259,8 +259,8 @@ PYTHONPATH=. streamlit run dashboard/app.py
 | `import_bench_mic.py` | Importa MICs (`data/bench/`) + rebuild + retreino opcional |
 | `run_pipeline.py` | Orquestra todo o fluxo acima |
 | `deploy_hf_space.py` / `deploy_github.sh` | Publicação HF Spaces / GitHub |
-| `peptide_utils.py` | Parsing FASTA, descritores, normalização |
-| `pmi.py` | Cálculo PMI / PMI_sel |
+| `pepmem/peptide_utils.py` | Parsing FASTA, descritores, normalização |
+| `pepmem/pmi.py` | Índice PMI e seletividade |
 
 ### Biblioteca Python — `pepmem/`
 
@@ -470,9 +470,9 @@ Documento consolidado (físico-química + MICs + mapa de estudos): [`docs/peptid
 PepMem-AI/
 ├── README.md
 ├── DEPLOY.md                     # Atalho → docs/DEPLOY.md
-├── requirements.txt              # Dashboard / Streamlit Cloud (PyTorch CPU)
-├── requirements-dev.txt          # + FastAPI / HF hub (dev local)
-├── requirements-space.txt        # Espelho CPU (HF Spaces)
+├── requirements.txt              # Cloud / Render (leve, sem PyTorch)
+├── requirements-space.txt        # HF Spaces / ESM-2 (`-r requirements.txt` + torch)
+├── requirements-dev.txt          # Space + FastAPI (dev local)
 ├── Dockerfile / render.yaml
 │
 ├── pepmem/                       # Biblioteca de inferência
