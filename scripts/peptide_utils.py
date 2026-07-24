@@ -85,22 +85,27 @@ def add_descriptor_columns(df, sequence_col: str = "sequence"):
 
 def parse_fasta(path: Path) -> list[dict]:
     """Lê arquivo FASTA e retorna lista de registros com header, apd_id e sequence."""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    return parse_fasta_text(text)
+
+
+def parse_fasta_text(text: str) -> list[dict]:
+    """Parseia conteúdo FASTA (string ou bytes decodificados) → lista de registros."""
     records: list[dict] = []
     header: str | None = None
     seq_parts: list[str] = []
 
-    with path.open(encoding="utf-8", errors="replace") as fh:
-        for raw in fh:
-            line = raw.strip()
-            if not line:
-                continue
-            if line.startswith(">"):
-                if header is not None:
-                    records.append(_fasta_record(header, "".join(seq_parts)))
-                header = line[1:].strip()
-                seq_parts = []
-            else:
-                seq_parts.append(line)
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith(">"):
+            if header is not None:
+                records.append(_fasta_record(header, "".join(seq_parts)))
+            header = line[1:].strip()
+            seq_parts = []
+        else:
+            seq_parts.append(line)
 
     if header is not None:
         records.append(_fasta_record(header, "".join(seq_parts)))

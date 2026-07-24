@@ -300,6 +300,27 @@ def apply_preset(seq: str, charge: float) -> None:
     st.session_state["use_charge_main"] = True
 
 
+def apply_fasta_sequence(seq: str, header: str = "") -> None:
+    """Callback: preenche a sequência a partir de um registro FASTA."""
+    st.session_state["seq_main"] = seq
+    if header:
+        st.session_state["fasta_header"] = header
+
+
+def load_fasta_records(uploaded) -> list[dict]:
+    """Lê upload Streamlit (.fasta/.fa/.txt) e devolve registros parseados."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from peptide_utils import parse_fasta_text
+
+    raw = uploaded.getvalue()
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1", errors="replace")
+    records = parse_fasta_text(text)
+    return [r for r in records if r.get("sequence")]
+
+
 # Defaults de sessão (antes dos widgets)
 if "seq_main" not in st.session_state:
     st.session_state["seq_main"] = "FFSLIPKLVKGLISAFK"
@@ -397,21 +418,73 @@ with tab_pred:
             st.markdown(
                 '<div class="pm-hint-box">'
                 "<strong>Onde analisar um peptídeo novo?</strong><br/>"
-                "1) Cole a sequência abaixo (aba <em>Predição</em>) e clique em <strong>Predizer</strong> — "
-                "não precisa estar no banco.<br/>"
+                "1) Cole a sequência abaixo <strong>ou envie um arquivo FASTA</strong> "
+                "e clique em <strong>Predizer</strong>.<br/>"
                 "2) Para entrar no treino com MIC real: edite "
-                "<code>data/bench/mic_bench.csv</code> (+ opcional "
-                "<code>peptides_bench.csv</code>) e rode "
+                "<code>data/bench/mic_bench.csv</code> e rode "
                 "<code>python scripts/import_bench_mic.py --retrain</code>."
                 "</div>",
                 unsafe_allow_html=True,
             )
+
+            fasta_file = st.file_uploader(
+                "Arquivo FASTA (opcional)",
+                type=["fasta", "fa", "faa", "fna", "txt"],
+                help="Um ou vários peptídeos no formato >header + sequência",
+                key="fasta_upload",
+            )
+            run_fasta_batch = False
+            if fasta_file is not None:
+                try:
+                    fasta_recs = load_fasta_records(fasta_file)
+                except Exception as e:
+                    st.error(f"FASTA inválido: {e}")
+                    fasta_recs = []
+                if not fasta_recs:
+                    st.warning("Nenhuma sequência válida encontrada no FASTA.")
+                else:
+                    st.caption(f"**{len(fasta_recs)}** sequência(s) no arquivo.")
+                    labels = [
+                        f"{(r.get('header') or f'seq_{i+1}')[:48]} · {r['sequence'][:12]}…"
+                        if len(r["sequence"]) > 12
+                        else f"{(r.get('header') or f'seq_{i+1}')[:48]} · {r['sequence']}"
+                        for i, r in enumerate(fasta_recs)
+                    ]
+                    pick = st.selectbox(
+                        "Escolher sequência do FASTA",
+                        options=list(range(len(fasta_recs))),
+                        format_func=lambda i: labels[i],
+                        key="fasta_pick",
+                    )
+                    c_fa1, c_fa2 = st.columns(2)
+                    with c_fa1:
+                        st.button(
+                            "Usar esta sequência",
+                            use_container_width=True,
+                            on_click=apply_fasta_sequence,
+                            args=(
+                                fasta_recs[pick]["sequence"],
+                                fasta_recs[pick].get("header") or "",
+                            ),
+                        )
+                    with c_fa2:
+                        run_fasta_batch = st.button(
+                            "Predizer todas do FASTA",
+                            use_container_width=True,
+                            key="fasta_batch_btn",
+                        )
+                    st.session_state["fasta_records"] = fasta_recs
+            elif "fasta_records" in st.session_state:
+                del st.session_state["fasta_records"]
+
             sequence = st.text_input(
                 "Sequência (letra única)",
                 key="seq_main",
-                help="Cole aqui qualquer sequência AA — ex. FFSLIPKLVAGLISAFK",
+                help="Cole aqui qualquer sequência AA — ou carregue um FASTA acima",
                 placeholder="Ex.: FFSLIPKLVAGLISAFK",
             )
+            if st.session_state.get("fasta_header"):
+                st.caption(f"FASTA: **{st.session_state['fasta_header']}**")
             hit = lookup_sequence(sequence or "")
             if hit is not None:
                 st.caption(
@@ -465,6 +538,60 @@ with tab_pred:
                     use_container_width=True,
                     on_click=apply_preset,
                     args=(seq, ch),
+                )
+
+    if run_fasta_batch:
+        batch_recs = st.session_state.get("fasta_records") or []
+        if not batch_recs:
+            st.warning("Carregue um FASTA antes de predizer em lote.")
+        else:
+            with st.spinner(f"Predizendo {len(batch_recs)} sequências…"):
+                rows = []
+                for r in batch_recs:
+                    seq = r["sequence"]
+                    try:
+                        res = predictor.predict_pair(seq, target_id, net_charge=charge)
+                        rows.append(
+                            {
+                                "header": (r.get("header") or "")[:60],
+                                "sequence": seq,
+                                "length": len(seq),
+                                "pmi": round(float(res["pmi"]), 3),
+                                "prob_calibrada": round(float(res["pred_high_activity_prob"]), 4),
+                                "q_peptide": round(float(res["q_peptide"]), 2),
+                                "no_banco": "sim" if lookup_sequence(seq) else "não",
+                            }
+                        )
+                    except Exception as e:
+                        rows.append(
+                            {
+                                "header": (r.get("header") or "")[:60],
+                                "sequence": seq,
+                                "length": len(seq),
+                                "pmi": None,
+                                "prob_calibrada": None,
+                                "q_peptide": None,
+                                "no_banco": "erro",
+                                "erro": str(e),
+                            }
+                        )
+            with st.container(border=True):
+                tile_title(
+                    f"Lote FASTA × {format_target_label(target_id)}",
+                    f"{len(rows)} sequências · mesma membrana e carga",
+                )
+                batch_df = pd.DataFrame(rows)
+                if "prob_calibrada" in batch_df.columns:
+                    batch_df = batch_df.sort_values(
+                        "prob_calibrada", ascending=False, na_position="last"
+                    )
+                show_table(batch_df, max_text_len=36)
+                st.download_button(
+                    "Baixar CSV do lote",
+                    data=batch_df.to_csv(index=False).encode("utf-8"),
+                    file_name="pepmem_fasta_predicoes.csv",
+                    mime="text/csv",
+                    use_container_width=True,
                 )
 
     if run_pred:
