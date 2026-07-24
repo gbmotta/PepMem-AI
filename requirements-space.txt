@@ -13,3 +13,5 @@ shap==0.46.0
 matplotlib==3.9.2
 tqdm==4.66.5
 requests==2.32.3
+# Opcional (Qwen GGUF local): descomente se o Space tiver RAM/CPU de sobra
+# llama-cpp-python==0.3.4

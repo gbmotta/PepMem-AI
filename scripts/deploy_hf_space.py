@@ -56,6 +56,15 @@ def build_stage() -> Path:
     shutil.copy2(ROOT / "requirements-space.txt", STAGE / "requirements.txt")
     shutil.copy2(ROOT / "deploy" / "README_HF.md", STAGE / "README.md")
 
+    # GGUF opcional (se o usuário já baixou localmente)
+    llm_src = ROOT / "models" / "llm"
+    if llm_src.is_dir() and any(llm_src.glob("*.gguf")):
+        dest = STAGE / "models" / "llm"
+        dest.mkdir(parents=True, exist_ok=True)
+        for gguf in llm_src.glob("*.gguf"):
+            shutil.copy2(gguf, dest / gguf.name)
+        print(f"Incluído GGUF local: {list(dest.glob('*.gguf'))}")
+
     print(f"Staging pronto: {STAGE} ({_dir_size(STAGE):.1f} MB)")
     return STAGE
 

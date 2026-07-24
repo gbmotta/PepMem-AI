@@ -24,6 +24,7 @@ if str(ROOT) not in sys.path:
 
 from pepmem.predictor import PepMemPredictor, torch_available
 from pepmem.shap_explain import plot_beeswarm, plot_contributions, plot_global_importance
+from pepmem.narrative import llm_status, narrate_batch, narrate_single
 from pepmem.paths import project_root
 
 # Garante ROOT consistente com o restante do pacote
@@ -344,6 +345,33 @@ def render_shap_block(expl: dict, target_label: str) -> None:
         df["shap_value"] = df["shap_value"].map(lambda x: f"{x:+.4f}")
         show_table(df, max_text_len=36)
     st.caption("Valores positivos → favorecem alta atividade · negativos → desfavorecem")
+
+
+def render_narrative_box(text: str, source: str) -> None:
+    """Mostra texto de explicação (template ou Qwen GGUF) sem alterar números."""
+    src = "Qwen GGUF (local)" if source == "qwen-gguf" else "template (regras)"
+    st.markdown(
+        f'<div class="pm-hint-box"><strong>Explicação · {html.escape(src)}</strong><br/>'
+        f"{html.escape(text)}</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def narrative_engine_caption() -> None:
+    """Status curto do motor de narrativa (não afeta o RF)."""
+    st_stat = llm_status()
+    if st_stat["gguf_ready"] and st_stat["llama_cpp_installed"]:
+        st.caption("Narrativa: Qwen GGUF disponível · fallback template se falhar.")
+    elif st_stat["llama_cpp_installed"]:
+        st.caption(
+            "Narrativa: template agora · para Qwen, coloque um `.gguf` em `models/llm/` "
+            "ou `PEPMEM_GGUF_PATH` (opcional `PEPMEM_LLM_AUTO_DOWNLOAD=1`)."
+        )
+    else:
+        st.caption(
+            "Narrativa: template (regras). No Space, instale `llama-cpp-python` + GGUF "
+            "para Qwen local — sem API."
+        )
 
 
 def apply_preset(seq: str, charge: float) -> None:
@@ -748,6 +776,47 @@ with tab_pred:
                     mime="text/csv",
                     use_container_width=True,
                 )
+                st.session_state["last_batch"] = {
+                    "target_id": target_id,
+                    "target_label": format_target_label(target_id),
+                    "rows": batch_df.to_dict(orient="records"),
+                    "charge_note": charge_note,
+                }
+                st.session_state.pop("last_batch_narrative", None)
+
+    # Lote persistido (permite explicar / baixar após o rerun do botão)
+    if st.session_state.get("last_batch") and not run_fasta_batch:
+        prev = st.session_state["last_batch"]
+        with st.container(border=True):
+            tile_title(
+                f"Lote × {prev['target_label']}",
+                f"{len(prev['rows'])} peptídeos · {prev.get('charge_note', '')}",
+            )
+            bdf = pd.DataFrame(prev["rows"])
+            show_table(bdf, max_text_len=36)
+            st.download_button(
+                "Baixar CSV do lote",
+                data=bdf.to_csv(index=False).encode("utf-8"),
+                file_name="pepmem_fasta_predicoes.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="batch_csv_persist",
+            )
+
+    if st.session_state.get("last_batch"):
+        narrative_engine_caption()
+        if st.button("Explicar lote em português", key="btn_narrate_batch"):
+            with st.spinner("Gerando narrativa (Qwen GGUF se disponível, senão template)…"):
+                nb = st.session_state["last_batch"]
+                out = narrate_batch(
+                    target_label=nb["target_label"],
+                    rows=nb["rows"],
+                    prefer_llm=True,
+                )
+                st.session_state["last_batch_narrative"] = out
+        if st.session_state.get("last_batch_narrative"):
+            out = st.session_state["last_batch_narrative"]
+            render_narrative_box(out["text"], out["source"])
 
     if run_pred:
         with st.spinner("Descritores · PMI · modelo RF…"):
@@ -757,8 +826,13 @@ with tab_pred:
                 st.error(str(e))
                 st.stop()
 
-        prob = float(res["pred_high_activity_prob"])
-        render_result_banner(prob, hit)
+        neighbors = predictor.find_neighbors(sequence, k=5, target_id=target_id)
+        shap_top = None
+        try:
+            expl = cached_explain(sequence, target_id, charge)
+            shap_top = expl.get("shap_contributions")
+        except Exception:
+            expl = None
 
         lo = res.get("pred_interval_low")
         hi = res.get("pred_interval_high")
@@ -767,6 +841,32 @@ with tab_pred:
             if lo is not None and hi is not None
             else "—"
         )
+        st.session_state["last_single"] = {
+            "res": res,
+            "sequence": sequence,
+            "target_id": target_id,
+            "target_label": target_options[target_id],
+            "charge": charge,
+            "hit": hit,
+            "neighbors": neighbors,
+            "expl": expl,
+            "interval": interval,
+        }
+        st.session_state.pop("last_single_narrative", None)
+
+    # Predição única persistida
+    if st.session_state.get("last_single"):
+        snap = st.session_state["last_single"]
+        res = snap["res"]
+        sequence = snap["sequence"]
+        target_id = snap["target_id"]
+        hit = snap.get("hit")
+        neighbors = snap.get("neighbors") or []
+        expl = snap.get("expl")
+        interval = snap.get("interval") or "—"
+        prob = float(res["pred_high_activity_prob"])
+
+        render_result_banner(prob, hit)
         kpi_row(
             [
                 {
@@ -802,12 +902,33 @@ with tab_pred:
             )
 
         with st.container(border=True):
+            tile_title("Explicação em português", "Não altera PMI nem probabilidade")
+            narrative_engine_caption()
+            if st.button("Explicar resultado", type="primary", key="btn_narrate_single"):
+                with st.spinner("Gerando narrativa (Qwen GGUF se disponível, senão template)…"):
+                    out = narrate_single(
+                        sequence=sequence,
+                        target_label=snap["target_label"],
+                        prob=prob,
+                        pmi=float(res["pmi"]),
+                        interval=interval,
+                        q_peptide=float(res["q_peptide"]),
+                        neighbors=neighbors,
+                        shap_top=expl.get("shap_contributions") if expl else None,
+                        in_project=hit is not None,
+                        prefer_llm=True,
+                    )
+                    st.session_state["last_single_narrative"] = out
+            if st.session_state.get("last_single_narrative"):
+                out = st.session_state["last_single_narrative"]
+                render_narrative_box(out["text"], out["source"])
+
+        with st.container(border=True):
             tile_title("Vizinhos no treino", "Identidade + cosine ESM-2")
             st.caption(
                 "Peptídeos parecidos no treino ajudam a contextualizar o resultado: "
                 "se os vizinhos têm MIC baixo no mesmo alvo, a predição fica mais crível."
             )
-            neighbors = predictor.find_neighbors(sequence, k=5, target_id=target_id)
             if neighbors:
                 ndf = pd.DataFrame(neighbors)[
                     [
@@ -837,11 +958,14 @@ with tab_pred:
 
         with st.container(border=True):
             tile_title("Explicação SHAP", "Contribuições locais do RF")
-            try:
-                expl = cached_explain(sequence, target_id, charge)
-                render_shap_block(expl, target_options[target_id])
-            except Exception as e:
-                st.warning(f"SHAP indisponível: {e}")
+            if expl is not None:
+                render_shap_block(expl, snap["target_label"])
+            else:
+                try:
+                    expl2 = cached_explain(sequence, target_id, snap.get("charge"))
+                    render_shap_block(expl2, snap["target_label"])
+                except Exception as e:
+                    st.warning(f"SHAP indisponível: {e}")
 
 # --- aba Ranking ---
 with tab_rank:
