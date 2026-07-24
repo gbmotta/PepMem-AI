@@ -6,6 +6,8 @@ Como os modelos foram treinados: [`TREINO.md`](TREINO.md).
 
 > **Aviso:** o PepMem-AI **prioriza candidatos** para ensaio in vitro. Não substitui MIC experimental, citotoxicidade nem revisão clínica.
 
+> **Nota:** as fórmulas estão em texto puro (blocos ` ```text ` ) para aparecerem no preview do Cursor. O LaTeX nativo muitas vezes não renderiza aqui.
+
 ---
 
 ## 1. O que o modelo responde
@@ -21,7 +23,7 @@ Pergunta central:
 | Classe positiva | MIC ≤ **3,4 µM** |
 | Classe negativa | MIC > 3,4 µM |
 
-A saída principal é uma **probabilidade calibrada** ∈ [0, 1], acompanhada de índices físico-químicos (PMI, carga) e, quando disponível, explicação SHAP e vizinhos do treino.
+A saída principal é uma **probabilidade calibrada** entre 0 e 1, acompanhada de índices físico-químicos (PMI, carga) e, quando disponível, explicação SHAP e vizinhos do treino.
 
 ---
 
@@ -40,14 +42,11 @@ Exemplo (números ilustrativos):
 
 Índice **interpretável** (não é a probabilidade do RF). Combina carga, hidrofobicidade, momento hidrofóbico e colesterol:
 
-\[
-\text{PMI} = \alpha\, q_{\text{pep}}\, |q_{\text{mem}}| + \beta\, h_{\text{pep}}\, h_{\text{mem}} + \gamma\, \mu H_{\text{pep}} - \delta\, C_{\text{mem}}
-\]
-
-Em notação linear (mesma equação):
-
 ```text
-PMI = α · q_pep · |q_mem|  +  β · h_pep · h_mem  +  γ · μH_pep  −  δ · colesterol_mem
+PMI = α · q_pep · |q_mem|
+    + β · h_pep · h_mem
+    + γ · μH_pep
+    − δ · colesterol_mem
 ```
 
 **Pesos padrão atuais**
@@ -59,13 +58,12 @@ PMI = α · q_pep · |q_mem|  +  β · h_pep · h_mem  +  γ · μH_pep  −  δ
 | γ (gamma) | 0,3 | Momento hidrofóbico (anfifilicidade) |
 | δ (delta) | 0,4 | Penalização por colesterol |
 
-| Termo | Variáveis | Papel biológico (simplificado) |
-|-------|-----------|--------------------------------|
-| \(\alpha\, q_{\text{pep}}\, \|q_{\text{mem}}\|\) | carga do peptídeo × \|carga da membrana\| | Atração eletrostática (peptídeo catiônico × membrana aniônica) |
-| \(\beta\, h_{\text{pep}}\, h_{\text{mem}}\) | hidrofobicidades | Compatibilidade com a bicamada |
-| \(\gamma\, \mu H_{\text{pep}}\) | momento hidrofóbico | Anfifilicidade / tendência a hélice |
-| \(\delta\, C_{\text{mem}}\) | colesterol da membrana | Penaliza membranas tipicamente mamíferas / mais rígidas |
-
+| Termo na fórmula | Variáveis | Papel biológico (simplificado) |
+|------------------|-----------|--------------------------------|
+| α · q_pep · \|q_mem\| | carga do peptídeo × \|carga da membrana\| | Atração eletrostática (peptídeo catiônico × membrana aniônica) |
+| β · h_pep · h_mem | hidrofobicidades | Compatibilidade com a bicamada |
+| γ · μH_pep | momento hidrofóbico | Anfifilicidade / tendência a hélice |
+| δ · colesterol_mem | colesterol da membrana | Penaliza membranas tipicamente mamíferas / mais rígidas |
 
 **Como ler**
 
@@ -75,9 +73,9 @@ PMI = α · q_pep · |q_mem|  +  β · h_pep · h_mem  +  γ · μH_pep  −  δ
 
 **PMI_sel** (seletividade):
 
-\[
-\text{PMI\_sel} = \text{PMI}_{\text{alvo}} - \text{PMI}_{\text{célula normal}}
-\]
+```text
+PMI_sel = PMI_alvo − PMI_célula_normal
+```
 
 Valores positivos sugerem preferência pelo alvo patológico em relação à membrana mamífera de referência.
 
@@ -108,32 +106,36 @@ No exemplo **31,4%**: o modelo **não** classifica o par como altamente ativo; t
 
 ---
 
-### 2.3 Intervalo (árvores) e σ
+### 2.3 Intervalo (árvores) e sigma (σ)
 
 O RF é um ensemble de árvores. Para uma amostra:
 
 1. Cada árvore dá uma probabilidade da classe positiva.
-2. \(\sigma\) = desvio-padrão dessas probs.
-3. Intervalo ≈ \([\max(0, p_{\text{cal}} - \sigma),\; \min(1, p_{\text{cal}} + \sigma)]\).
+2. **σ (sigma)** = desvio-padrão dessas probs.
+3. Intervalo aproximado:
+
+```text
+intervalo = [ max(0, p_calibrada − σ)  ,  min(1, p_calibrada + σ) ]
+```
 
 | Situação | Leitura |
 |----------|---------|
 | Intervalo **estreito** | Árvores concordam → predição mais estável |
-| Intervalo **largo** (ex.: 0–76%, \(\sigma \approx 0{,}45\)) | Discordância alta → **pouca certeza** |
+| Intervalo **largo** (ex.: 0–76%, σ ≈ 0,45) | Discordância alta → **pouca certeza** |
 
 **Importante:** intervalo largo com prob. média ~30% significa “o modelo está inseguro”, não “há 76% de chance”.
 
 ---
 
-### 2.4 Carga líquida \(q\)
+### 2.4 Carga líquida (q)
 
 Carga estimada (ou informada manualmente) do peptídeo em pH fisiológico aproximado.
 
 | Observação | Comentário |
 |------------|------------|
-| \(q > 0\) (catiônico) | Favorece atração a membranas bacterianas aniônicas |
-| \(q\) muito alto | Pode aumentar atividade **e** hemólise/toxicidade — veja Ranking / hemólise na bancada |
-| \(q\) informado vs calculado | Se você marca “carga manual”, ela prevalece sobre a estimada da sequência |
+| q &gt; 0 (catiônico) | Favorece atração a membranas bacterianas aniônicas |
+| q muito alto | Pode aumentar atividade **e** hemólise/toxicidade — veja Ranking / hemólise na bancada |
+| q informado vs calculado | Se você marca “carga manual”, ela prevalece sobre a estimada da sequência |
 
 ---
 
@@ -154,11 +156,11 @@ Lista os peptídeos do conjunto com MIC mais próximos da sequência consultada.
 
 **Score de vizinhança (aproximado):**
 
-\[
-0{,}6 \times \text{identidade} + 0{,}4 \times \text{cosine ESM}
-\]
+```text
+neighbor_score = 0,6 · identidade  +  0,4 · cosine_ESM
+```
 
-(Se não houver embedding, cai para identidade.)
+(Se não houver embedding, usa só a identidade.)
 
 | Coluna típica | Uso |
 |---------------|-----|
@@ -181,22 +183,22 @@ No **modo Cloud** (sem PyTorch), a similaridade por embedding pode ser limitada;
 
 Para um peptídeo, o sistema prediz vários alvos e ordena por:
 
-\[
-\text{final\_score} = p_{\text{cal}} - \lambda\, p_{\text{tox}} + 0{,}1\,\max(\text{PMI\_sel}, 0)
-\]
+```text
+final_score = p_calibrada − λ · p_tox  +  0,1 · max(PMI_sel, 0)
+```
 
 | Símbolo | Significado |
 |---------|-------------|
-| \(p_{\text{cal}}\) | Prob. calibrada no alvo |
-| \(p_{\text{tox}}\) | Prob. calibrada em `cell_normal` (proxy de toxicidade) |
-| \(\lambda\) | Slider (padrão 0,5): quanto penalizar toxicidade |
+| p_calibrada | Prob. calibrada no alvo |
+| p_tox | Prob. calibrada em `cell_normal` (proxy de toxicidade) |
+| λ (lambda) | Slider (padrão 0,5): quanto penalizar toxicidade |
 | PMI_sel | Bônus leve se o PMI for maior no alvo do que na célula normal |
 
 **Leitura**
 
 - Topo da lista = alvos a testar **primeiro**.
-- \(\lambda\) alto = mais cautela toxicológica.
-- \(\lambda\) baixo = prioriza atividade bruta.
+- λ alto = mais cautela toxicológica.
+- λ baixo = prioriza atividade bruta.
 
 ---
 
@@ -253,8 +255,8 @@ Suponha:
 
 - PMI = **4,636** (alto)
 - Prob. calibrada = **31,4%**
-- Intervalo = **0–76%**, \(\sigma = 0{,}449\)
-- \(q = 5{,}0\)
+- Intervalo = **0–76%**, σ = **0,449**
+- q = **5,0**
 
 **Narrativa sugerida**
 
@@ -275,6 +277,7 @@ Suponha:
 | Predição e vizinhos | `pepmem/predictor.py` |
 | Bancada / novos MICs | `data/bench/README.md` |
 | Deploy Cloud vs multimodal | `docs/DEPLOY.md` |
+| Treino | [`TREINO.md`](TREINO.md) |
 
 ---
 
