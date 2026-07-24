@@ -469,7 +469,7 @@ Documento consolidado (físico-química + MICs + mapa de estudos): [`docs/peptid
 ```
 PepMem-AI/
 ├── README.md
-├── DEPLOY.md                     # Atalho → docs/DEPLOY.md
+├── docs/                         # DEPLOY, TREINO, interpretação, etc.
 ├── requirements.txt              # Cloud / Render (leve, sem PyTorch)
 ├── requirements-space.txt        # HF Spaces / ESM-2 (`-r requirements.txt` + torch)
 ├── requirements-dev.txt          # Space + FastAPI (dev local)
