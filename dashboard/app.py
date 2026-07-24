@@ -181,7 +181,12 @@ def cached_beeswarm(use_embeddings: bool, n_mic: int, _layout_version: int = 7) 
 
 
 @st.cache_data(show_spinner="Calculando SHAP...")
-def cached_explain(sequence: str, target_id: str, net_charge: float | None) -> dict:
+def cached_explain(
+    sequence: str,
+    target_id: str,
+    net_charge: float | None,
+    _shap_fix: int = 2,
+) -> dict:
     """SHAP local cacheado por (sequência, alvo, carga)."""
     return get_predictor().explain_pair(sequence, target_id, net_charge=net_charge)
 

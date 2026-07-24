@@ -172,8 +172,44 @@ def _aggregate_matrix_for_display(
 
 
 def _shap_values(explainer: Any, X: np.ndarray) -> Any:
-    """SHAP values com check de aditividade desligado (RF + probs costumam falhar o check)."""
-    return explainer.shap_values(X, check_additivity=False)
+    """SHAP values sem check de aditividade (RF + probs costumam falhar)."""
+    try:
+        return explainer.shap_values(X, check_additivity=False)
+    except TypeError:
+        # API antiga sem o kwarg
+        return explainer.shap_values(X)
+    except Exception as exc:
+        msg = str(exc)
+        if "Additivity check failed" not in msg and "check_additivity" not in msg:
+            raise
+        # Último recurso: algumas builds ignoram o kwarg — tenta via __call__
+        if hasattr(explainer, "__call__"):
+            try:
+                explanation = explainer(X, check_additivity=False)
+                if hasattr(explanation, "values"):
+                    return explanation.values
+            except TypeError:
+                explanation = explainer(X)
+                if hasattr(explanation, "values"):
+                    return explanation.values
+        raise
+
+
+def _make_tree_explainer(clf: Any, background: np.ndarray | None = None) -> Any:
+    """TreeExplainer preferindo path-dependent (aditividade exata em árvores)."""
+    import shap
+
+    # path-dependent evita o mismatch comum do modo interventional com RF/probs
+    try:
+        return shap.TreeExplainer(clf, feature_perturbation="tree_path_dependent")
+    except TypeError:
+        pass
+    if background is not None:
+        try:
+            return shap.TreeExplainer(clf, data=background)
+        except Exception:
+            pass
+    return shap.TreeExplainer(clf)
 
 
 def compute_training_shap(
@@ -188,7 +224,7 @@ def compute_training_shap(
 
     import shap
 
-    explainer = shap.TreeExplainer(clf, data=x_scaled)
+    explainer = _make_tree_explainer(clf, background=x_scaled)
     shap_values = _shap_values(explainer, x_scaled)
     sv = _all_positive_shap(shap_values)
     return *_aggregate_matrix_for_display(X, sv, names), meta
@@ -240,14 +276,11 @@ def explain_instance(
     background: np.ndarray | None = None,
 ) -> dict[str, Any]:
     """Explica uma instância com TreeExplainer (contribuições da classe positiva)."""
-    import shap
-
     scaler = pipeline.named_steps["scaler"]
     clf = pipeline.named_steps["clf"]
-    bg = background if background is not None else scaler.transform(x.reshape(1, -1))
     x_scaled = scaler.transform(x.reshape(1, -1))
 
-    explainer = shap.TreeExplainer(clf, data=bg)
+    explainer = _make_tree_explainer(clf, background=background)
     shap_values = _shap_values(explainer, x_scaled)
     shap_row = _positive_class_shap(shap_values, 0)
     base_value = explainer.expected_value
@@ -278,7 +311,7 @@ def global_importance(
     scaler = pipeline.named_steps["scaler"]
     clf = pipeline.named_steps["clf"]
     X_scaled = scaler.transform(X)
-    explainer = shap.TreeExplainer(clf, data=X_scaled)
+    explainer = _make_tree_explainer(clf, background=X_scaled)
     shap_values = _shap_values(explainer, X_scaled)
 
     if isinstance(shap_values, list):
