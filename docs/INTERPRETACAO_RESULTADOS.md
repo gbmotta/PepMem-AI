@@ -2,6 +2,8 @@
 
 Guia para ler as saídas do dashboard (Predição, Ranking, XAI) e dos artefatos de treino.
 
+Como os modelos foram treinados: [`TREINO.md`](TREINO.md).
+
 > **Aviso:** o PepMem-AI **prioriza candidatos** para ensaio in vitro. Não substitui MIC experimental, citotoxicidade nem revisão clínica.
 
 ---
