@@ -353,29 +353,23 @@ def render_shap_block(expl: dict, target_label: str) -> None:
 
 
 def render_narrative_box(text: str, source: str) -> None:
-    """Mostra texto de explicação (template ou Qwen GGUF) sem alterar números."""
-    src = "Qwen GGUF (local)" if source == "qwen-gguf" else "template (regras)"
+    """Mostra texto de explicação (não altera números da predição)."""
     st.markdown(
-        f'<div class="pm-hint-box"><strong>Explicação · {html.escape(src)}</strong><br/>'
+        f'<div class="pm-hint-box"><strong>Explicação</strong><br/>'
         f"{html.escape(text)}</div>",
         unsafe_allow_html=True,
     )
 
 
 def narrative_engine_caption() -> None:
-    """Status curto do motor de narrativa (não afeta o RF)."""
+    """Status curto do motor de narrativa (opcional)."""
     st_stat = llm_status()
     if st_stat["gguf_ready"] and st_stat["llama_cpp_installed"]:
-        st.caption("Narrativa: Qwen GGUF disponível · fallback template se falhar.")
+        st.caption("Narrativa com Qwen GGUF local disponível.")
     elif st_stat["llama_cpp_installed"]:
         st.caption(
-            "Narrativa: template agora · para Qwen, coloque um `.gguf` em `models/llm/` "
-            "ou `PEPMEM_GGUF_PATH` (opcional `PEPMEM_LLM_AUTO_DOWNLOAD=1`)."
-        )
-    else:
-        st.caption(
-            "Narrativa: template (regras). No Space, instale `llama-cpp-python` + GGUF "
-            "para Qwen local — sem API."
+            "Para Qwen local, coloque um `.gguf` em `models/llm/` "
+            "ou defina `PEPMEM_GGUF_PATH`."
         )
 
 
@@ -811,7 +805,7 @@ with tab_pred:
     if st.session_state.get("last_batch"):
         narrative_engine_caption()
         if st.button("Explicar lote em português", key="btn_narrate_batch"):
-            with st.spinner("Gerando narrativa (Qwen GGUF se disponível, senão template)…"):
+            with st.spinner("Gerando explicação…"):
                 nb = st.session_state["last_batch"]
                 out = narrate_batch(
                     target_label=nb["target_label"],
@@ -910,7 +904,7 @@ with tab_pred:
             tile_title("Explicação em português", "Priorização para bancada")
             narrative_engine_caption()
             if st.button("Explicar resultado", type="primary", key="btn_narrate_single"):
-                with st.spinner("Gerando narrativa (Qwen GGUF se disponível, senão template)…"):
+                with st.spinner("Gerando explicação…"):
                     out = narrate_single(
                         sequence=sequence,
                         target_label=snap["target_label"],
