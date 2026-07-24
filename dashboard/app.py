@@ -211,6 +211,41 @@ def format_target_label(target_id: str) -> str:
     return name if len(name) <= 40 else f"{name[:37]}…"
 
 
+# Rótulos legíveis para colunas de tabelas (variável → texto comum)
+COLUMN_LABELS: dict[str, str] = {
+    "peptide_id": "ID do peptídeo",
+    "name": "Nome",
+    "sequence": "Sequência",
+    "header": "Cabeçalho",
+    "identity": "Identidade",
+    "neighbor_score": "Score do vizinho",
+    "mic_median_uM": "MIC mediana (µM)",
+    "frac_high_activity": "Fração alta atividade",
+    "mic_alvo": "MIC no alvo (µM)",
+    "mic_on_target_uM": "MIC no alvo (µM)",
+    "net_charge": "Carga líquida",
+    "source": "Origem",
+    "origem": "Origem",
+    "nota": "Nota",
+    "aa": "Aminoácidos",
+    "length": "Comprimento",
+    "pmi": "PMI",
+    "pmi_sel": "PMI seletivo",
+    "q_peptide": "Carga do peptídeo",
+    "prob_calibrada": "Prob. calibrada",
+    "pred_high_activity_prob": "Prob. alta atividade",
+    "faixa": "Faixa",
+    "no_banco": "No banco",
+    "erro": "Erro",
+    "target_id": "Alvo",
+    "target_type": "Tipo de alvo",
+    "final_score": "Score final",
+    "label": "Descritor",
+    "shap_value": "Valor SHAP",
+    "group": "Grupo",
+}
+
+
 def truncate_text(value: object, max_len: int = 40) -> object:
     """Trunca strings longas em tabelas densas."""
     if not isinstance(value, str):
@@ -218,9 +253,15 @@ def truncate_text(value: object, max_len: int = 40) -> object:
     return value if len(value) <= max_len else f"{value[: max_len - 1]}…"
 
 
+def humanize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Renomeia colunas técnicas para rótulos legíveis no dashboard."""
+    rename = {c: COLUMN_LABELS[c] for c in df.columns if c in COLUMN_LABELS}
+    return df.rename(columns=rename)
+
+
 def show_table(df: pd.DataFrame, max_text_len: int = 40) -> None:
-    """Tabela truncada em estilo relatório."""
-    view = df.copy()
+    """Tabela truncada com cabeçalhos em texto comum."""
+    view = humanize_columns(df.copy())
     for col in view.columns:
         if view[col].dtype == object:
             view[col] = view[col].map(lambda x: truncate_text(x, max_text_len))
@@ -837,10 +878,10 @@ with tab_rank:
         with st.container(border=True):
             tile_title("Como ler o score", "Priorização para bancada")
             st.markdown(
-                "- **prob** — chance de alta atividade no alvo\n"
+                "- **Prob. alta atividade** — chance de alta atividade no alvo\n"
                 "- **λ** — quanto penalizar atividade em célula normal (toxicidade proxy)\n"
-                "- **PMI_sel** — PMI no alvo − PMI na célula normal (seletividade)\n"
-                "- **final_score** alto → priorize; baixe λ se quiser menos “cautela” toxicológica"
+                "- **PMI seletivo** — PMI no alvo − PMI na célula normal\n"
+                "- **Score final** alto → priorize; baixe λ se quiser menos “cautela” toxicológica"
             )
 
     if run_rank:
@@ -860,7 +901,7 @@ with tab_rank:
         ].copy()
         show["pred_high_activity_prob"] = show["pred_high_activity_prob"].map(lambda x: f"{x:.1%}")
         with st.container(border=True):
-            tile_title("Matriz de ranking", "Ordenado por final_score")
+            tile_title("Matriz de ranking", "Ordenado por score final")
             show_table(show, max_text_len=32)
 
         chart = df.set_index("target_id")["final_score"].dropna().sort_values(ascending=False)
