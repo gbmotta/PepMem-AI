@@ -515,16 +515,41 @@ def narrative_engine_caption() -> None:
 
 def apply_preset(seq: str, charge: float) -> None:
     """Callback on_click — define sessão antes dos widgets no próximo rerun."""
-    st.session_state["seq_main"] = seq
+    st.session_state["seq_main"] = (seq or "").upper()
     st.session_state["charge_main"] = float(charge)
     st.session_state["use_charge_main"] = True
 
 
 def apply_fasta_sequence(seq: str, header: str = "") -> None:
     """Callback: preenche a sequência a partir de um registro FASTA."""
-    st.session_state["seq_main"] = seq
+    st.session_state["seq_main"] = (seq or "").upper()
     if header:
         st.session_state["fasta_header"] = header
+
+
+def force_uppercase(key: str) -> None:
+    """Callback on_change: força maiúsculas no campo de sequência."""
+    val = st.session_state.get(key)
+    if isinstance(val, str) and val != val.upper():
+        st.session_state[key] = val.upper()
+
+
+def force_fasta_seq_uppercase(key: str = "fasta_paste") -> None:
+    """Maiúsculas só nas linhas de sequência (headers `>` preservados)."""
+    val = st.session_state.get(key)
+    if not isinstance(val, str):
+        return
+    lines = []
+    for line in val.splitlines():
+        if line.startswith(">"):
+            lines.append(line)
+        else:
+            lines.append(line.upper())
+    new = "\n".join(lines)
+    if val.endswith("\n"):
+        new += "\n"
+    if new != val:
+        st.session_state[key] = new
 
 
 def clear_session_results() -> None:
@@ -799,8 +824,10 @@ if page == "Predição":
             sequence = st.text_input(
                 "Sequência (letra única)",
                 key="seq_main",
-                help="Cole a sequência de aminoácidos",
+                help="Cole a sequência de aminoácidos (minúsculas viram maiúsculas)",
                 placeholder="Ex.: FFSLIPKLVAGLISAFK",
+                on_change=force_uppercase,
+                args=("seq_main",),
             )
             if st.session_state.get("fasta_header"):
                 st.caption(f"FASTA: **{st.session_state['fasta_header']}**")
@@ -1018,6 +1045,8 @@ if page == "Predição":
                 height=110,
                 placeholder=">pep1\nFFSLIPKLVKGLISAFK\n>pep2\nGILGKLWEGVKSIF\n…",
                 key="fasta_paste",
+                on_change=force_uppercase,
+                args=("fasta_paste",),
             )
 
             fasta_recs: list[dict] = []
@@ -1279,6 +1308,8 @@ elif page == "Ranking":
                 "Sequência para ranking",
                 value=st.session_state.get("seq_main", "FFSLIPKLVKGLISAFK"),
                 key="rank_seq",
+                on_change=force_uppercase,
+                args=("rank_seq",),
             )
             type_filter = st.multiselect(
                 "Filtrar tipo de alvo",
@@ -1521,6 +1552,8 @@ Treino atual: **{n_train}** pares MIC · rótulo: MIC ≤ 3,4 µM = alta ativida
             "Sequência",
             value=st.session_state.get("seq_main", "FFSLIPSLVGGLISAFK"),
             key="xai_seq",
+            on_change=force_uppercase,
+            args=("xai_seq",),
         )
         xc1, xc2 = st.columns(2)
         with xc1:
