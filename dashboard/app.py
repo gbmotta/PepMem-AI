@@ -1303,6 +1303,23 @@ físico-químicos manuais — útil para análogos e mutantes, mas **não substi
 nem o PMI. No **Cloud leve** (sem PyTorch) o app usa só o **baseline**; o multimodal
 com ESM-2 roda no Space HF / ambiente local com `requirements-space.txt`.
 
+**Por que o ESM-2 (e justamente o t6 8M)?**
+- **Feito para proteínas:** treinado em escala evolutiva (Lin et al., *Science* 2023);
+  embeddings de sequência são padrão de fato em bioinformática moderna.
+- **Só precisa da sequência:** peptídeos AMP / Stigmurin raramente têm estrutura 3D
+  resolvida; ESM-2 não exige PDB nem docking.
+- **Complementa o PMI:** descritores clássicos + PMI são interpretáveis; o embedding
+  acrescenta padrões de sequência que regras manuais não cobrem (análogos, mutantes).
+- **Variante pequena de propósito:** `t6_8M` (~320 dims) cabe em CPU / HF Space,
+  baixa rápido do Hugging Face e evita modelos gigantes (150M–15B) incompatíveis
+  com o deploy gratuito do PoC.
+- **Ecossistema aberto:** pesos no Hugging Face, licença clara, fácil de versionar
+  em `esm2_all.npz` e de recalcular só peptídeos novos (`--missing-only`).
+
+Não foi escolhido por ser “o maior”: foi o melhor **custo–benefício** entre qualidade
+de representação de sequência e viabilidade no pipeline PepMem (treino LOPO + Space +
+SHAP agregável).
+
 ### Baseline × multimodal
 - **Baseline:** descritores clássicos + PMI (o que o Cloud leve costuma usar).
 - **Multimodal:** clássicas + embedding ESM-2 (quando há PyTorch). No Cloud sem torch,
