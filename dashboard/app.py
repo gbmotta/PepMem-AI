@@ -440,15 +440,86 @@ if "charge_main" not in st.session_state:
 if "use_charge_main" not in st.session_state:
     st.session_state["use_charge_main"] = True
 
-# --- sidebar = painel de filtros ---
+# --- sidebar = painel útil ---
 with st.sidebar:
-    st.markdown("### Modelo")
-    st.caption("InovAI Lab · UFRN")
-    st.write(info.get("model_type", "Random Forest + PMI"))
-    st.write(f"Treino: **{n_train}** MICs")
+    st.markdown("### PepMem-AI")
+    st.caption("InovAI Lab · UFRN · *Tityus stigmurus*")
+
+    modo = "Multimodal (ESM-2)" if HAS_TORCH else "Baseline (Cloud)"
+    st.markdown(f"**{modo}**")
+    meta_bits = [f"{n_train} MICs"]
     if lope is not None:
-        st.write(f"AUC (peptídeo deixado de fora): **{float(lope):.3f}**")
+        meta_bits.append(f"AUC LOPO {float(lope):.3f}")
+    st.caption(" · ".join(meta_bits))
     st.caption("Alta atividade = MIC ≤ 3,4 µM")
+
+    st.markdown("---")
+    st.markdown("##### Como ler o resultado")
+    st.markdown(
+        "- **≥ 70%** → priorizar ensaio\n"
+        "- **40–70%** → intermediário\n"
+        "- **< 40%** → baixa chance\n"
+        "- **PMI** alto → boa interação estimada\n"
+        "- Use **intervalo** e **vizinhos** para calibrar confiança"
+    )
+
+    st.markdown("---")
+    st.markdown("##### Atalho de exemplo")
+    side_presets = [p for p in PRESETS if p[1]]
+    side_labels = [p[0] for p in side_presets]
+    side_pick = st.selectbox(
+        "Carregar no formulário",
+        options=side_labels,
+        key="sidebar_preset",
+        label_visibility="collapsed",
+    )
+    if st.button("Aplicar exemplo", use_container_width=True, key="sidebar_apply_preset"):
+        _, pseq, pch = next(p for p in side_presets if p[0] == side_pick)
+        apply_preset(pseq, float(pch))
+        st.rerun()
+
+    st.markdown("---")
+    st.markdown("##### Onde ir")
+    st.markdown(
+        "- **Predição** — 1 peptídeo ou lote FASTA\n"
+        "- **Ranking** — mesmo peptídeo × vários alvos\n"
+        "- **XAI** — SHAP / beeswarm\n"
+        "- **Datasets** — peptídeos do projeto"
+    )
+
+    last = st.session_state.get("last_single")
+    if last:
+        st.markdown("---")
+        st.markdown("##### Última predição")
+        res = last["res"]
+        prob = float(res["pred_high_activity_prob"])
+        seq = last["sequence"]
+        seq_show = seq if len(seq) <= 18 else f"{seq[:15]}…"
+        st.caption(f"`{seq_show}`")
+        st.caption(last.get("target_label", last.get("target_id", ""))[:48])
+        st.metric("Prob. calibrada", f"{prob:.0%}", help="Da última predição nesta sessão")
+        st.caption(f"PMI {float(res['pmi']):.3f}")
+        if st.button("Limpar resultado", use_container_width=True, key="sidebar_clear"):
+            for k in (
+                "last_single",
+                "last_single_narrative",
+                "last_batch",
+                "last_batch_narrative",
+            ):
+                st.session_state.pop(k, None)
+            st.rerun()
+
+    st.markdown("---")
+    with st.expander("Dica de lote"):
+        st.caption(
+            "Na aba Predição: envie um multi-FASTA ou vários arquivos, "
+            "escolha a membrana e clique em Predizer todas."
+        )
+    with st.expander("Retreino com MIC novo"):
+        st.caption(
+            "Edite `data/bench/mic_bench.csv` e rode "
+            "`python scripts/import_bench_mic.py --retrain`."
+        )
 
 # --- barra de relatório + KPIs globais ---
 mode_label = (
