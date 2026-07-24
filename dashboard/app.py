@@ -33,6 +33,12 @@ from narrative_lib import (  # type: ignore  # noqa: E402
     narrate_shap_overview,
     narrate_single,
 )
+from report_export import (  # type: ignore  # noqa: E402
+    build_batch_report,
+    build_shap_overview_report,
+    build_single_report,
+    export_report_bundle,
+)
 
 # Garante ROOT consistente com o restante do pacote
 ROOT = project_root()
@@ -366,6 +372,44 @@ def render_narrative_box(text: str, source: str) -> None:
         f"{html.escape(text)}</div>",
         unsafe_allow_html=True,
     )
+
+
+def render_report_downloads(report, key_prefix: str, filename_stem: str) -> None:
+    """Botões MD / DOCX / PDF para um relatório montado."""
+    try:
+        bundle = export_report_bundle(report)
+    except Exception as e:
+        st.warning(f"Não foi possível gerar os arquivos do relatório: {e}")
+        return
+    st.caption("Baixar relatório organizado (Markdown · Word · PDF)")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.download_button(
+            "Markdown (.md)",
+            data=bundle["md"],
+            file_name=f"{filename_stem}.md",
+            mime="text/markdown",
+            use_container_width=True,
+            key=f"{key_prefix}_md",
+        )
+    with c2:
+        st.download_button(
+            "Word (.docx)",
+            data=bundle["docx"],
+            file_name=f"{filename_stem}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            use_container_width=True,
+            key=f"{key_prefix}_docx",
+        )
+    with c3:
+        st.download_button(
+            "PDF (.pdf)",
+            data=bundle["pdf"],
+            file_name=f"{filename_stem}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            key=f"{key_prefix}_pdf",
+        )
 
 
 def narrative_engine_caption() -> None:
@@ -897,6 +941,15 @@ with tab_pred:
         if st.session_state.get("last_batch_narrative"):
             out = st.session_state["last_batch_narrative"]
             render_narrative_box(out["text"], out["source"])
+        nb = st.session_state["last_batch"]
+        narr = (st.session_state.get("last_batch_narrative") or {}).get("text")
+        report = build_batch_report(
+            target_label=nb["target_label"],
+            rows=nb["rows"],
+            narrative=narr,
+            charge_note=nb.get("charge_note") or "",
+        )
+        render_report_downloads(report, "batch_report", "pepmem_relatorio_lote")
 
     if run_pred:
         with st.spinner("Descritores · PMI · modelo RF…"):
@@ -1002,6 +1055,22 @@ with tab_pred:
             if st.session_state.get("last_single_narrative"):
                 out = st.session_state["last_single_narrative"]
                 render_narrative_box(out["text"], out["source"])
+
+            narr = (st.session_state.get("last_single_narrative") or {}).get("text")
+            shap_rows = None
+            if expl is not None:
+                shap_rows = expl.get("shap_contributions")
+            report = build_single_report(
+                sequence=sequence,
+                target_label=snap["target_label"],
+                res=res,
+                narrative=narr,
+                neighbors=neighbors,
+                shap_top=shap_rows,
+                interval=interval,
+                in_project=hit is not None,
+            )
+            render_report_downloads(report, "single_report", "pepmem_relatorio_predicao")
 
         with st.container(border=True):
             tile_title("Vizinhos no treino", "Identidade + cosine ESM-2")
@@ -1167,6 +1236,14 @@ with tab_xai:
         if st.session_state.get("last_shap_overview_narrative"):
             out = st.session_state["last_shap_overview_narrative"]
             render_narrative_box(out["text"], out["source"])
+        narr = (st.session_state.get("last_shap_overview_narrative") or {}).get("text")
+        report = build_shap_overview_report(
+            n_train=n_train,
+            narrative=narr,
+            baseline_importance=(baseline_report or {}).get("global_importance"),
+            multimodal_importance=(global_report or {}).get("global_importance"),
+        )
+        render_report_downloads(report, "shap_overview_report", "pepmem_relatorio_shap")
 
     g1, g2 = st.columns(2)
     with g1:
@@ -1269,6 +1346,16 @@ with tab_xai:
             if st.session_state.get("last_xai_narrative"):
                 out = st.session_state["last_xai_narrative"]
                 render_narrative_box(out["text"], out["source"])
+            narr = (st.session_state.get("last_xai_narrative") or {}).get("text")
+            report = build_single_report(
+                sequence=snap["sequence"],
+                target_label=snap["target_label"],
+                res=expl,
+                narrative=narr,
+                shap_top=expl.get("shap_contributions"),
+                in_project=snap.get("hit") is not None,
+            )
+            render_report_downloads(report, "xai_local_report", "pepmem_relatorio_shap_local")
 
 # --- aba Datasets ---
 with tab_data:

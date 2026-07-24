@@ -15,3 +15,5 @@ tqdm==4.66.5
 requests==2.32.3
 # Opcional (Qwen GGUF local): descomente se o Space tiver RAM/CPU de sobra
 # llama-cpp-python==0.3.4
+python-docx==1.1.2
+fpdf2==2.8.1
