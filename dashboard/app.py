@@ -120,6 +120,14 @@ def filter_label(text: str) -> None:
     st.markdown(f'<div class="pbi-filter-label">{html.escape(text)}</div>', unsafe_allow_html=True)
 
 
+def info_box(title: str, body_html: str) -> None:
+    """Caixa curta de orientação (como funciona / interpretação)."""
+    st.markdown(
+        f'<div class="pm-hint-box"><strong>{html.escape(title)}</strong><br/>{body_html}</div>',
+        unsafe_allow_html=True,
+    )
+
+
 # --- presets ---
 PRESETS_KNOWN = [
     ("StigA6 (P11)", "FFSLIPKLVKGLISAFK", 3.0),
@@ -404,12 +412,30 @@ kpi_row(
     cols=4,
 )
 
+info_box(
+    "Como funciona (em 3 passos)",
+    "1) Você informa um peptídeo e uma membrana-alvo.<br/>"
+    "2) O sistema calcula descritores (carga, hidrofobicidade, PMI) e estima a "
+    "chance de <em>alta atividade</em> (MIC ≤ 3,4 µM).<br/>"
+    "3) Use o resultado para <strong>priorizar</strong> ensaios in vitro — não substitui o laboratório.",
+)
+
 tab_pred, tab_rank, tab_xai, tab_data, tab_api = st.tabs(
     ["Predição", "Ranking", "XAI (SHAP)", "Datasets", "API"]
 )
 
 # --- aba Predição ---
 with tab_pred:
+    info_box(
+        "Como ler a predição",
+        "<strong>≥ 70%</strong> → candidato forte · "
+        "<strong>40–70%</strong> → intermediário · "
+        "<strong>&lt; 40%</strong> → baixa chance.<br/>"
+        "<strong>PMI</strong> alto sugere boa interação eletrostática/hidrofóbica. "
+        "O <strong>intervalo</strong> mostra incerteza entre as árvores do modelo. "
+        "Confirme sempre na bancada.",
+    )
+
     left, right = st.columns([1.35, 1.0], gap="medium")
 
     with left:
@@ -648,6 +674,10 @@ with tab_pred:
 
         with st.container(border=True):
             tile_title("Vizinhos no treino", "Identidade + cosine ESM-2")
+            st.caption(
+                "Peptídeos parecidos no treino ajudam a contextualizar o resultado: "
+                "se os vizinhos têm MIC baixo no mesmo alvo, a predição fica mais crível."
+            )
             neighbors = predictor.find_neighbors(sequence, k=5, target_id=target_id)
             if neighbors:
                 ndf = pd.DataFrame(neighbors)[
@@ -686,6 +716,13 @@ with tab_pred:
 
 # --- aba Ranking ---
 with tab_rank:
+    info_box(
+        "Ranking — o que faz",
+        "Compara o <strong>mesmo peptídeo</strong> em várias membranas e ordena por "
+        "<em>final_score</em> (atividade − toxicidade estimada + bônus de seletividade).<br/>"
+        "Topo da lista = alvos mais promissórios para testar primeiro.",
+    )
+
     r1, r2 = st.columns([1.2, 1.0], gap="medium")
     with r1:
         with st.container(border=True):
@@ -712,9 +749,10 @@ with tab_rank:
         with st.container(border=True):
             tile_title("Como ler o score", "Priorização para bancada")
             st.markdown(
-                "O **final_score** combina probabilidade de atividade, "
-                "penalidade em célula normal (λ) e bônus de PMI_sel "
-                "(seletividade vs membrana mamífera)."
+                "- **prob** — chance de alta atividade no alvo\n"
+                "- **λ** — quanto penalizar atividade em célula normal (toxicidade proxy)\n"
+                "- **PMI_sel** — PMI no alvo − PMI na célula normal (seletividade)\n"
+                "- **final_score** alto → priorize; baixe λ se quiser menos “cautela” toxicológica"
             )
 
     if run_rank:
@@ -764,9 +802,15 @@ with tab_rank:
 
 # --- aba XAI ---
 with tab_xai:
+    info_box(
+        "SHAP — interpretação rápida",
+        "Barras/valores <strong>positivos</strong> empurram para alta atividade; "
+        "<strong>negativos</strong> empurram para o contrário.<br/>"
+        "O beeswarm mostra o efeito de cada descritor em todo o treino. "
+        "É uma explicação do modelo, não prova biológica.",
+    )
     st.caption(
-        f"SHAP explica *por que* o RF atribui probabilidade de alta atividade "
-        f"(MIC ≤ 3,4 µM). Treino: **{n_train}** pares MIC."
+        f"Treino atual: **{n_train}** pares MIC · rótulo: MIC ≤ 3,4 µM = alta atividade."
     )
 
     global_report = predictor.global_shap_report()
@@ -846,6 +890,13 @@ with tab_xai:
 
 # --- aba Datasets ---
 with tab_data:
+    info_box(
+        "Datasets",
+        "Resumo do que alimenta o modelo: peptídeos do projeto, pares e MICs. "
+        "Para incluir resultado novo da bancada, use <code>data/bench/</code> "
+        "e o script de importação.",
+    )
+
     summary_path = ROOT / "data" / "processed" / "build_summary.json"
     bench_report = ROOT / "data" / "bench" / "import_report.json"
     pairs = pd.read_parquet(ROOT / "data" / "processed" / "pepmem_pairs.parquet")
@@ -897,6 +948,12 @@ with tab_data:
 
 # --- aba API ---
 with tab_api:
+    info_box(
+        "API",
+        "Mesmas predições via HTTP (útil para integrar com outros sistemas). "
+        "No Cloud público o foco é o dashboard; a API roda localmente com FastAPI.",
+    )
+
     with st.container(border=True):
         tile_title("API local (FastAPI)", "Integração via HTTP")
         st.markdown(
