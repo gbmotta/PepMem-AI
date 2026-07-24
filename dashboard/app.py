@@ -441,10 +441,11 @@ def render_shap_block(expl: dict, target_label: str) -> None:
         title=f"SHAP — {target_label}",
     )
     st.pyplot(fig, clear_figure=True, use_container_width=True)
-    with st.expander("Tabela de contribuições"):
-        df = pd.DataFrame(expl["shap_contributions"])[["label", "shap_value", "group"]]
-        df["shap_value"] = df["shap_value"].map(lambda x: f"{x:+.4f}")
-        show_table(df, max_text_len=36)
+    # Sem expander aqui: este bloco também roda dentro de outro expander (Cloud proíbe aninhamento)
+    st.caption("Tabela de contribuições")
+    df = pd.DataFrame(expl["shap_contributions"])[["label", "shap_value", "group"]]
+    df["shap_value"] = df["shap_value"].map(lambda x: f"{x:+.4f}")
+    show_table(df, max_text_len=36)
     st.caption("Valores positivos → favorecem alta atividade · negativos → desfavorecem")
 
 
