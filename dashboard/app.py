@@ -1045,8 +1045,7 @@ if page == "Predição":
                 height=110,
                 placeholder=">pep1\nFFSLIPKLVKGLISAFK\n>pep2\nGILGKLWEGVKSIF\n…",
                 key="fasta_paste",
-                on_change=force_uppercase,
-                args=("fasta_paste",),
+                on_change=force_fasta_seq_uppercase,
             )
 
             fasta_recs: list[dict] = []
