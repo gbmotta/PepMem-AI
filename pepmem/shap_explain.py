@@ -173,43 +173,66 @@ def _aggregate_matrix_for_display(
 
 def _shap_values(explainer: Any, X: np.ndarray) -> Any:
     """SHAP values sem check de aditividade (RF + probs costumam falhar)."""
-    try:
-        return explainer.shap_values(X, check_additivity=False)
-    except TypeError:
-        # API antiga sem o kwarg
-        return explainer.shap_values(X)
-    except Exception as exc:
-        msg = str(exc)
-        if "Additivity check failed" not in msg and "check_additivity" not in msg:
-            raise
-        # Último recurso: algumas builds ignoram o kwarg — tenta via __call__
-        if hasattr(explainer, "__call__"):
-            try:
-                explanation = explainer(X, check_additivity=False)
-                if hasattr(explanation, "values"):
-                    return explanation.values
-            except TypeError:
-                explanation = explainer(X)
-                if hasattr(explanation, "values"):
-                    return explanation.values
-        raise
+    X = np.asarray(X)
+    errors: list[Exception] = []
+
+    def _try(call):
+        try:
+            return call()
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+            return None
+
+    # 1) API clássica com check desligado
+    out = _try(lambda: explainer.shap_values(X, check_additivity=False))
+    if out is not None:
+        return out
+
+    # 2) approximate + check off
+    out = _try(lambda: explainer.shap_values(X, approximate=True, check_additivity=False))
+    if out is not None:
+        return out
+
+    # 3) from_call=True (algumas builds só respeitam assim)
+    out = _try(lambda: explainer.shap_values(X, check_additivity=False, from_call=True))
+    if out is not None:
+        return out
+
+    # 4) API Explanation
+    if hasattr(explainer, "__call__"):
+        out = _try(lambda: explainer(X, check_additivity=False))
+        if out is not None and hasattr(out, "values"):
+            return out.values
+        out = _try(lambda: explainer(X))
+        if out is not None and hasattr(out, "values"):
+            return out.values
+
+    # 5) Nunca chamar shap_values(X) com check padrão (True)
+    additivity = [e for e in errors if "Additivity check failed" in str(e)]
+    if additivity:
+        raise RuntimeError(
+            "SHAP additivity falhou mesmo com check_additivity=False; "
+            "tente reboot do app. Detalhe: " + str(additivity[0])
+        ) from additivity[0]
+    if errors:
+        raise errors[-1]
+    raise RuntimeError("Não foi possível calcular SHAP values.")
 
 
 def _make_tree_explainer(clf: Any, background: np.ndarray | None = None) -> Any:
-    """TreeExplainer preferindo path-dependent (aditividade exata em árvores)."""
+    """TreeExplainer em path-dependent (evita mismatch interventional + RF/probs).
+
+    ``background`` é ignorado de propósito: passar ``data=`` ativa interventional
+    e costuma disparar o check de aditividade no Cloud.
+    """
     import shap
 
-    # path-dependent evita o mismatch comum do modo interventional com RF/probs
+    _ = background  # mantido na assinatura por compatibilidade
+    # Sem data → tree_path_dependent (aditividade estável em árvores)
     try:
         return shap.TreeExplainer(clf, feature_perturbation="tree_path_dependent")
     except TypeError:
-        pass
-    if background is not None:
-        try:
-            return shap.TreeExplainer(clf, data=background)
-        except Exception:
-            pass
-    return shap.TreeExplainer(clf)
+        return shap.TreeExplainer(clf)
 
 
 def compute_training_shap(

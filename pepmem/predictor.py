@@ -295,16 +295,11 @@ class PepMemPredictor:
         net_charge: float | None = None,
     ) -> dict[str, Any]:
         """Predição + contribuições SHAP locais (fundo = matriz MIC de treino)."""
-        from pepmem.shap_explain import explain_instance, load_training_matrix
+        from pepmem.shap_explain import explain_instance
 
         x, names, feats = self._feature_vector(sequence, target_id, net_charge=net_charge)
-        try:
-            X_bg, _, _ = load_training_matrix(self.use_embeddings)
-            bg = self._model.named_steps["scaler"].transform(X_bg)
-        except ValueError:
-            bg = None
-
-        explanation = explain_instance(self._model, x, names, background=bg)
+        # Sem background: TreeExplainer path-dependent (evita Additivity check no Cloud)
+        explanation = explain_instance(self._model, x, names, background=None)
         raw, cal, std = self._raw_and_calibrated_prob(x)
         return {
             **feats,

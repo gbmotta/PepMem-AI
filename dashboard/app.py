@@ -198,7 +198,7 @@ def cached_explain(
     sequence: str,
     target_id: str,
     net_charge: float | None,
-    _shap_fix: int = 2,
+    _shap_fix: int = 3,
 ) -> dict:
     """SHAP local cacheado por (sequência, alvo, carga)."""
     return get_predictor().explain_pair(sequence, target_id, net_charge=net_charge)
