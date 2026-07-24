@@ -902,7 +902,7 @@ with tab_pred:
             )
 
         with st.container(border=True):
-            tile_title("Explicação em português", "Não altera PMI nem probabilidade")
+            tile_title("Explicação em português", "Priorização para bancada")
             narrative_engine_caption()
             if st.button("Explicar resultado", type="primary", key="btn_narrate_single"):
                 with st.spinner("Gerando narrativa (Qwen GGUF se disponível, senão template)…"):

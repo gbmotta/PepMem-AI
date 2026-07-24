@@ -199,9 +199,7 @@ def template_explain_single(
             bits.append(f"{lab} ({sentido})")
         if bits:
             parts.append("No SHAP local, os principais fatores: " + "; ".join(bits) + ".")
-    parts.append(
-        "Use isso para priorizar ensaios in vitro — a narrativa não altera os números do modelo."
-    )
+    parts.append("Use isso para priorizar ensaios in vitro.")
     return " ".join(parts)
 
 
@@ -229,9 +227,7 @@ def template_explain_batch(
             h = (r.get("header") or r.get("sequence") or "?")[:40]
             bits.append(f"{h} ({float(r['prob_calibrada']):.0%}, PMI {r.get('pmi')})")
         parts.append("Topo sugerido para priorizar: " + "; ".join(bits) + ".")
-    parts.append(
-        "Ordenação e números vêm do Random Forest calibrado; esta explicação não muda o CSV."
-    )
+    parts.append("Ordenação e números vêm do Random Forest calibrado.")
     return " ".join(parts)
 
 
