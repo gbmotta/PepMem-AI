@@ -36,25 +36,34 @@ Exemplo (números ilustrativos):
 
 ### 2.1 PMI (Peptide–Membrane Interaction Index)
 
-Índice **interpretável** (não é a probabilidade do RF). Combina:
+Índice **interpretável** (não é a probabilidade do RF). Combina carga, hidrofobicidade, momento hidrofóbico e colesterol:
 
 \[
-\begin{aligned}
-\text{PMI} =\;& \alpha\, q_{\text{pep}}\, |q_{\text{mem}}| \\
-&+ \beta\, h_{\text{pep}}\, h_{\text{mem}} \\
-&+ \gamma\, \mu H_{\text{pep}} \\
-&- \delta\, \text{colesterol}_{\text{mem}}
-\end{aligned}
+\text{PMI} = \alpha\, q_{\text{pep}}\, |q_{\text{mem}}| + \beta\, h_{\text{pep}}\, h_{\text{mem}} + \gamma\, \mu H_{\text{pep}} - \delta\, C_{\text{mem}}
 \]
 
-Pesos padrão atuais: \(\alpha=1\), \(\beta=0{,}5\), \(\gamma=0{,}3\), \(\delta=0{,}4\).
+Em notação linear (mesma equação):
 
-| Termo | Papel biológico (simplificado) |
-|-------|--------------------------------|
-| \(q_{\text{pep}} \times |q_{\text{mem}}|\) | Atração eletrostática (peptídeo catiônico × membrana aniônica) |
-| \(h_{\text{pep}} \times h_{\text{mem}}\) | Compatibilidade hidrofóbica com a bicamada |
-| \(\mu H\) | Momento hidrofóbico (anfifilicidade / hélice) |
-| Colesterol | Penaliza membranas “mais rígidas” / mamíferas tipicamente |
+```text
+PMI = α · q_pep · |q_mem|  +  β · h_pep · h_mem  +  γ · μH_pep  −  δ · colesterol_mem
+```
+
+**Pesos padrão atuais**
+
+| Símbolo | Valor | Papel |
+|--------|-------|--------|
+| α (alpha) | 1,0 | Atração eletrostática |
+| β (beta) | 0,5 | Compatibilidade hidrofóbica |
+| γ (gamma) | 0,3 | Momento hidrofóbico (anfifilicidade) |
+| δ (delta) | 0,4 | Penalização por colesterol |
+
+| Termo | Variáveis | Papel biológico (simplificado) |
+|-------|-----------|--------------------------------|
+| \(\alpha\, q_{\text{pep}}\, \|q_{\text{mem}}\|\) | carga do peptídeo × \|carga da membrana\| | Atração eletrostática (peptídeo catiônico × membrana aniônica) |
+| \(\beta\, h_{\text{pep}}\, h_{\text{mem}}\) | hidrofobicidades | Compatibilidade com a bicamada |
+| \(\gamma\, \mu H_{\text{pep}}\) | momento hidrofóbico | Anfifilicidade / tendência a hélice |
+| \(\delta\, C_{\text{mem}}\) | colesterol da membrana | Penaliza membranas tipicamente mamíferas / mais rígidas |
+
 
 **Como ler**
 
