@@ -227,6 +227,14 @@ def show_table(df: pd.DataFrame, max_text_len: int = 40) -> None:
     st.dataframe(view, use_container_width=True, hide_index=True)
 
 
+def show_png(data) -> None:
+    """Exibe PNG: Streamlit 1.37 usa use_column_width; versões novas usam use_container_width."""
+    try:
+        st.image(data, use_column_width=True)
+    except TypeError:
+        st.image(data, use_container_width=True)
+
+
 def activity_band(prob: float) -> tuple[str, str, str]:
     """Faixa de interpretação da prob. calibrada → (classe CSS, título, texto)."""
     if prob >= 0.70:
@@ -311,18 +319,49 @@ def apply_fasta_sequence(seq: str, header: str = "") -> None:
         st.session_state["fasta_header"] = header
 
 
-def load_fasta_records(uploaded) -> list[dict]:
-    """Lê upload Streamlit (.fasta/.fa/.txt) e devolve registros parseados."""
+def _decode_upload_bytes(raw: bytes) -> str:
+    """Decodifica bytes de upload (UTF-8 com fallback latin-1)."""
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("latin-1", errors="replace")
+
+
+def load_fasta_from_text(text: str, source: str = "colar") -> list[dict]:
+    """Parseia texto FASTA / multi-FASTA → registros com sequência válida."""
     sys.path.insert(0, str(ROOT / "scripts"))
     from peptide_utils import parse_fasta_text
 
-    raw = uploaded.getvalue()
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        text = raw.decode("latin-1", errors="replace")
-    records = parse_fasta_text(text)
-    return [r for r in records if r.get("sequence")]
+    records = parse_fasta_text(text or "")
+    out: list[dict] = []
+    for r in records:
+        if not r.get("sequence"):
+            continue
+        out.append(
+            {
+                "header": r.get("header") or "",
+                "sequence": r["sequence"],
+                "source": source,
+            }
+        )
+    return out
+
+
+def load_fasta_records(uploaded) -> list[dict]:
+    """Lê um upload Streamlit (.fasta/.fa/.txt) e devolve registros parseados."""
+    name = getattr(uploaded, "name", None) or "upload"
+    return load_fasta_from_text(_decode_upload_bytes(uploaded.getvalue()), source=name)
+
+
+def merge_fasta_uploads(uploads) -> list[dict]:
+    """Junta um ou vários arquivos FASTA (cada um pode ser multi-FASTA)."""
+    if uploads is None:
+        return []
+    files = uploads if isinstance(uploads, list) else [uploads]
+    merged: list[dict] = []
+    for f in files:
+        merged.extend(load_fasta_records(f))
+    return merged
 
 
 # Defaults de sessão (antes dos widgets)
@@ -410,7 +449,10 @@ with tab_pred:
     )
 
     with st.container(border=True):
-        tile_title("Par peptídeo × membrana", "Cole a sequência, envie FASTA ou escolha um exemplo")
+        tile_title(
+            "Par peptídeo × membrana",
+            "Lote (multi-FASTA / vários arquivos) ou predição única",
+        )
         st.caption(
             "Exemplos **conhecidos do projeto** já têm MIC no treino. "
             "Exemplos **novos** servem só para testar a predição (não estão no modelo)."
@@ -433,56 +475,109 @@ with tab_pred:
             unsafe_allow_html=True,
         )
 
-        fasta_file = st.file_uploader(
-            "Arquivo FASTA (opcional)",
+        st.markdown("##### Lote: vários peptídeos de uma vez")
+        st.caption(
+            "Envie **um multi-FASTA**, **vários arquivos** `.fasta`/`.fa`, ou **cole** "
+            "vários registros (`>header` + sequência). Todos usam a mesma membrana-alvo abaixo."
+        )
+        fasta_files = st.file_uploader(
+            "Arquivo(s) FASTA",
             type=["fasta", "fa", "faa", "fna", "txt"],
-            help="Um ou vários peptídeos no formato >header + sequência",
+            accept_multiple_files=True,
+            help="Um multi-FASTA ou vários arquivos; cada >header vira uma predição",
             key="fasta_upload",
         )
+        fasta_paste = st.text_area(
+            "Ou cole multi-FASTA aqui",
+            height=110,
+            placeholder=">pep1\nFFSLIPKLVKGLISAFK\n>pep2\nGILGKLWEGVKSIF\n…",
+            key="fasta_paste",
+        )
+
+        fasta_recs: list[dict] = []
+        try:
+            fasta_recs.extend(merge_fasta_uploads(fasta_files))
+            if (fasta_paste or "").strip():
+                fasta_recs.extend(load_fasta_from_text(fasta_paste, source="colar"))
+        except Exception as e:
+            st.error(f"FASTA inválido: {e}")
+            fasta_recs = []
+
+        # Deduplica por sequência (mantém o primeiro header)
+        seen_seq: set[str] = set()
+        deduped: list[dict] = []
+        for r in fasta_recs:
+            seq = r["sequence"]
+            if seq in seen_seq:
+                continue
+            seen_seq.add(seq)
+            deduped.append(r)
+        fasta_recs = deduped
+
         run_fasta_batch = False
-        if fasta_file is not None:
-            try:
-                fasta_recs = load_fasta_records(fasta_file)
-            except Exception as e:
-                st.error(f"FASTA inválido: {e}")
-                fasta_recs = []
-            if not fasta_recs:
-                st.warning("Nenhuma sequência válida encontrada no FASTA.")
-            else:
-                st.caption(f"**{len(fasta_recs)}** sequência(s) no arquivo.")
-                labels = [
-                    f"{(r.get('header') or f'seq_{i+1}')[:48]} · {r['sequence'][:12]}…"
-                    if len(r["sequence"]) > 12
-                    else f"{(r.get('header') or f'seq_{i+1}')[:48]} · {r['sequence']}"
+        if fasta_recs:
+            n_files = len(fasta_files) if fasta_files else 0
+            src_note = []
+            if n_files:
+                src_note.append(f"{n_files} arquivo(s)")
+            if (fasta_paste or "").strip():
+                src_note.append("texto colado")
+            st.success(
+                f"**{len(fasta_recs)}** peptídeo(s) prontos"
+                + (f" · {' + '.join(src_note)}" if src_note else "")
+            )
+            preview = pd.DataFrame(
+                [
+                    {
+                        "header": (r.get("header") or f"seq_{i+1}")[:48],
+                        "sequence": r["sequence"],
+                        "aa": len(r["sequence"]),
+                        "origem": r.get("source", ""),
+                    }
                     for i, r in enumerate(fasta_recs)
                 ]
-                pick = st.selectbox(
-                    "Escolher sequência do FASTA",
-                    options=list(range(len(fasta_recs))),
-                    format_func=lambda i: labels[i],
-                    key="fasta_pick",
-                )
-                c_fa1, c_fa2 = st.columns(2)
-                with c_fa1:
-                    st.button(
-                        "Usar esta sequência",
-                        use_container_width=True,
-                        on_click=apply_fasta_sequence,
-                        args=(
-                            fasta_recs[pick]["sequence"],
-                            fasta_recs[pick].get("header") or "",
-                        ),
-                    )
-                with c_fa2:
-                    run_fasta_batch = st.button(
-                        "Predizer todas do FASTA",
-                        use_container_width=True,
-                        key="fasta_batch_btn",
-                    )
-                st.session_state["fasta_records"] = fasta_recs
-        elif "fasta_records" in st.session_state:
-            del st.session_state["fasta_records"]
+            )
+            show_table(preview, max_text_len=42)
 
+            labels = [
+                f"{(r.get('header') or f'seq_{i+1}')[:40]} · {r['sequence'][:14]}"
+                + ("…" if len(r["sequence"]) > 14 else "")
+                for i, r in enumerate(fasta_recs)
+            ]
+            pick = st.selectbox(
+                "Usar uma sequência no formulário abaixo (opcional)",
+                options=list(range(len(fasta_recs))),
+                format_func=lambda i: labels[i],
+                key="fasta_pick",
+            )
+            c_fa1, c_fa2 = st.columns(2)
+            with c_fa1:
+                st.button(
+                    "Usar esta sequência",
+                    use_container_width=True,
+                    on_click=apply_fasta_sequence,
+                    args=(
+                        fasta_recs[pick]["sequence"],
+                        fasta_recs[pick].get("header") or "",
+                    ),
+                )
+            with c_fa2:
+                run_fasta_batch = st.button(
+                    f"Predizer todas ({len(fasta_recs)})",
+                    type="primary",
+                    use_container_width=True,
+                    key="fasta_batch_btn",
+                )
+            st.session_state["fasta_records"] = fasta_recs
+        else:
+            if fasta_files or (fasta_paste or "").strip():
+                st.warning(
+                    "Nenhuma sequência válida encontrada. Use headers `>` e aminoácidos A–Y."
+                )
+            if "fasta_records" in st.session_state:
+                del st.session_state["fasta_records"]
+
+        st.markdown("##### Predição única")
         sequence = st.text_input(
             "Sequência (letra única)",
             key="seq_main",
@@ -521,26 +616,37 @@ with tab_pred:
             index=idx,
             format_func=format_target_label,
         )
-        run_pred = st.button("Predizer", type="primary", use_container_width=True)
+        run_pred = st.button("Predizer (única)", use_container_width=True)
 
     if run_fasta_batch:
         batch_recs = st.session_state.get("fasta_records") or []
         if not batch_recs:
-            st.warning("Carregue um FASTA antes de predizer em lote.")
+            st.warning("Carregue ou cole um FASTA antes de predizer em lote.")
         else:
+            # No lote: carga automática por sequência, salvo override manual
+            batch_charge = charge  # None → estimado por peptídeo
+            charge_note = (
+                f"carga fixa {batch_charge:g}"
+                if batch_charge is not None
+                else "carga estimada por sequência"
+            )
             with st.spinner(f"Predizendo {len(batch_recs)} sequências…"):
                 rows = []
                 for r in batch_recs:
                     seq = r["sequence"]
                     try:
-                        res = predictor.predict_pair(seq, target_id, net_charge=charge)
+                        res = predictor.predict_pair(seq, target_id, net_charge=batch_charge)
+                        prob = float(res["pred_high_activity_prob"])
+                        band, band_title, _ = activity_band(prob)
                         rows.append(
                             {
                                 "header": (r.get("header") or "")[:60],
                                 "sequence": seq,
                                 "length": len(seq),
+                                "origem": r.get("source", ""),
                                 "pmi": round(float(res["pmi"]), 3),
-                                "prob_calibrada": round(float(res["pred_high_activity_prob"]), 4),
+                                "prob_calibrada": round(prob, 4),
+                                "faixa": band_title,
                                 "q_peptide": round(float(res["q_peptide"]), 2),
                                 "no_banco": "sim" if lookup_sequence(seq) else "não",
                             }
@@ -551,8 +657,10 @@ with tab_pred:
                                 "header": (r.get("header") or "")[:60],
                                 "sequence": seq,
                                 "length": len(seq),
+                                "origem": r.get("source", ""),
                                 "pmi": None,
                                 "prob_calibrada": None,
+                                "faixa": "erro",
                                 "q_peptide": None,
                                 "no_banco": "erro",
                                 "erro": str(e),
@@ -560,14 +668,37 @@ with tab_pred:
                         )
             with st.container(border=True):
                 tile_title(
-                    f"Lote FASTA × {format_target_label(target_id)}",
-                    f"{len(rows)} sequências · mesma membrana e carga",
+                    f"Lote × {format_target_label(target_id)}",
+                    f"{len(rows)} peptídeos · {charge_note}",
                 )
                 batch_df = pd.DataFrame(rows)
                 if "prob_calibrada" in batch_df.columns:
                     batch_df = batch_df.sort_values(
                         "prob_calibrada", ascending=False, na_position="last"
                     )
+                n_ok = int(batch_df["prob_calibrada"].notna().sum()) if "prob_calibrada" in batch_df else 0
+                n_high = (
+                    int((batch_df["prob_calibrada"] >= 0.70).sum())
+                    if "prob_calibrada" in batch_df
+                    else 0
+                )
+                kpi_row(
+                    [
+                        {
+                            "label": "Preditas",
+                            "value": str(n_ok),
+                            "hint": f"de {len(rows)}",
+                            "tone": "membrane",
+                        },
+                        {
+                            "label": "≥ 70% (forte)",
+                            "value": str(n_high),
+                            "hint": "priorizar in vitro",
+                            "tone": "ok" if n_high else None,
+                        },
+                    ],
+                    cols=2,
+                )
                 show_table(batch_df, max_text_len=36)
                 st.download_button(
                     "Baixar CSV do lote",
@@ -804,14 +935,14 @@ with tab_xai:
         with st.container(border=True):
             tile_title("Beeswarm multimodal", "Cada ponto = um par MIC")
             try:
-                st.image(cached_beeswarm(True, n_train), use_container_width=True)
+                show_png(cached_beeswarm(True, n_train))
             except Exception as e:
                 st.error(f"Beeswarm multimodal: {e}")
     with b2:
         with st.container(border=True):
             tile_title("Beeswarm baseline", "Descritores clássicos + PMI")
             try:
-                st.image(cached_beeswarm(False, n_train), use_container_width=True)
+                show_png(cached_beeswarm(False, n_train))
             except Exception as e:
                 st.error(f"Beeswarm baseline: {e}")
 
