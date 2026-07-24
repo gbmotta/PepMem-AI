@@ -8,6 +8,9 @@ Papel: só explicar KPIs/PMI/vizinhos/SHAP já calculados pelo RF.
 
 from __future__ import annotations
 
+# Versão do módulo (ajuda a diagnosticar deploy desatualizado no Cloud)
+NARRATIVE_VERSION = 2
+
 import os
 import threading
 from pathlib import Path

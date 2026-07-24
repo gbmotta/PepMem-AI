@@ -24,8 +24,41 @@ if str(ROOT) not in sys.path:
 
 from pepmem.predictor import PepMemPredictor, torch_available
 from pepmem.shap_explain import plot_beeswarm, plot_contributions, plot_global_importance
-from pepmem.narrative import llm_status, narrate_batch, narrate_shap_overview, narrate_single
 from pepmem.paths import project_root
+
+# Narrativa opcional: não derruba o app se o módulo/versão no Cloud estiver defasado
+try:
+    from pepmem.narrative import (
+        llm_status,
+        narrate_batch,
+        narrate_shap_overview,
+        narrate_single,
+    )
+except Exception:  # noqa: BLE001 — Cloud às vezes atrasa sync do narrative.py
+    def llm_status():
+        return {
+            "template_always": True,
+            "llama_cpp_installed": False,
+            "gguf_path": None,
+            "gguf_ready": False,
+            "auto_download": False,
+            "last_error": "pepmem.narrative indisponível neste deploy",
+        }
+
+    def narrate_single(**kwargs):
+        raise ImportError(
+            "Módulo de narrativa ausente. Faça reboot do app após o pull da main."
+        )
+
+    def narrate_batch(**kwargs):
+        raise ImportError(
+            "Módulo de narrativa ausente. Faça reboot do app após o pull da main."
+        )
+
+    def narrate_shap_overview(**kwargs):
+        raise ImportError(
+            "Módulo de narrativa ausente. Faça reboot do app após o pull da main."
+        )
 
 # Garante ROOT consistente com o restante do pacote
 ROOT = project_root()
