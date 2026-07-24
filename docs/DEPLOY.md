@@ -211,9 +211,3 @@ Mensagem sugerida:
 | Out of memory | Space CPU basic tem ~16 GB — suficiente; evite `use_embeddings=False` + recalcular tudo |
 | Sequência nova lenta | Normal na 1ª vez (download ESM-2); depois fica em cache |
 | App dormindo (Render) | Free tier; avise colaboradores que o 1º clique demora |
-
----
-
-## Privacidade
-
-Repositório **público** no GitHub/HF expõe código e datasets processados. Se houver dados não publicáveis, use Space **privado** (HF Pro) ou deploy interno na UFRN.
