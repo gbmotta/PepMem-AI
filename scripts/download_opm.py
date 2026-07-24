@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Download the complete OPM database via the public REST API."""
+"""Baixa o banco OPM completo via API REST pública.
+
+Entrada: ``https://opm-back.cc.lehigh.edu/opm-backend``. Saída: JSONs paginados
+e ``manifest.json`` em ``data/raw/opm/``.
+
+Papel no pipeline: ingestão de alvos de membrana — precede ``build_datasets.py``.
+
+Execução:
+    python scripts/download_opm.py
+"""
 
 from __future__ import annotations
 
@@ -15,7 +24,7 @@ BASE_URL = "https://opm-back.cc.lehigh.edu/opm-backend"
 PAGE_SIZE = 50
 REQUEST_DELAY = 0.05
 
-# Endpoints that return paginated {"objects": [...], "total_objects": N}
+# --- endpoints paginados (objects + total_objects) ---
 PAGINATED = [
     "primary_structures",
     "structure_subunits",
@@ -32,11 +41,12 @@ PAGINATED = [
     "membranes",
 ]
 
-# Single-shot or small endpoints
+# --- endpoints estáticos (resposta única) ---
 STATIC = ["stats", "pdbids"]
 
 
 def fetch_page(session: requests.Session, endpoint: str, page_num: int) -> dict[str, Any]:
+    """Busca uma página da API OPM com retentativas exponenciais."""
     url = f"{BASE_URL}/{endpoint}"
     params = {"page_num": page_num, "page_size": PAGE_SIZE}
     for attempt in range(5):
@@ -53,6 +63,7 @@ def fetch_page(session: requests.Session, endpoint: str, page_num: int) -> dict[
 
 
 def fetch_all_paginated(session: requests.Session, endpoint: str) -> list[dict[str, Any]]:
+    """Percorre todas as páginas de um endpoint e retorna a lista completa."""
     first = fetch_page(session, endpoint, 1)
     total = first["total_objects"]
     objects = list(first["objects"])
@@ -72,6 +83,7 @@ def fetch_all_paginated(session: requests.Session, endpoint: str) -> list[dict[s
 
 
 def fetch_static(session: requests.Session, endpoint: str) -> Any:
+    """Busca endpoint não paginado (stats, pdbids)."""
     url = f"{BASE_URL}/{endpoint}"
     resp = session.get(url, timeout=60)
     resp.raise_for_status()
@@ -79,12 +91,14 @@ def fetch_static(session: requests.Session, endpoint: str) -> Any:
 
 
 def save_json(path: Path, data: Any) -> None:
+    """Grava dados em JSON com indentação e UTF-8."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:
         json.dump(data, fh, ensure_ascii=False, indent=2)
 
 
 def main() -> None:
+    """Baixa endpoints estáticos e paginados; grava manifesto com contagens."""
     root = Path(__file__).resolve().parents[1]
     out_dir = root / "data" / "raw" / "opm"
     out_dir.mkdir(parents=True, exist_ok=True)

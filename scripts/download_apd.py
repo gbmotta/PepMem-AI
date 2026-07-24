@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Download APD6 FASTA lists from aps.unmc.edu."""
+"""Baixa listas FASTA do APD6 (Antimicrobial Peptide Database).
+
+Entrada: API pública em aps.unmc.edu. Saída: FASTAs e ``manifest.json`` em
+``data/raw/apd/``.
+
+Papel no pipeline: ingestão de AMPs de referência — precede ``build_datasets.py``.
+
+Execução:
+    python scripts/download_apd.py
+"""
 
 from __future__ import annotations
 
@@ -22,6 +31,7 @@ FILES = [
 
 
 def main() -> None:
+    """Baixa todos os FASTAs configurados e grava manifesto com contagens."""
     root = Path(__file__).resolve().parents[1]
     out_dir = root / "data" / "raw" / "apd"
     out_dir.mkdir(parents=True, exist_ok=True)

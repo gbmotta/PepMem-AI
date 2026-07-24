@@ -1,4 +1,13 @@
-"""PepMem-AI Streamlit dashboard."""
+"""Dashboard Streamlit do PepMem-AI.
+
+Interface para predizer atividade peptídeo–membrana, explorar vizinhos do
+treino, ranking de alvos e visualizações SHAP (local + beeswarm global).
+
+Execução local:
+    streamlit run dashboard/app.py
+
+Artefatos esperados em ``data/processed/models/`` (RF, calibrador, SHAP).
+"""
 
 from __future__ import annotations
 
@@ -16,7 +25,7 @@ sys.path.insert(0, str(ROOT))
 from pepmem.predictor import PepMemPredictor
 from pepmem.shap_explain import plot_beeswarm, plot_contributions, plot_global_importance
 
-# --- page ---
+# --- configuração da página ---
 st.set_page_config(
     page_title="PepMem-AI",
     page_icon="🧬",
@@ -24,7 +33,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Theme: bicamada + peçonha — versão suave (menos saturação)
+# --- tema visual (bicamada suave) ---
 st.markdown(
     """
     <style>
@@ -197,11 +206,13 @@ PRESETS_NOVEL = [
 
 @st.cache_resource
 def get_predictor() -> PepMemPredictor:
+    """Singleton do predictor (modelo + ESM + calibrador) em cache de recurso."""
     return PepMemPredictor(use_embeddings=True)
 
 
 @st.cache_data
 def load_project_peptides() -> pd.DataFrame:
+    """Catálogo PepMem-Base-Project (IDs PXX e sequências de referência)."""
     path = ROOT / "data" / "processed" / "pepmem_base_project.csv"
     if not path.exists():
         return pd.DataFrame()
@@ -210,6 +221,7 @@ def load_project_peptides() -> pd.DataFrame:
 
 @st.cache_data(show_spinner="Gerando beeswarm SHAP...")
 def cached_beeswarm(use_embeddings: bool, n_mic: int, _layout_version: int = 5) -> bytes:
+    """PNG do beeswarm global; ``n_mic`` / ``_layout_version`` invalidam o cache."""
     import io
 
     import joblib
@@ -230,9 +242,11 @@ def cached_beeswarm(use_embeddings: bool, n_mic: int, _layout_version: int = 5) 
 
 @st.cache_data(show_spinner="Calculando SHAP...")
 def cached_explain(sequence: str, target_id: str, net_charge: float | None) -> dict:
+    """SHAP local cacheado por (sequência, alvo, carga)."""
     return get_predictor().explain_pair(sequence, target_id, net_charge=net_charge)
 
 
+# --- estado compartilhado da sessão ---
 predictor = get_predictor()
 targets = predictor.targets
 target_options = targets.set_index("target_id")["target"].to_dict()
@@ -249,18 +263,21 @@ loo_auc = info.get("loo_auc")
 
 
 def format_target_label(target_id: str) -> str:
+    """Rótulo curto do alvo para selectbox / títulos."""
     name = target_options.get(target_id, target_id)
     short = name if len(name) <= 40 else f"{name[:37]}…"
     return f"{short}"
 
 
 def truncate_text(value: object, max_len: int = 40) -> object:
+    """Trunca strings longas em tabelas densas."""
     if not isinstance(value, str):
         return value
     return value if len(value) <= max_len else f"{value[: max_len - 1]}…"
 
 
 def show_table(df: pd.DataFrame, max_text_len: int = 40) -> None:
+    """``st.table`` com colunas texto truncadas."""
     view = df.copy()
     for col in view.columns:
         if view[col].dtype == object:
@@ -269,7 +286,7 @@ def show_table(df: pd.DataFrame, max_text_len: int = 40) -> None:
 
 
 def activity_band(prob: float) -> tuple[str, str, str]:
-    """Return (css_class, badge_text, interpretation)."""
+    """Faixa de interpretação da prob. calibrada → (classe CSS, título, texto)."""
     if prob >= 0.70:
         return (
             "high",
@@ -290,11 +307,13 @@ def activity_band(prob: float) -> tuple[str, str, str]:
 
 
 def lookup_sequence(seq: str) -> dict | None:
+    """Retorna registro do projeto se a sequência já estiver no banco de treino."""
     key = "".join(c for c in seq.upper() if c.isalpha())
     return seq_to_project.get(key)
 
 
 def render_result_banner(prob: float, in_db: dict | None) -> None:
+    """Banner de interpretação + badge no banco / fora do treino."""
     css, title, msg = activity_band(prob)
     if in_db is not None:
         badge = f'<span class="pm-badge in">No banco · {in_db.get("peptide_id")} · {in_db.get("name")}</span>'
@@ -307,6 +326,7 @@ def render_result_banner(prob: float, in_db: dict | None) -> None:
 
 
 def render_shap_block(expl: dict, target_label: str) -> None:
+    """Métricas + gráfico de contribuições SHAP locais."""
     st.metric("Prob. alta atividade (RF)", f"{expl['pred_high_activity_prob']:.1%}")
     fig = plot_contributions(
         expl["shap_contributions"],
@@ -321,13 +341,13 @@ def render_shap_block(expl: dict, target_label: str) -> None:
 
 
 def apply_preset(seq: str, charge: float) -> None:
-    """Callback on_click — roda antes dos widgets no rerun."""
+    """Callback on_click — define sessão antes dos widgets no próximo rerun."""
     st.session_state["seq_main"] = seq
     st.session_state["charge_main"] = float(charge)
     st.session_state["use_charge_main"] = True
 
 
-# Defaults antes de qualquer widget com essas keys
+# Defaults antes de qualquer widget com essas keys (evita conflito Streamlit)
 if "seq_main" not in st.session_state:
     st.session_state["seq_main"] = "FFSLIPKLVKGLISAFK"
 if "charge_main" not in st.session_state:
@@ -335,7 +355,7 @@ if "charge_main" not in st.session_state:
 if "use_charge_main" not in st.session_state:
     st.session_state["use_charge_main"] = True
 
-# --- sidebar ---
+# --- sidebar (métricas do modelo + atalhos) ---
 with st.sidebar:
     st.markdown("### PepMem-AI")
     st.caption("InovAI Lab · UFRN")
@@ -392,6 +412,7 @@ tab_pred, tab_rank, tab_xai, tab_data, tab_api = st.tabs(
     ["Predição", "Ranking", "XAI (SHAP)", "Datasets", "API"]
 )
 
+# --- aba Predição: um par peptídeo × alvo ---
 with tab_pred:
     left, right = st.columns([1.35, 1.0], gap="large")
 
@@ -525,6 +546,7 @@ with tab_pred:
         except Exception as e:
             st.warning(f"SHAP indisponível: {e}")
 
+# --- aba Ranking: score por alvo com penalidade de toxicidade proxy ---
 with tab_rank:
     r1, r2 = st.columns([1.2, 1.0], gap="large")
     with r1:
@@ -593,6 +615,7 @@ with tab_rank:
             max_text_len=28,
         )
 
+# --- aba XAI: beeswarm global + importância agregada ---
 with tab_xai:
     st.markdown(
         "SHAP explica *por que* o RF atribui probabilidade de **alta atividade** "
@@ -668,6 +691,7 @@ with tab_xai:
         except Exception as e:
             st.error(str(e))
 
+# --- aba Datasets: resumo dos artefatos processados ---
 with tab_data:
     summary_path = ROOT / "data" / "processed" / "build_summary.json"
     bench_report = ROOT / "data" / "bench" / "import_report.json"
@@ -706,6 +730,7 @@ with tab_data:
         view["nota"] = view.apply(flag, axis=1)
         show_table(view, max_text_len=40)
 
+# --- aba API: exemplo de chamada ao PepMemPredictor ---
 with tab_api:
     st.markdown(
         f"""

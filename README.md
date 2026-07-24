@@ -404,6 +404,7 @@ final_score = pred_atividade − λ·pred_tox_célula_normal + bônus_PMI_sel
 ## Dashboard Streamlit (PoC)
 
 ```bash
+pip install -r requirements.txt
 PYTHONPATH=. streamlit run dashboard/app.py
 ```
 
@@ -416,6 +417,20 @@ Abas:
 | **XAI (SHAP)** | Explicação local + beeswarm global |
 | **Datasets** | Estatísticas e tabela dos peptídeos do projeto |
 | **API** | Documentação e exemplos curl |
+
+### Deploy (Streamlit Community Cloud)
+
+Igual ao fluxo Gertec:
+
+1. Repo no GitHub: [gbmotta/PepMem-AI](https://github.com/gbmotta/PepMem-AI)
+2. [share.streamlit.io](https://share.streamlit.io) → **New app**
+3. Configuração:
+   - **Main file path:** `dashboard/app.py`
+   - **Branch:** `main`
+   - **Python:** 3.11
+4. Deploy → `https://<nome>.streamlit.app`
+
+Detalhes e alternativas (HF Spaces, Render): [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ---
 
@@ -455,8 +470,9 @@ Documento consolidado (físico-química + MICs + mapa de estudos): [`docs/peptid
 PepMem-AI/
 ├── README.md
 ├── DEPLOY.md                     # Atalho → docs/DEPLOY.md
-├── requirements.txt
-├── requirements-space.txt
+├── requirements.txt              # Dashboard / Streamlit Cloud (PyTorch CPU)
+├── requirements-dev.txt          # + FastAPI / HF hub (dev local)
+├── requirements-space.txt        # Espelho CPU (HF Spaces)
 ├── Dockerfile / render.yaml
 │
 ├── pepmem/                       # Biblioteca de inferência

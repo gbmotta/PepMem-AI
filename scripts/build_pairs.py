@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""Build peptide-membrane pairs with PMI features for modeling."""
+"""Monta pares peptídeo–membrana com features PMI para modelagem.
+
+Entrada: ``pepmem_base_project.parquet``, ``pepmem_endpoints.parquet`` e alvos
+de membrana (projeto, literatura, bancada). Saída: ``pepmem_pairs.parquet/csv``
+e ``pairs_summary.json``.
+
+Papel no pipeline: engenharia de features tabulares — precede treino e SHAP.
+
+Execução:
+    python scripts/build_pairs.py
+"""
 
 from __future__ import annotations
 
@@ -18,6 +28,7 @@ from pmi import compute_pmi, compute_pmi_sel, peptide_h, peptide_mu_h, peptide_q
 from bench_mic import load_bench_targets
 
 
+# --- alvos da literatura (cepas UFPEDA, Parente 2022) ---
 LITERATURE_TARGETS = [
     {"target_id": "S_aureus_UFPEDA1040", "target": "Staphylococcus aureus UFPEDA1040", "target_type": "Gram+", "surface_charge": -0.80, "anionic_fraction": 0.60, "lps": 0, "peptidoglycan": 1, "teichoic_acid": 1, "cholesterol": 0, "ergosterol": 0, "viral_envelope": 0},
     {"target_id": "S_aureus_UFPEDA1051", "target": "Staphylococcus aureus UFPEDA1051", "target_type": "Gram+", "surface_charge": -0.80, "anionic_fraction": 0.60, "lps": 0, "peptidoglycan": 1, "teichoic_acid": 1, "cholesterol": 0, "ergosterol": 0, "viral_envelope": 0},
@@ -29,6 +40,7 @@ LITERATURE_TARGETS = [
 
 
 def load_project_targets() -> pd.DataFrame:
+    """Unifica alvos do projeto, literatura e bancada (sem duplicar target_id)."""
     project = pd.read_parquet(ROOT / "data" / "processed" / "project_membrane_targets.parquet")
     literature = pd.DataFrame(LITERATURE_TARGETS)
     frames = [project, literature]
@@ -39,9 +51,11 @@ def load_project_targets() -> pd.DataFrame:
 
 
 def build_pairs() -> pd.DataFrame:
+    """Gera grade peptídeo×alvo com PMI, seletividade e endpoints experimentais."""
     peptides = pd.read_parquet(ROOT / "data" / "processed" / "pepmem_base_project.parquet")
     targets = load_project_targets()
 
+    # --- grade peptídeo × membrana com PMI ---
     rows = []
     for _, pep in peptides.iterrows():
         if not pep.get("sequence"):
@@ -87,7 +101,7 @@ def build_pairs() -> pd.DataFrame:
         axis=1,
     )
 
-    # Anexar endpoints experimentais (MIC/MBC/CC50/hemólise/…)
+    # --- anexar endpoints experimentais (MIC, MBC, hemólise, …) ---
     ep = pd.read_parquet(ROOT / "data" / "processed" / "pepmem_endpoints.parquet")
     ep = ep.dropna(subset=["endpoint", "value"])
     for endpoint_name in ("MIC", "MBC", "CC50", "IC50", "HEMOLYSIS", "BIOFILM_INHIB"):
@@ -114,6 +128,7 @@ def build_pairs() -> pd.DataFrame:
 
 
 def main() -> None:
+    """Constrói pares e grava resumo com contagem de MICs e hemólise."""
     pairs = build_pairs()
     summary = {
         "pairs_rows": len(pairs),

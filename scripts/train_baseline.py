@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""Train baseline RF on MIC endpoints with leave-one-peptide-out + calibration."""
+"""Treina Random Forest baseline para MIC com LOPO e calibração isotônica.
+
+Entrada: ``pepmem_pairs.parquet`` (pares com ``mic_value``).
+Saída: modelo, calibrador, métricas LOO/LOPO, ranking e probs OOF em
+``data/processed/models/``.
+
+Rótulo: MIC ≤ 3,4 µM ⇒ alta atividade. Validação principal: LOPO
+(leave-one-peptide-out); LOO por amostra serve como referência otimista.
+Calibração isotônica ajustada sobre probabilidades OOF do LOPO.
+
+Execução:
+    python scripts/train_baseline.py
+"""
 
 from __future__ import annotations
 
@@ -25,6 +37,7 @@ from train_utils import (
 
 
 def main() -> None:
+    """Treina RF baseline, avalia LOO/LOPO, calibra e gera ranking do projeto."""
     df = load_mic_pairs()
     X = df[CLASSIC_FEATURES].fillna(0).values
     y = df["label_high_activity"].values
@@ -32,6 +45,7 @@ def main() -> None:
 
     print(f"Amostras MIC: {len(df)} | peptídeos: {len(np.unique(groups))} | alta atividade: {y.sum()}/{len(y)}")
 
+    # --- validação cruzada: LOO amostra (referência) e LOPO (principal) ---
     factory = lambda: make_rf_pipeline(n_estimators=200)
     sample = evaluate_sample_loo(X, y, factory)
     peptide = evaluate_leave_one_peptide_out(X, y, groups, factory)
@@ -39,12 +53,14 @@ def main() -> None:
     print(f"LOO amostra AUC: {sample['auc']:.4f}" if sample["auc"] else "LOO amostra AUC: n/a")
     print(f"Leave-one-peptide AUC: {peptide['auc']:.4f}" if peptide["auc"] else "Leave-one-peptide AUC: n/a")
 
+    # --- calibração isotônica sobre probs OOF do LOPO ---
     calibrator = fit_isotonic_calibrator(peptide["probs"], y)
     cal_probs = calibrator.predict(peptide["probs"])
 
     out_dir = ROOT / "data" / "processed" / "models"
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # --- modelo final (todos os dados) + persistência ---
     final = make_rf_pipeline(n_estimators=200)
     final.fit(X, y)
     joblib.dump(final, out_dir / "baseline_mic_rf.joblib")
@@ -71,6 +87,7 @@ def main() -> None:
     oof["prob_calibrated_lope"] = cal_probs
     oof.to_csv(out_dir / "baseline_oof_probs.csv", index=False)
 
+    # --- ranking de todos os pares do projeto com probs calibradas ---
     all_pairs = pd.read_parquet(ROOT / "data" / "processed" / "pepmem_pairs.parquet")
     project_pairs = all_pairs.copy()
     X_all = project_pairs[CLASSIC_FEATURES].fillna(0).values

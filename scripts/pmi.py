@@ -1,10 +1,17 @@
-"""Peptide-Membrane Interaction Index (PMI) from PepMem-AI pipeline."""
+"""Índice de interação peptídeo–membrana (PMI) do pipeline PepMem-AI.
+
+Entrada: descritores do peptídeo (carga, hidrofobicidade, momento) e da
+membrana (carga superficial, colesterol, …). Saída: escalar PMI e seletividade.
+
+Papel no pipeline: feature interpretável usada em ``build_pairs.py`` e nos
+modelos baseline/multimodal.
+"""
 
 from __future__ import annotations
 
 import math
 
-# Pesos iniciais empíricos (baseline interpretável)
+# --- pesos empíricos do PMI (baseline interpretável) ---
 DEFAULT_WEIGHTS = {"alpha": 1.0, "beta": 0.5, "gamma": 0.3, "delta": 0.4}
 
 
@@ -17,6 +24,7 @@ def compute_pmi(
     cholesterol_membrane: float,
     weights: dict[str, float] | None = None,
 ) -> float:
+    """Combina carga, hidrofobicidade, momento e colesterol em índice PMI."""
     w = weights or DEFAULT_WEIGHTS
     return (
         w["alpha"] * q_peptide * abs(q_membrane)
@@ -27,11 +35,12 @@ def compute_pmi(
 
 
 def compute_pmi_sel(pmi_target: float, pmi_normal: float) -> float:
+    """Seletividade: PMI no alvo menos PMI em célula mamífera normal."""
     return pmi_target - pmi_normal
 
 
 def hydrophobic_moment(seq: str, angle_deg: float = 100.0) -> float:
-    """Momento hidrofóbico para hélice (método Eisenberg)."""
+    """Momento hidrofóbico para hélice α (método de Eisenberg, ângulo 100°)."""
     from peptide_utils import AA_HYDRO
 
     if not seq:
@@ -46,6 +55,7 @@ def hydrophobic_moment(seq: str, angle_deg: float = 100.0) -> float:
 
 
 def peptide_q(peptide_row) -> float:
+    """Carga líquida do peptídeo (coluna anotada ou computada)."""
     if peptide_row.get("net_charge") is not None and not (isinstance(peptide_row.get("net_charge"), float) and math.isnan(peptide_row.get("net_charge"))):
         return float(peptide_row["net_charge"])
     val = peptide_row.get("net_charge_computed")
@@ -53,6 +63,7 @@ def peptide_q(peptide_row) -> float:
 
 
 def peptide_h(peptide_row) -> float:
+    """Hidrofobicidade média do peptídeo (anotada ou computada)."""
     for key in ("hydrophobicity", "hydrophobicity_computed"):
         if key in peptide_row and peptide_row[key] is not None:
             try:
@@ -63,6 +74,7 @@ def peptide_h(peptide_row) -> float:
 
 
 def peptide_mu_h(peptide_row) -> float:
+    """Momento hidrofóbico do peptídeo (anotado ou calculado da sequência)."""
     if peptide_row.get("hydrophobic_moment") is not None:
         try:
             return float(peptide_row["hydrophobic_moment"])

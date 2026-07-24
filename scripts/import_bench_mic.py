@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""Import lab MIC/MBC data from data/bench/ and retrain models."""
+"""Importa MICs da bancada (``data/bench/``) e opcionalmente retreina modelos.
+
+Entrada: ``mic_bench.csv`` e CSVs auxiliares em ``data/bench/``.
+Saída: datasets atualizados, ``import_report.json`` e modelos (com ``--retrain``).
+
+Papel no pipeline: fluxo de atualização laboratorial — reconstrói datasets e pares.
+
+Execução:
+    python scripts/import_bench_mic.py --check
+    python scripts/import_bench_mic.py
+    python scripts/import_bench_mic.py --retrain
+"""
 
 from __future__ import annotations
 
@@ -16,11 +27,13 @@ from bench_mic import BENCH_DIR, load_bench_mic
 
 
 def run(cmd: list[str]) -> None:
+    """Executa comando no diretório raiz do projeto com saída visível."""
     print("\n>>", " ".join(cmd))
     subprocess.run(cmd, check=True, cwd=ROOT)
 
 
 def retrain_pipeline(new_peptides: bool) -> None:
+    """Retreina pares, embeddings (se necessário), modelos e SHAP."""
     run([sys.executable, str(ROOT / "scripts" / "build_pairs.py")])
     if new_peptides:
         print("Novos peptídeos detectados — gerando embeddings faltantes (ESM-2)...")
@@ -37,6 +50,7 @@ def retrain_pipeline(new_peptides: bool) -> None:
 
 
 def check_only() -> None:
+    """Valida ``mic_bench.csv`` sem alterar datasets ou modelos."""
     mic_df = load_bench_mic()
     if mic_df.empty:
         print("OK: mic_bench.csv sem linhas de dados (só cabeçalho).")
@@ -46,6 +60,7 @@ def check_only() -> None:
 
 
 def main() -> None:
+    """Reconstrói datasets com MICs da bancada; ``--retrain`` retreina o pipeline ML."""
     parser = argparse.ArgumentParser(description="Importar MICs da bancada (data/bench/)")
     parser.add_argument("--check", action="store_true", help="Só valida mic_bench.csv")
     parser.add_argument("--retrain", action="store_true", help="Retreina modelos e SHAP")

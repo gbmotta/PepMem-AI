@@ -114,21 +114,25 @@ Melhor para projetos de ML: CPU gratuita, link estável, fácil de compartilhar.
 
 ---
 
-## Opção 2 — Streamlit Community Cloud
+## Opção 2 — Streamlit Community Cloud (como o Gertec)
 
-Muito simples se o repo já estiver no GitHub.
+Mesmo fluxo do PoC Gertec: repo no GitHub → **New app** no share.streamlit.io.
 
 1. Conta em [share.streamlit.io](https://share.streamlit.io) (login com GitHub).
 
-2. **New app** → selecione o repositório `PepMem-AI`.
-
-3. Configuração:
+2. **New app** → conecte o GitHub e escolha:
+   - **Repository:** `gbmotta/PepMem-AI`
+   - **Branch:** `main`
    - **Main file path:** `dashboard/app.py`
-   - **Python version:** 3.11
+   - **App URL:** `pepmem-ai` (ou outro nome livre)
+   - **Python version:** 3.11 (Advanced settings)
 
-4. Deploy. URL: `https://SEU-APP.streamlit.app`
+3. Deploy. URL pública: `https://pepmem-ai.streamlit.app` (ou o nome escolhido).
 
-**Limitações:** build com PyTorch pode falhar por timeout; se falhar, use Hugging Face Spaces ou Docker no Render.
+> Não há secrets obrigatórios. O `requirements.txt` da raiz já usa **PyTorch CPU** (build mais leve).
+
+**Se o build falhar** (timeout / memória): use o Space HF já publicado  
+`https://huggingface.co/spaces/gbmotta/pepmem-ai` ou o Render (Docker).
 
 ---
 

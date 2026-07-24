@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
-"""Build PepMem datasets from raw OPM data and project seed records."""
+"""Constrói os datasets PepMem a partir de OPM, APD e sementes do projeto.
+
+Entrada: ``data/raw/opm/`` (JSON da API OPM), ``data/raw/apd/`` (FASTA APD),
+dados de bancada em ``data/bench/``. Saída: Parquet/CSV em ``data/processed/``
+(peptídeos, alvos de membrana, endpoints, tabelas OPM de referência).
+
+Papel no pipeline: etapa de materialização de dados — precede ``build_pairs.py``.
+
+Execução:
+    python scripts/build_datasets.py
+
+Pré-requisitos: ``python scripts/download_opm.py`` (obrigatório);
+``python scripts/download_apd.py`` (recomendado).
+"""
 
 from __future__ import annotations
 
@@ -13,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from bench_mic import bench_endpoints_records, load_bench_mic, load_bench_peptides, resolve_peptides
 from peptide_utils import add_descriptor_columns, parse_fasta
 
-# PepMem target types used in experimental validation (from project docs)
+# --- alvos do projeto (validação experimental CNPq) ---
 PROJECT_TARGETS = [
     {
         "target_id": "S_aureus_ATCC29213",
@@ -167,7 +180,7 @@ PROJECT_TARGETS = [
     },
 ]
 
-# Project peptides from CNPq proposal (Quadro 01); * = patented substitutions (sequence alias kept)
+# --- peptídeos do projeto (Quadro 01 da proposta; * = substituições patenteadas) ---
 PROJECT_PEPTIDES = [
     {"peptide_id": "P01", "name": "Stigmurin_analog_1", "parent": "Stigmurin", "sequence_raw": "FFSLIP*LV*GLISAFK", "sequence": "FFSLIPSLVGGLISAFK", "net_charge": 3, "molecular_mass_kda": 1.90, "hydrophobicity": 0.78, "hydrophobic_moment": 0.67, "isoelectric_point": 9.54},
     {"peptide_id": "P02", "name": "Stigmurin_analog_2", "parent": "Stigmurin", "sequence_raw": "FFSLIP*LVG*LISAFK", "sequence": "FFSLIPSLVGLISAFK", "net_charge": 4, "molecular_mass_kda": 1.90, "hydrophobicity": 0.78, "hydrophobic_moment": 0.65, "isoelectric_point": 9.54},
@@ -183,7 +196,7 @@ PROJECT_PEPTIDES = [
     {"peptide_id": "P12", "name": "StigA16", "parent": "Stigmurin", "sequence_raw": "FFKLIPKLVKGLISAFK", "sequence": "FFKLIPKLVKGLISAFK", "net_charge": 4, "source": "Parente_2022_thesis"},
 ]
 
-# MIC/MBC from Parente 2022, Table 3 (multidrug-resistant clinical strains)
+# --- MIC/MBC da literatura (Parente 2022, Tabela 3) ---
 LITERATURE_ENDPOINTS = [
     {"peptide_id": "P11", "target_id": "S_aureus_UFPEDA1040", "target": "Staphylococcus aureus UFPEDA1040", "target_type": "Gram+", "endpoint": "MIC", "value": 4.7, "unit": "uM", "reference": "Parente_2022_Table3"},
     {"peptide_id": "P11", "target_id": "S_aureus_UFPEDA1040", "target": "Staphylococcus aureus UFPEDA1040", "target_type": "Gram+", "endpoint": "MBC", "value": 4.7, "unit": "uM", "reference": "Parente_2022_Table3"},
@@ -213,11 +226,13 @@ LITERATURE_ENDPOINTS = [
 
 
 def load_json(path: Path):
+    """Carrega um arquivo JSON com encoding UTF-8."""
     with path.open(encoding="utf-8") as fh:
         return json.load(fh)
 
 
 def build_opm_membranes_df(opm_dir: Path) -> pd.DataFrame:
+    """Monta DataFrame de membranas OPM com metadados de origem."""
     membranes = load_json(opm_dir / "membranes.json")
     df = pd.DataFrame(membranes)
     df["source"] = "OPM"
@@ -226,6 +241,7 @@ def build_opm_membranes_df(opm_dir: Path) -> pd.DataFrame:
 
 
 def build_opm_proteins_df(opm_dir: Path) -> pd.DataFrame:
+    """Monta DataFrame de estruturas primárias OPM (UniProt achatado)."""
     proteins = load_json(opm_dir / "primary_structures.json")
     df = pd.DataFrame(proteins)
     if "uniprotcodes" in df.columns:
@@ -235,6 +251,7 @@ def build_opm_proteins_df(opm_dir: Path) -> pd.DataFrame:
 
 
 def map_opm_to_target_type(name: str) -> str:
+    """Mapeia nome de membrana OPM para categoria de alvo PepMem."""
     name_l = name.lower()
     if "gram-negative" in name_l:
         return "Gram-"
@@ -252,6 +269,7 @@ def map_opm_to_target_type(name: str) -> str:
 
 
 def build_membrane_targets(opm_dir: Path, out_dir: Path) -> pd.DataFrame:
+    """Combina alvos OPM e do projeto; grava ``membrane_targets`` e derivados."""
     opm_mem = build_opm_membranes_df(opm_dir)
     opm_mem["target_type_mapped"] = opm_mem["name"].map(map_opm_to_target_type)
 
@@ -276,6 +294,7 @@ def build_membrane_targets(opm_dir: Path, out_dir: Path) -> pd.DataFrame:
 
 
 def build_apd_base(apd_dir: Path) -> pd.DataFrame:
+    """Importa AMPs naturais do APD (FASTA) com descritores computados."""
     fasta_path = apd_dir / "naturalAMPs_APD2024a.fasta"
     if not fasta_path.exists():
         return pd.DataFrame()
@@ -306,6 +325,7 @@ def build_apd_base(apd_dir: Path) -> pd.DataFrame:
 
 
 def build_pepmem_base(root: Path, out_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Monta catálogo de peptídeos: projeto + bancada + APD (sem duplicatas de sequência)."""
     project_rows = []
     for pep in PROJECT_PEPTIDES:
         project_rows.append(
@@ -321,6 +341,7 @@ def build_pepmem_base(root: Path, out_dir: Path) -> tuple[pd.DataFrame, pd.DataF
 
     project_df = add_descriptor_columns(pd.DataFrame(project_rows))
 
+    # --- integrar peptídeos/MICs da bancada ---
     bench_pep = load_bench_peptides()
     bench_mic = load_bench_mic()
     resolved_bench_mic = pd.DataFrame()
@@ -347,7 +368,7 @@ def build_pepmem_base(root: Path, out_dir: Path) -> tuple[pd.DataFrame, pd.DataF
     full_df = pd.concat([project_df, apd_df], ignore_index=True, sort=False)
     full_df.to_parquet(out_dir / "pepmem_base.parquet", index=False)
     full_df.to_csv(out_dir / "pepmem_base.csv", index=False)
-    # Cache resolved MIC for endpoints build (avoids losing peptide_id resolution)
+    # Cache de MIC resolvido evita perder peptide_id na etapa de endpoints
     if not resolved_bench_mic.empty:
         cache = out_dir / "_bench_mic_resolved.parquet"
         resolved_bench_mic.to_parquet(cache, index=False)
@@ -355,9 +376,11 @@ def build_pepmem_base(root: Path, out_dir: Path) -> tuple[pd.DataFrame, pd.DataF
 
 
 def build_pepmem_endpoints(project_df: pd.DataFrame, out_dir: Path) -> pd.DataFrame:
+    """Gera scaffold (pendente) + endpoints experimentais (literatura e bancada)."""
     project_peptides = project_df[project_df["peptide_id"].str.match(r"^P\d+$") & project_df["sequence"].notna()]
     project_targets = pd.DataFrame(PROJECT_TARGETS)
 
+    # --- scaffold: grade peptídeo × alvo sem valores medidos ---
     rows = []
     for _, pep in project_peptides.iterrows():
         for _, tgt in project_targets.iterrows():
@@ -381,6 +404,7 @@ def build_pepmem_endpoints(project_df: pd.DataFrame, out_dir: Path) -> pd.DataFr
 
     scaffold_df = pd.DataFrame(rows)
 
+    # --- literatura e bancada (experimental) ---
     lit_rows = []
     seq_map = project_df.set_index("peptide_id")["sequence"].to_dict()
     for item in LITERATURE_ENDPOINTS:
@@ -441,7 +465,7 @@ def build_pepmem_endpoints(project_df: pd.DataFrame, out_dir: Path) -> pd.DataFr
 
 
 def build_opm_reference_tables(opm_dir: Path, out_dir: Path) -> None:
-    """Flatten key OPM tables for downstream feature engineering."""
+    """Achata tabelas OPM auxiliares (espécies, famílias, assemblies, …) em Parquet."""
     proteins = build_opm_proteins_df(opm_dir)
     proteins.to_parquet(out_dir / "opm_primary_structures.parquet", index=False)
     proteins.to_csv(out_dir / "opm_primary_structures.csv", index=False)
@@ -453,6 +477,7 @@ def build_opm_reference_tables(opm_dir: Path, out_dir: Path) -> None:
 
 
 def main() -> None:
+    """Orquestra construção de todos os datasets e grava ``build_summary.json``."""
     root = Path(__file__).resolve().parents[1]
     opm_dir = root / "data" / "raw" / "opm"
     out_dir = root / "data" / "processed"

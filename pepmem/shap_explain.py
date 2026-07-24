@@ -1,4 +1,11 @@
-"""SHAP explanations for PepMem-AI Random Forest models."""
+"""Explicações SHAP para os Random Forests do PepMem-AI.
+
+Gera importância global (beeswarm / barras) e contribuições por instância.
+Dimensões ESM-2 são agregadas num único bloco ``esm2_embedding`` para leitura.
+
+Papel no pipeline: usado por ``compute_shap.py`` (artefatos offline) e pelo
+dashboard (explicação local + beeswarm).
+"""
 
 from __future__ import annotations
 
@@ -14,6 +21,7 @@ from pepmem.paths import project_root
 
 ROOT = project_root()
 
+# --- rótulos amigáveis (UI / beeswarm) ---
 FEATURE_LABELS: dict[str, str] = {
     "q_peptide": "Carga peptídeo (q)",
     "h_peptide": "Hidrofobicidade peptídeo",
@@ -31,19 +39,21 @@ FEATURE_LABELS: dict[str, str] = {
 
 
 def feature_names(use_embeddings: bool, n_embedding_dims: int = 320) -> list[str]:
+    """Lista nomes de features alinhados à ordem do vetor do modelo."""
     if not use_embeddings:
         return list(CLASSIC_FEATURES)
     return list(CLASSIC_FEATURES) + [f"esm2_{i}" for i in range(n_embedding_dims)]
 
 
 def _label(name: str) -> str:
+    """Converte nome técnico de feature em rótulo para gráficos."""
     if name.startswith("esm2_"):
         return FEATURE_LABELS["esm2_embedding"]
     return FEATURE_LABELS.get(name, name)
 
 
 def load_training_matrix(use_embeddings: bool) -> tuple[np.ndarray, list[str], pd.DataFrame]:
-    """Load MIC-labelled pairs as feature matrix for SHAP background."""
+    """Monta matriz X das amostras MIC (fundo SHAP) e metadados dos pares."""
     pairs = pd.read_parquet(ROOT / "data" / "processed" / "pepmem_pairs.parquet")
     mic = pairs[pairs["mic_value"].notna()].copy()
     if mic.empty:
@@ -52,6 +62,7 @@ def load_training_matrix(use_embeddings: bool) -> tuple[np.ndarray, list[str], p
     rows: list[np.ndarray] = []
     kept: list[dict[str, Any]] = []
 
+    # --- multimodal: features clássicas + embedding ESM-2 por peptide_id ---
     if use_embeddings:
         emb_path = ROOT / "data" / "processed" / "embeddings" / "esm2_all.npz"
         if not emb_path.exists():
@@ -81,6 +92,7 @@ def load_training_matrix(use_embeddings: bool) -> tuple[np.ndarray, list[str], p
 
 
 def _positive_class_shap(shap_values: Any, sample_idx: int = 0) -> np.ndarray:
+    """Extrai o vetor SHAP da classe positiva (alta atividade) para uma amostra."""
     arr = np.asarray(shap_values)
     if arr.ndim == 3:
         return arr[sample_idx, :, 1]
@@ -92,6 +104,7 @@ def _positive_class_shap(shap_values: Any, sample_idx: int = 0) -> np.ndarray:
 
 
 def _aggregate_shap(shap_row: np.ndarray, names: list[str]) -> list[dict[str, Any]]:
+    """Agrega dimensões ESM-2 num único item e ordena por |SHAP|."""
     classic: list[dict[str, Any]] = []
     esm_total = 0.0
     has_esm = False
@@ -128,6 +141,7 @@ def _aggregate_shap(shap_row: np.ndarray, names: list[str]) -> list[dict[str, An
 
 
 def _all_positive_shap(shap_values: Any) -> np.ndarray:
+    """Matriz SHAP (n_amostras × n_features) da classe positiva."""
     if isinstance(shap_values, list):
         return np.asarray(shap_values[1])
     arr = np.asarray(shap_values)
@@ -141,6 +155,7 @@ def _aggregate_matrix_for_display(
     shap_matrix: np.ndarray,
     names: list[str],
 ) -> tuple[np.ndarray, np.ndarray, list[str]]:
+    """Reduz embeddings ESM para norma (X) e soma SHAP (para beeswarm legível)."""
     classic_idx = [i for i, n in enumerate(names) if not n.startswith("esm2_")]
     esm_idx = [i for i, n in enumerate(names) if n.startswith("esm2_")]
 
@@ -149,6 +164,7 @@ def _aggregate_matrix_for_display(
 
     x_classic = X[:, classic_idx]
     sv_classic = shap_matrix[:, classic_idx]
+    # Proxy da magnitude do embedding; SHAP das dims ESM somado
     x_esm = np.linalg.norm(X[:, esm_idx], axis=1, keepdims=True)
     sv_esm = shap_matrix[:, esm_idx].sum(axis=1, keepdims=True)
     labels = [_label(names[i]) for i in classic_idx] + [FEATURE_LABELS["esm2_embedding"]]
@@ -159,6 +175,7 @@ def compute_training_shap(
     pipeline: Pipeline,
     use_embeddings: bool,
 ) -> tuple[np.ndarray, np.ndarray, list[str], pd.DataFrame]:
+    """Calcula SHAP em todas as amostras MIC de treino (já agregado para display)."""
     X, names, meta = load_training_matrix(use_embeddings)
     scaler = pipeline.named_steps["scaler"]
     clf = pipeline.named_steps["clf"]
@@ -181,7 +198,7 @@ def plot_beeswarm(
     use_embeddings: bool,
     title: str = "SHAP beeswarm — amostras MIC de treino",
 ) -> Any:
-    """Classic SHAP summary beeswarm (dot plot) on training MIC pairs."""
+    """Beeswarm SHAP clássico sobre os pares MIC de treino (matplotlib figure)."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -217,7 +234,7 @@ def explain_instance(
     feature_names_list: list[str],
     background: np.ndarray | None = None,
 ) -> dict[str, Any]:
-    """SHAP TreeExplainer for one scaled feature vector."""
+    """Explica uma instância com TreeExplainer (contribuições da classe positiva)."""
     import shap
 
     scaler = pipeline.named_steps["scaler"]
@@ -250,7 +267,7 @@ def global_importance(
     X: np.ndarray,
     feature_names_list: list[str],
 ) -> list[dict[str, Any]]:
-    """Mean |SHAP| across training samples (global importance)."""
+    """Importância global: média de |SHAP| nas amostras MIC de treino."""
     import shap
 
     scaler = pipeline.named_steps["scaler"]
@@ -279,6 +296,7 @@ def save_global_report(
     use_embeddings: bool,
     out_path: str,
 ) -> dict[str, Any]:
+    """Persiste JSON de importância global (e metadados dos pares) em ``out_path``."""
     X, names, meta = load_training_matrix(use_embeddings)
     importance = global_importance(pipeline, X, names)
     report = {
@@ -295,7 +313,7 @@ def save_global_report(
 
 
 def plot_contributions(contributions: list[dict[str, Any]], title: str = "SHAP"):
-    """Horizontal bar chart of SHAP contributions (matplotlib figure)."""
+    """Barras horizontais das contribuições SHAP de uma predição."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -317,7 +335,7 @@ def plot_contributions(contributions: list[dict[str, Any]], title: str = "SHAP")
 
 
 def plot_global_importance(importance: list[dict[str, Any]], title: str = "Importância global |SHAP|"):
-    """Bar chart of mean |SHAP| across training MIC samples."""
+    """Barras de média |SHAP| (clássicas vs embedding agregado)."""
     import matplotlib
 
     matplotlib.use("Agg")

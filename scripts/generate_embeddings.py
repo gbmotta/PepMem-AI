@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""Generate ESM-2 embeddings for PepMem peptides."""
+"""Gera embeddings ESM-2 para peptídeos PepMem.
+
+Entrada: ``pepmem_base.parquet``. Saída: ``esm2_*.npz``, metadados JSON e
+índice Parquet em ``data/processed/embeddings/``.
+
+Papel no pipeline: representação sequencial para modelo multimodal — precede
+``train_multimodal.py``.
+
+Execução:
+    python scripts/generate_embeddings.py --scope all
+    python scripts/generate_embeddings.py --scope project --missing-only
+"""
 
 from __future__ import annotations
 
@@ -21,6 +32,7 @@ DEFAULT_MODEL = "facebook/esm2_t6_8M_UR50D"
 
 
 def load_peptides(scope: str) -> pd.DataFrame:
+    """Carrega peptídeos do escopo ``project`` (só projeto) ou ``all`` (com sequência)."""
     base = pd.read_parquet(ROOT / "data" / "processed" / "pepmem_base.parquet")
     if scope == "project":
         return base[base["dataset"] == "PepMem-Base-Project"].copy()
@@ -28,6 +40,7 @@ def load_peptides(scope: str) -> pd.DataFrame:
 
 
 def embed_batch(model, tokenizer, sequences: list[str], device: torch.device) -> np.ndarray:
+    """Calcula embedding médio por sequência (pooling com máscara de atenção)."""
     inputs = tokenizer(sequences, return_tensors="pt", padding=True, truncation=True, max_length=512)
     inputs = {k: v.to(device) for k, v in inputs.items()}
     with torch.no_grad():
@@ -41,6 +54,7 @@ def embed_batch(model, tokenizer, sequences: list[str], device: torch.device) ->
 
 
 def main() -> None:
+    """Embute peptídeos em lotes; suporta merge incremental com ``--missing-only``."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--scope", choices=["project", "all"], default="all")
     parser.add_argument("--batch-size", type=int, default=32)
@@ -58,6 +72,7 @@ def main() -> None:
     peptides = load_peptides(args.scope)
     all_path = out_dir / "esm2_all.npz"
 
+    # --- filtrar só peptídeos sem embedding (modo incremental) ---
     if args.missing_only and all_path.exists():
         existing = np.load(all_path, allow_pickle=True)
         have = set(existing["peptide_ids"].tolist())
@@ -85,6 +100,7 @@ def main() -> None:
     matrix = np.vstack(all_emb)
     tag = args.scope
 
+    # --- persistir: merge incremental ou arquivo novo por escopo ---
     if args.missing_only and all_path.exists():
         existing = np.load(all_path, allow_pickle=True)
         merged_ids = np.concatenate([existing["peptide_ids"], np.array(ids, dtype=object)])

@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""Train multimodal RF (clássicas + ESM-2) with leave-one-peptide-out + calibration."""
+"""Treina Random Forest multimodal (clássicas + ESM-2) com LOPO e calibração.
+
+Entrada: pares MIC + embeddings ``esm2_all.npz``.
+Saída: modelo, calibrador, métricas e probs OOF em ``data/processed/models/``.
+
+Rótulo: MIC ≤ 3,4 µM ⇒ alta atividade. LOPO evita vazamento entre alvos do
+mesmo peptídeo; calibração isotônica usa probabilidades OOF do LOPO.
+
+Execução:
+    python scripts/train_multimodal.py
+
+Pré-requisito: ``python scripts/generate_embeddings.py``.
+"""
 
 from __future__ import annotations
 
@@ -26,6 +38,7 @@ from train_utils import (
 
 
 def load_xy() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
+    """Monta matriz de features (clássicas + ESM-2) alinhada aos pares MIC."""
     mic = load_mic_pairs()
     emb_path = ROOT / "data" / "processed" / "embeddings" / "esm2_all.npz"
     if not emb_path.exists():
@@ -56,12 +69,14 @@ def load_xy() -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
 
 
 def main() -> None:
+    """Treina RF multimodal, avalia LOO/LOPO, calibra e persiste artefatos."""
     X, y, groups, kept_rows = load_xy()
     n_features = X.shape[1]
     feature_names = CLASSIC_FEATURES + [f"esm2_{i}" for i in range(n_features - len(CLASSIC_FEATURES))]
 
     print(f"Amostras: {len(y)} | peptídeos: {len(np.unique(groups))} | features: {n_features} | positivos: {y.sum()}/{len(y)}")
 
+    # --- LOO amostra (referência) vs LOPO (validação principal) ---
     factory = lambda: make_rf_pipeline(n_estimators=300, max_depth=6)
     sample = evaluate_sample_loo(X, y, factory)
     peptide = evaluate_leave_one_peptide_out(X, y, groups, factory)
@@ -69,8 +84,10 @@ def main() -> None:
     print(f"LOO amostra AUC: {sample['auc']}")
     print(f"Leave-one-peptide AUC: {peptide['auc']}")
 
+    # --- calibração isotônica nas probs OOF do LOPO ---
     calibrator = fit_isotonic_calibrator(peptide["probs"], y)
 
+    # --- modelo final treinado em todos os dados ---
     final = make_rf_pipeline(n_estimators=300, max_depth=6)
     final.fit(X, y)
 

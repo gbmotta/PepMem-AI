@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""Compute global SHAP importance for baseline and multimodal models."""
+"""Calcula importância global SHAP para modelos baseline e multimodal.
+
+Entrada: pipelines treinados em ``data/processed/models/`` (``.joblib``).
+Saída: JSON de importância global e gráficos beeswarm (PNG).
+
+Papel no pipeline: interpretabilidade pós-treino — executado após
+``train_baseline.py`` e ``train_multimodal.py``.
+
+Execução:
+    python scripts/compute_shap.py
+"""
 
 from __future__ import annotations
 
@@ -15,10 +25,12 @@ from pepmem.shap_explain import plot_beeswarm, save_global_report
 
 
 def main() -> None:
+    """Gera relatórios SHAP e beeswarm para baseline e multimodal (se existirem)."""
     import matplotlib.pyplot as plt
 
     models_dir = ROOT / "data" / "processed" / "models"
 
+    # --- modelo baseline (features clássicas + PMI) ---
     baseline_path = models_dir / "baseline_mic_rf.joblib"
     if baseline_path.exists():
         pipe = joblib.load(baseline_path)
@@ -31,6 +43,7 @@ def main() -> None:
         plt.close(fig)
         print("Beeswarm salvo:", models_dir / "shap_beeswarm_baseline.png")
 
+    # --- modelo multimodal (clássicas + embeddings ESM-2) ---
     multi_path = models_dir / "multimodal_mic_rf.joblib"
     if multi_path.exists():
         pipe = joblib.load(multi_path)

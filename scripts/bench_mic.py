@@ -1,4 +1,15 @@
-"""Load and validate bench (lab) MIC/MBC measurements."""
+"""Carrega e valida medições MIC/MBC da bancada de laboratório.
+
+Entrada: CSVs em ``data/bench/`` (``mic_bench.csv``, ``peptides_bench.csv``,
+``targets_bench.csv``). Saída: DataFrames normalizados consumidos por
+``build_datasets.py`` e ``import_bench_mic.py``.
+
+Papel no pipeline: integra dados experimentais locais ao catálogo de peptídeos
+do projeto, resolve ``peptide_id`` por sequência e gera registros de endpoints.
+
+Uso (como biblioteca):
+    from bench_mic import load_bench_mic, resolve_peptides
+"""
 
 from __future__ import annotations
 
@@ -15,10 +26,12 @@ MIC_REQUIRED = {"target_id", "endpoint", "value"}
 
 
 def _bench_path(name: str) -> Path:
+    """Retorna o caminho absoluto de um CSV em ``data/bench/``."""
     return BENCH_DIR / name
 
 
 def load_csv(name: str) -> pd.DataFrame:
+    """Lê um CSV da bancada, ignorando linhas de comentário e vazias."""
     path = _bench_path(name)
     if not path.exists():
         return pd.DataFrame()
@@ -28,6 +41,7 @@ def load_csv(name: str) -> pd.DataFrame:
 
 
 def normalize_sequence(seq: str | None) -> str | None:
+    """Normaliza sequência peptídica via ``peptide_utils.normalize_sequence``."""
     if seq is None or (isinstance(seq, float) and pd.isna(seq)):
         return None
     from peptide_utils import normalize_sequence as norm
@@ -36,14 +50,17 @@ def normalize_sequence(seq: str | None) -> str | None:
 
 
 def load_bench_peptides() -> pd.DataFrame:
+    """Carrega catálogo de peptídeos da bancada (``peptides_bench.csv``)."""
     return load_csv("peptides_bench.csv")
 
 
 def load_bench_targets() -> pd.DataFrame:
+    """Carrega alvos experimentais da bancada (``targets_bench.csv``)."""
     return load_csv("targets_bench.csv")
 
 
 def load_bench_mic() -> pd.DataFrame:
+    """Carrega e valida medições MIC/MBC (``mic_bench.csv``)."""
     df = load_csv("mic_bench.csv")
     if df.empty:
         return df
@@ -51,6 +68,7 @@ def load_bench_mic() -> pd.DataFrame:
 
 
 def validate_mic_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Valida colunas, endpoints e valores numéricos; normaliza unidades padrão."""
     if df.empty:
         return df
 
@@ -58,6 +76,7 @@ def validate_mic_df(df: pd.DataFrame) -> pd.DataFrame:
     if missing:
         raise ValueError(f"mic_bench.csv: colunas obrigatórias ausentes: {sorted(missing)}")
 
+    # --- validação linha a linha ---
     rows: list[dict[str, Any]] = []
     for i, row in df.iterrows():
         peptide_id = row.get("peptide_id")
@@ -118,6 +137,7 @@ def validate_mic_df(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def next_peptide_id(existing_ids: set[str]) -> str:
+    """Gera próximo ID no formato P01, P02, … a partir dos IDs existentes."""
     nums = []
     for pid in existing_ids:
         m = re.match(r"^P(\d+)$", str(pid))
@@ -132,11 +152,16 @@ def resolve_peptides(
     project_df: pd.DataFrame,
     bench_peptides_df: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
-    """Return updated project_df, resolved mic_df with peptide_id, list of new ids."""
+    """Alinha peptídeos da bancada ao projeto; cria IDs novos quando necessário.
+
+    Retorna ``(project_df atualizado, mic_df com peptide_id, lista de novos IDs)``.
+    """
     project = project_df.copy()
+    # --- índices peptide_id ↔ sequência ---
     id_to_seq = project.set_index("peptide_id")["sequence"].to_dict()
     seq_to_id = {v.upper(): k for k, v in id_to_seq.items() if v}
 
+    # --- incorporar peptídeos explícitos da bancada ---
     for _, row in bench_peptides_df.iterrows():
         pid = str(row["peptide_id"]).strip()
         seq = normalize_sequence(row.get("sequence"))
@@ -156,6 +181,7 @@ def resolve_peptides(
     new_ids: list[str] = []
     existing = set(project["peptide_id"].astype(str))
 
+    # --- resolver peptide_id nas linhas MIC (por ID ou sequência) ---
     for idx, row in resolved.iterrows():
         pid = row.get("peptide_id")
         seq = row.get("sequence")
@@ -196,6 +222,7 @@ def resolve_peptides(
 
 
 def bench_endpoints_records(mic_df: pd.DataFrame) -> list[dict[str, Any]]:
+    """Converte MICs validados em registros compatíveis com ``pepmem_endpoints``."""
     records: list[dict[str, Any]] = []
     for _, row in mic_df.iterrows():
         records.append(

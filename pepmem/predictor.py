@@ -1,4 +1,15 @@
-"""PepMem-AI prediction service."""
+"""Serviço de predição PepMem-AI (inferência + vizinhos + ranking).
+
+Carrega o Random Forest (multimodal ou baseline), calibrador isotônico OOF
+e índice de MICs. Expõe:
+
+- ``predict_pair`` — probabilidade calibrada de alta atividade + incerteza
+- ``find_neighbors`` — peptídeos do treino por identidade / cosine ESM
+- ``explain_pair`` — contribuições SHAP locais
+- ``rank_peptide`` — ranking de alvos com penalidade de toxicidade proxy
+
+Papel no pipeline: API usada pelo dashboard Streamlit e por clientes Python.
+"""
 
 from __future__ import annotations
 
@@ -20,6 +31,7 @@ ESM_MODEL = "facebook/esm2_t6_8M_UR50D"
 
 
 def _seq_identity(a: str, b: str) -> float:
+    """Identidade de sequência por posições alinhadas ao início (≈ global curta)."""
     a, b = a.upper(), b.upper()
     n = max(len(a), len(b))
     if n == 0:
@@ -30,6 +42,8 @@ def _seq_identity(a: str, b: str) -> float:
 
 
 class PepMemPredictor:
+    """Orquestra modelo, embeddings e índice MIC para uma sessão de inferência."""
+
     def __init__(self, use_embeddings: bool = True) -> None:
         self.use_embeddings = use_embeddings
         self.targets = load_targets()
@@ -37,10 +51,12 @@ class PepMemPredictor:
         self._model = self._load_model()
         self._calibrator = self._load_calibrator()
         self._mic_index = self._load_mic_index()
+        # ESM carregado sob demanda (pesado) só se a sequência não estiver no cache
         self._esm = None
         self._tokenizer = None
 
     def _load_embedding_index(self) -> dict[str, np.ndarray]:
+        """Índice sequência → embedding pré-computado (``esm2_all.npz``)."""
         path = ROOT / "data" / "processed" / "embeddings" / "esm2_all.npz"
         if not path.exists():
             return {}
@@ -57,6 +73,7 @@ class PepMemPredictor:
         return by_seq
 
     def _load_model(self):
+        """Carrega RF multimodal; cai para baseline se o multimodal não existir."""
         models_dir = ROOT / "data" / "processed" / "models"
         name = "multimodal_mic_rf.joblib" if self.use_embeddings else "baseline_mic_rf.joblib"
         path = models_dir / name
@@ -66,6 +83,7 @@ class PepMemPredictor:
         return joblib.load(path)
 
     def _load_calibrator(self):
+        """IsotonicRegression ajustado em probs OOF leave-one-peptide-out (opcional)."""
         models_dir = ROOT / "data" / "processed" / "models"
         name = (
             "multimodal_mic_calibrator.joblib"
@@ -81,6 +99,7 @@ class PepMemPredictor:
         return joblib.load(path)
 
     def _load_mic_index(self) -> pd.DataFrame:
+        """Pares com MIC conhecido — base dos vizinhos kNN no dashboard."""
         path = ROOT / "data" / "processed" / "pepmem_pairs.parquet"
         if not path.exists():
             return pd.DataFrame()
@@ -97,6 +116,7 @@ class PepMemPredictor:
         return mic
 
     def _load_esm(self) -> None:
+        """Lazy-load do ESM-2 pequeno (t6_8M) para sequências novas."""
         if self._esm is not None:
             return
         self._tokenizer = AutoTokenizer.from_pretrained(ESM_MODEL)
@@ -104,6 +124,7 @@ class PepMemPredictor:
         self._esm.eval()
 
     def embed_sequence(self, sequence: str) -> np.ndarray:
+        """Retorna embedding mean-pooled; usa cache em disco quando a seq já existe."""
         seq = sequence.upper()
         if seq in self._embeddings_cache:
             return self._embeddings_cache[seq]
@@ -120,9 +141,9 @@ class PepMemPredictor:
         return vec
 
     def _raw_and_calibrated_prob(self, x: np.ndarray) -> tuple[float, float, float]:
-        """Return raw_prob, calibrated_prob, tree_std."""
+        """Probabilidade bruta do RF, calibrada (isotonic) e σ entre árvores."""
         raw = float(self._model.predict_proba(x.reshape(1, -1))[0, 1])
-        # incerteza entre árvores
+        # Discordância entre árvores ≈ incerteza epistêmica do ensemble
         scaler = self._model.named_steps["scaler"]
         clf = self._model.named_steps["clf"]
         xt = scaler.transform(x.reshape(1, -1))
@@ -140,6 +161,7 @@ class PepMemPredictor:
         target_id: str,
         net_charge: float | None = None,
     ) -> dict[str, Any]:
+        """Prediz alta atividade (MIC ≤ 3,4 µM) para um par peptídeo × alvo."""
         x, _, feats = self._feature_vector(sequence, target_id, net_charge=net_charge)
         raw, cal, std = self._raw_and_calibrated_prob(x)
         lo = max(0.0, cal - std)
@@ -164,10 +186,14 @@ class PepMemPredictor:
         k: int = 5,
         target_id: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Vizinhos do treino por identidade de sequência (+ cosine ESM se disponível)."""
+        """Vizinhos do treino por identidade de sequência (+ cosine ESM se disponível).
+
+        Score: ``0.6 * identidade + 0.4 * cosine`` (cai para identidade se não houver emb).
+        """
         if self._mic_index.empty:
             return []
         seq = "".join(c for c in sequence.upper() if c.isalpha())
+        # Uma linha por peptídeo com estatísticas agregadas dos MICs
         uniq = (
             self._mic_index.groupby("peptide_id", as_index=False)
             .agg(
@@ -227,6 +253,7 @@ class PepMemPredictor:
         target_id: str,
         net_charge: float | None = None,
     ) -> tuple[np.ndarray, list[str], dict[str, Any]]:
+        """Monta (x, nomes, dict de features) para o par informado."""
         target = self.targets[self.targets["target_id"] == target_id]
         if target.empty:
             raise ValueError(f"Alvo desconhecido: {target_id}")
@@ -246,6 +273,7 @@ class PepMemPredictor:
         target_id: str,
         net_charge: float | None = None,
     ) -> dict[str, Any]:
+        """Predição + contribuições SHAP locais (fundo = matriz MIC de treino)."""
         from pepmem.shap_explain import explain_instance, load_training_matrix
 
         x, names, feats = self._feature_vector(sequence, target_id, net_charge=net_charge)
@@ -268,6 +296,7 @@ class PepMemPredictor:
         }
 
     def global_shap_report(self) -> dict[str, Any] | None:
+        """Lê o relatório global SHAP persistido em ``data/processed/models/``."""
         fname = "shap_global_multimodal.json" if self.use_embeddings else "shap_global_baseline.json"
         path = ROOT / "data" / "processed" / "models" / fname
         if not path.exists():
@@ -284,10 +313,15 @@ class PepMemPredictor:
         net_charge: float | None = None,
         lambda_tox: float = 0.5,
     ) -> pd.DataFrame:
+        """Rankeia alvos: prob. calibrada − λ · toxicidade proxy (célula normal).
+
+        ``pmi_sel`` (PMI vs membrana normal) entra como bônus leve.
+        """
         ids = target_ids or self.targets["target_id"].tolist()
         rows = [self.predict_pair(sequence, tid, net_charge=net_charge) for tid in ids]
         df = pd.DataFrame(rows)
 
+        # --- seletividade PMI e score final ---
         normal = df[df["target_id"] == "cell_normal"]
         pmi_normal = float(normal["pmi"].iloc[0]) if not normal.empty else 0.0
         df["pmi_normal"] = pmi_normal
@@ -306,12 +340,14 @@ class PepMemPredictor:
         return df
 
     def list_targets(self) -> list[dict[str, Any]]:
+        """Lista alvos disponíveis para o seletor da UI."""
         return self.targets[
             ["target_id", "target", "target_type", "surface_charge", "anionic_fraction"]
         ].to_dict(orient="records")
 
     @property
     def model_info(self) -> dict[str, Any]:
+        """Metadados LOO/LOPO e calibração do modelo ativo (JSON de treino)."""
         meta_path = ROOT / "data" / "processed" / "models" / "multimodal_mic_loo.json"
         if meta_path.exists():
             return json.loads(meta_path.read_text(encoding="utf-8"))

@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""Build staging folder and deploy PepMem-AI to Hugging Face Spaces."""
+"""Monta staging e publica o dashboard PepMem-AI no Hugging Face Spaces.
+
+Entrada: código do projeto + ``data/processed/`` (modelos e datasets).
+Saída: pasta ``.deploy_hf/`` e upload para Space Docker no HF.
+
+Papel no pipeline: deploy da aplicação — requer pipeline completo executado.
+
+Execução:
+    python scripts/deploy_hf_space.py USUARIO
+    python scripts/deploy_hf_space.py --build-only   # só monta staging
+    HF_TOKEN e HF_USERNAME podem vir de .env ou variáveis de ambiente.
+"""
 
 from __future__ import annotations
 
@@ -17,10 +28,12 @@ COPY_FILES = ("requirements-space.txt",)
 
 
 def _ignore(_dir: str, names: list[str]) -> set[str]:
+    """Ignora ``__pycache__`` e bytecode ao copiar diretórios."""
     return {n for n in names if n == "__pycache__" or n.endswith((".pyc", ".pyo"))}
 
 
 def build_stage() -> Path:
+    """Monta pasta ``.deploy_hf/`` com código, dados processados e requirements."""
     if STAGE.exists():
         shutil.rmtree(STAGE)
     STAGE.mkdir(parents=True)
@@ -48,11 +61,13 @@ def build_stage() -> Path:
 
 
 def _dir_size(path: Path) -> float:
+    """Retorna tamanho total do diretório em megabytes."""
     total = sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
     return total / (1024 * 1024)
 
 
 def deploy(username: str, space_name: str, token: str | None) -> str:
+    """Cria ou atualiza Space Docker no HF e envia conteúdo do staging."""
     from huggingface_hub import HfApi
     from huggingface_hub.utils import RepositoryNotFoundError
 
@@ -93,6 +108,7 @@ def deploy(username: str, space_name: str, token: str | None) -> str:
                 "ou reutilize um Space já existente e rode o deploy de novo."
             ) from exc
 
+    # --- ajustes para Space Docker (porta 7860, watcher desligado) ---
     shutil.copy2(ROOT / "Dockerfile", stage / "Dockerfile")
     dockerfile = (stage / "Dockerfile").read_text(encoding="utf-8")
     dockerfile = dockerfile.replace("8501", "7860")
@@ -124,6 +140,7 @@ def deploy(username: str, space_name: str, token: str | None) -> str:
 
 
 def main() -> None:
+    """CLI: monta staging e/ou faz deploy no Hugging Face Spaces."""
     parser = argparse.ArgumentParser(description="Deploy PepMem-AI no Hugging Face Spaces")
     parser.add_argument("username", nargs="?", default=os.environ.get("HF_USERNAME"), help="Usuário HF")
     parser.add_argument("--space", default=os.environ.get("HF_SPACE", "pepmem-ai"), help="Nome do Space")

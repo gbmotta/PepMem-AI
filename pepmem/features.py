@@ -1,4 +1,12 @@
-"""Feature engineering for PepMem-AI inference."""
+"""Engenharia de features para inferência PepMem-AI.
+
+Constrói o vetor clássico (carga, hidrofobicidade, momento, descritores de
+membrana e PMI) a partir de uma sequência e de um ``target_id``. Opcionalmente
+concatena embeddings ESM-2 via ``vectorize``.
+
+Papel no pipeline: compartilhado pelo ``PepMemPredictor``, pelo treino
+multimodal e pelas explicações SHAP.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +18,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# --- features tabulares do modelo baseline (mesma ordem no treino) ---
 CLASSIC_FEATURES = [
     "q_peptide",
     "h_peptide",
@@ -26,11 +35,12 @@ CLASSIC_FEATURES = [
 
 
 def load_targets() -> pd.DataFrame:
+    """Carrega alvos de membrana do projeto e inclui cepas extras presentes nos pares."""
     project = pd.read_parquet(ROOT / "data" / "processed" / "project_membrane_targets.parquet")
     pairs = pd.read_parquet(ROOT / "data" / "processed" / "pepmem_pairs.parquet")
     extra_ids = pairs[~pairs["target_id"].isin(project["target_id"])]["target_id"].unique()
     if len(extra_ids):
-        # Descritores das cepas MDR já presentes nos pares
+        # Descritores das cepas MDR / bancada já normalizados nos pares
         cols = [
             "target_id", "target", "target_type", "surface_charge", "anionic_fraction",
             "cholesterol", "lps", "peptidoglycan", "ergosterol", "viral_envelope",
@@ -41,6 +51,10 @@ def load_targets() -> pd.DataFrame:
 
 
 def peptide_row_from_sequence(sequence: str, net_charge: float | None = None) -> dict[str, Any]:
+    """Normaliza a sequência e calcula q, h e μH (momento hidrofóbico).
+
+    Se ``net_charge`` for informado, prevalece sobre a carga estimada.
+    """
     import sys
 
     sys.path.insert(0, str(ROOT / "scripts"))
@@ -68,11 +82,13 @@ def peptide_row_from_sequence(sequence: str, net_charge: float | None = None) ->
 
 
 def pair_features(peptide: dict[str, Any], target: pd.Series) -> dict[str, Any]:
+    """Junta descritores do peptídeo e do alvo e calcula o PMI do par."""
     import sys
 
     sys.path.insert(0, str(ROOT / "scripts"))
     from pmi import compute_pmi
 
+    # Hidrofobicidade de membrana proxy (constante no baseline atual)
     h_m = 0.5
     chol = float(target.get("cholesterol") or 0)
     pmi = compute_pmi(
@@ -104,6 +120,7 @@ def pair_features(peptide: dict[str, Any], target: pd.Series) -> dict[str, Any]:
 
 
 def vectorize(features: dict[str, Any], embedding: np.ndarray | None, use_embeddings: bool) -> np.ndarray:
+    """Monta o vetor de entrada do RF: features clássicas (+ ESM-2 se ativo)."""
     classic = np.array([features[k] for k in CLASSIC_FEATURES], dtype=np.float32)
     if use_embeddings and embedding is not None:
         return np.concatenate([classic, embedding.astype(np.float32)])
