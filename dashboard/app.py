@@ -1251,16 +1251,63 @@ with tab_rank:
 
 # --- aba XAI ---
 with tab_xai:
-    info_box(
-        "SHAP — interpretação rápida",
-        "Barras/valores <strong>positivos</strong> empurram para alta atividade; "
-        "<strong>negativos</strong> empurram para o contrário.<br/>"
-        "O beeswarm mostra o efeito de cada descritor em todo o treino. "
-        "É uma explicação do modelo, não prova biológica.",
-    )
-    st.caption(
-        f"Treino atual: **{n_train}** pares MIC · rótulo: MIC ≤ 3,4 µM = alta atividade."
-    )
+    with st.container(border=True):
+        tile_title("Como funciona o SHAP neste projeto", "XAI do Random Forest · PepMem-AI")
+        st.markdown(
+            f"""
+**SHAP** (*SHapley Additive exPlanations*) estima **quanto cada descritor contribui**
+para a saída do modelo — aqui, a chance de **alta atividade** (MIC ≤ 3,4 µM).
+
+A ideia vem dos valores de Shapley (teoria dos jogos): cada feature recebe um “crédito”
+justo pela diferença entre a predição com e sem ela, em média sobre combinações possíveis.
+No PepMem-AI usamos **TreeExplainer** sobre o Random Forest (baseline e, no Space, multimodal).
+
+### O que o SHAP responde
+- **Por que** este peptídeo × membrana ficou com essa probabilidade?
+- Quais fatores (**PMI**, carga, LPS, peptidoglicano, embedding ESM-2 agregado, etc.)
+  **empurram a favor** ou **contra** a alta atividade **nesta** instância?
+- No treino inteiro, quais descritores o modelo **mais usa** em média?
+
+### Como ler os sinais
+| Sinal | Significado no PepMem-AI |
+|-------|---------------------------|
+| Valor **positivo** | Empurra a predição **para** alta atividade (MIC ≤ 3,4 µM) |
+| Valor **negativo** | Empurra **contra** alta atividade |
+| |SHAP| grande | Feature influente **nessa** predição (ou no treino, se for global) |
+
+A soma das contribuições + valor-base do modelo aproxima a saída bruta do RF
+(antes da calibração isotônica mostrada no dashboard).
+
+### Três visuais nesta aba
+1. **Importância global** — média de |SHAP| nos ~{n_train} pares MIC de treino:
+   ranking dos descritores que o modelo mais “consulta” em geral.
+2. **Beeswarm** — cada ponto = um par MIC; posição horizontal = impacto SHAP;
+   cor ≈ valor do descritor (alto/baixo). Mostra **dispersão** e interação tipica.
+3. **SHAP local** — barras para **uma** sequência × membrana que você escolher:
+   a história daquela predição específica.
+
+### Baseline × multimodal
+- **Baseline:** descritores clássicos + PMI (o que o Cloud leve costuma usar).
+- **Multimodal:** clássicas + bloco agregado do embedding ESM-2 (quando o Space/local
+  tem PyTorch). No Cloud sem torch, o beeswarm multimodal pode ser só o PNG pré-computado.
+
+### Limites importantes
+- SHAP explica o **modelo treinado**, não prova mecanismo biológico nem substitui MIC.
+- Com poucos peptídeos/análogos, importância global pode refletir **vieses da amostra**.
+- A probabilidade do dashboard é **calibrada (LOPO)**; o SHAP local costuma falar da
+  saída do RF — use os dois juntos: números calibrados + narrativa das features.
+
+Treino atual: **{n_train}** pares MIC · rótulo: MIC ≤ 3,4 µM = alta atividade.
+"""
+        )
+        with st.expander("Leitura rápida (resumo)"):
+            st.markdown(
+                "- **Global** → o que o modelo mais usa no treino\n"
+                "- **Beeswarm** → como cada feature se comporta nos MICs\n"
+                "- **Local** → por que *este* par teve *esta* predição\n"
+                "- Positivo = favorece alta atividade · Negativo = desfavorece\n"
+                "- Sempre priorize ensaio in vitro; SHAP é mapa do modelo"
+            )
 
     global_report = predictor.global_shap_report()
     baseline_path = ROOT / "data" / "processed" / "models" / "shap_global_baseline.json"
