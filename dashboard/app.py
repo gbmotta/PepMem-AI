@@ -9,6 +9,7 @@ Execução local:
 
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import sys
@@ -284,13 +285,62 @@ def humanize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns=rename)
 
 
-def show_table(df: pd.DataFrame, max_text_len: int = 40) -> None:
-    """Tabela truncada com cabeçalhos em texto comum."""
-    view = humanize_columns(df.copy())
+def _prob_as_float(value: object) -> float | None:
+    """Converte célula de probabilidade (float ou '70.0%') para [0, 1]."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    if isinstance(value, str):
+        s = value.strip().replace(",", ".")
+        if s.endswith("%"):
+            try:
+                return float(s[:-1]) / 100.0
+            except ValueError:
+                return None
+        try:
+            return float(s)
+        except ValueError:
+            return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def show_table(
+    df: pd.DataFrame,
+    max_text_len: int = 40,
+    *,
+    highlight_col: str | None = None,
+    highlight_gte: float = 0.70,
+) -> None:
+    """Tabela truncada com cabeçalhos legíveis; opcionalmente destaca linhas ≥ limiar."""
+    raw = df.copy()
+    view = humanize_columns(raw)
     for col in view.columns:
         if view[col].dtype == object:
             view[col] = view[col].map(lambda x: truncate_text(x, max_text_len))
-    st.dataframe(view, use_container_width=True, hide_index=True)
+
+    tech_col = None
+    if highlight_col and highlight_col in raw.columns:
+        tech_col = highlight_col
+    elif highlight_col:
+        inv = {v: k for k, v in COLUMN_LABELS.items()}
+        cand = inv.get(highlight_col)
+        if cand and cand in raw.columns:
+            tech_col = cand
+
+    if tech_col is not None:
+        probs = raw[tech_col].map(_prob_as_float)
+
+        def _style_row(row: pd.Series) -> list[str]:
+            prob = probs.loc[row.name] if row.name in probs.index else None
+            if prob is not None and prob >= highlight_gte:
+                return ["background-color: rgba(47, 125, 74, 0.16)"] * len(row)
+            return [""] * len(row)
+
+        st.dataframe(view.style.apply(_style_row, axis=1), use_container_width=True, hide_index=True)
+    else:
+        st.dataframe(view, use_container_width=True, hide_index=True)
 
 
 def show_png(data) -> None:
@@ -329,7 +379,7 @@ def lookup_sequence(seq: str) -> dict | None:
 
 
 def render_result_banner(prob: float, in_db: dict | None) -> None:
-    """Banner de interpretação + badge no banco / fora do treino."""
+    """Resultado herói: probabilidade grande + faixa + badge banco."""
     css, title, msg = activity_band(prob)
     if in_db is not None:
         badge = (
@@ -340,10 +390,37 @@ def render_result_banner(prob: float, in_db: dict | None) -> None:
     else:
         badge = '<span class="pm-badge out">Fora do treino · predição generalizada</span>'
     st.markdown(
-        f'<div class="pm-result {css}">{badge}<h3>{html.escape(title)}</h3>'
-        f"<p>{html.escape(msg)}</p></div>",
+        f'<div class="pm-hero {css}">'
+        f'<div class="pm-hero-prob">{prob:.0%}</div>'
+        f'<div class="pm-hero-body">{badge}'
+        f"<h3>{html.escape(title)}</h3>"
+        f"<p>{html.escape(msg)}</p></div></div>",
         unsafe_allow_html=True,
     )
+
+
+def empty_cta(title: str, body: str) -> None:
+    """Estado vazio com CTA claro (o que fazer agora)."""
+    st.markdown(
+        f'<div class="pm-empty"><strong>{html.escape(title)}</strong>'
+        f"<p>{html.escape(body)}</p></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _report_fingerprint(report) -> str:
+    """Hash estável do conteúdo (ignora generated_at) para cache de export."""
+    parts: list[str] = [str(report.title), str(report.subtitle)]
+    for sec in report.sections:
+        parts.append(str(sec.title))
+        parts.extend(str(x) for x in (sec.paragraphs or []))
+        parts.extend(str(x) for x in (sec.bullets or []))
+        if sec.table_headers:
+            parts.extend(str(x) for x in sec.table_headers)
+        if sec.table_rows:
+            for row in sec.table_rows:
+                parts.extend(str(c) for c in row)
+    return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
 
 
 def render_shap_block(expl: dict, target_label: str) -> None:
@@ -381,40 +458,45 @@ def render_narrative_box(text: str, source: str) -> None:
 
 
 def render_report_downloads(report, key_prefix: str, filename_stem: str) -> None:
-    """Botões MD / DOCX / PDF para um relatório montado."""
-    try:
-        bundle = export_report_bundle(report)
-    except Exception as e:
-        st.warning(f"Não foi possível gerar os arquivos do relatório: {e}")
-        return
-    st.caption("Baixar relatório organizado (Markdown · Word · PDF)")
-    c1, c2, c3 = st.columns(3)
+    """Um seletor de formato + download; bundle cacheado por fingerprint do conteúdo."""
+    fp = _report_fingerprint(report)
+    key_slot = f"_bundle_key_{key_prefix}"
+    cache_slot = f"_bundle_{key_prefix}"
+    if st.session_state.get(key_slot) != fp:
+        try:
+            st.session_state[cache_slot] = export_report_bundle(report)
+            st.session_state[key_slot] = fp
+        except Exception as e:
+            st.warning(f"Não foi possível gerar os arquivos do relatório: {e}")
+            return
+    bundle = st.session_state[cache_slot]
+
+    fmt_labels = {
+        "PDF (.pdf)": ("pdf", "pdf", "application/pdf"),
+        "Word (.docx)": (
+            "docx",
+            "docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ),
+        "Markdown (.md)": ("md", "md", "text/markdown"),
+    }
+    c1, c2 = st.columns([1.2, 1.0])
     with c1:
-        st.download_button(
-            "Markdown (.md)",
-            data=bundle["md"],
-            file_name=f"{filename_stem}.md",
-            mime="text/markdown",
-            use_container_width=True,
-            key=f"{key_prefix}_md",
+        fmt = st.selectbox(
+            "Formato do relatório",
+            options=list(fmt_labels.keys()),
+            key=f"{key_prefix}_fmt",
         )
+    bundle_key, ext, mime = fmt_labels[fmt]
     with c2:
+        st.write("")  # alinha verticalmente com o selectbox
         st.download_button(
-            "Word (.docx)",
-            data=bundle["docx"],
-            file_name=f"{filename_stem}.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            f"Baixar relatório ({ext.upper()})",
+            data=bundle[bundle_key],
+            file_name=f"{filename_stem}.{ext}",
+            mime=mime,
             use_container_width=True,
-            key=f"{key_prefix}_docx",
-        )
-    with c3:
-        st.download_button(
-            "PDF (.pdf)",
-            data=bundle["pdf"],
-            file_name=f"{filename_stem}.pdf",
-            mime="application/pdf",
-            use_container_width=True,
-            key=f"{key_prefix}_pdf",
+            key=f"{key_prefix}_dl",
         )
 
 
@@ -442,6 +524,25 @@ def apply_fasta_sequence(seq: str, header: str = "") -> None:
     st.session_state["seq_main"] = seq
     if header:
         st.session_state["fasta_header"] = header
+
+
+def clear_session_results() -> None:
+    """Callback: limpa predições / narrativas / caches de relatório da sessão."""
+    for k in (
+        "last_single",
+        "last_single_narrative",
+        "last_batch",
+        "last_batch_narrative",
+        "last_shap_overview_narrative",
+        "last_xai_local",
+        "last_xai_narrative",
+        "last_rank",
+        "last_rank_narrative",
+    ):
+        st.session_state.pop(k, None)
+    for k in list(st.session_state.keys()):
+        if str(k).startswith("_bundle_") or str(k).startswith("_bundle_key_"):
+            st.session_state.pop(k, None)
 
 
 def _decode_upload_bytes(raw: bytes) -> str:
@@ -496,6 +597,11 @@ if "charge_main" not in st.session_state:
 if "use_charge_main" not in st.session_state:
     st.session_state["use_charge_main"] = True
 
+if "charge_batch" not in st.session_state:
+    st.session_state["charge_batch"] = float(st.session_state.get("charge_main", 3.0))
+if "use_charge_batch" not in st.session_state:
+    st.session_state["use_charge_batch"] = False
+
 # --- sidebar = painel útil ---
 with st.sidebar:
     st.markdown("### PepMem-AI")
@@ -529,10 +635,14 @@ with st.sidebar:
         key="sidebar_preset",
         label_visibility="collapsed",
     )
-    if st.button("Aplicar exemplo", use_container_width=True, key="sidebar_apply_preset"):
-        _, pseq, pch = next(p for p in side_presets if p[0] == side_pick)
-        apply_preset(pseq, float(pch))
-        st.rerun()
+    _, pseq, pch = next(p for p in side_presets if p[0] == side_pick)
+    st.button(
+        "Aplicar exemplo",
+        use_container_width=True,
+        key="sidebar_apply_preset",
+        on_click=apply_preset,
+        args=(pseq, float(pch)),
+    )
 
     st.markdown("---")
     st.markdown("##### Onde ir")
@@ -540,7 +650,7 @@ with st.sidebar:
         "- **Predição** — 1 peptídeo ou lote FASTA\n"
         "- **Ranking** — multi-alvo + relatório\n"
         "- **XAI** — SHAP / beeswarm\n"
-        "- **Datasets** — peptídeos do projeto"
+        "- **Dados** — peptídeos do projeto · API local"
     )
 
     last = st.session_state.get("last_single")
@@ -555,25 +665,17 @@ with st.sidebar:
         st.caption(last.get("target_label", last.get("target_id", ""))[:48])
         st.metric("Prob. calibrada", f"{prob:.0%}", help="Da última predição nesta sessão")
         st.caption(f"PMI {float(res['pmi']):.3f}")
-        if st.button("Limpar resultado", use_container_width=True, key="sidebar_clear"):
-            for k in (
-                "last_single",
-                "last_single_narrative",
-                "last_batch",
-                "last_batch_narrative",
-                "last_shap_overview_narrative",
-                "last_xai_local",
-                "last_xai_narrative",
-                "last_rank",
-                "last_rank_narrative",
-            ):
-                st.session_state.pop(k, None)
-            st.rerun()
+        st.button(
+            "Limpar resultado",
+            use_container_width=True,
+            key="sidebar_clear",
+            on_click=clear_session_results,
+        )
 
     st.markdown("---")
     with st.expander("Dica de lote"):
         st.caption(
-            "Na aba Predição: envie um multi-FASTA ou vários arquivos, "
+            "Em Predição → Lote: envie um multi-FASTA ou vários arquivos, "
             "escolha a membrana e clique em Predizer todas."
         )
     with st.expander("Retreino com MIC novo"):
@@ -632,12 +734,20 @@ info_box(
     "3) Use o resultado para <strong>priorizar</strong> ensaios in vitro — não substitui o laboratório.",
 )
 
-tab_pred, tab_rank, tab_xai, tab_data, tab_api = st.tabs(
-    ["Predição", "Ranking", "XAI (SHAP)", "Datasets", "API"]
+st.markdown('<div class="pm-nav-wrap">', unsafe_allow_html=True)
+page = st.radio(
+    "Seção",
+    options=["Predição", "Ranking", "XAI", "Dados"],
+    horizontal=True,
+    key="main_nav",
+    label_visibility="collapsed",
 )
+st.markdown("</div>", unsafe_allow_html=True)
 
-# --- aba Predição ---
-with tab_pred:
+# ---------------------------------------------------------------------------
+# Predição
+# ---------------------------------------------------------------------------
+if page == "Predição":
     info_box(
         "Como ler a predição",
         "<strong>≥ 70%</strong> → candidato forte · "
@@ -648,196 +758,398 @@ with tab_pred:
         "Confirme sempre na bancada.",
     )
 
-    with st.container(border=True):
-        tile_title(
-            "Par peptídeo × membrana",
-            "Lote (multi-FASTA / vários arquivos) ou predição única",
-        )
-        st.caption(
-            "Exemplos **conhecidos do projeto** já têm MIC no treino. "
-            "Exemplos **novos** servem só para testar a predição (não estão no modelo)."
-        )
+    sub_unica, sub_lote = st.tabs(["Única", "Lote"])
 
-        preset_labels = [p[0] for p in PRESETS]
-        chosen = st.selectbox("Carregar exemplo (opcional)", options=preset_labels, key="preset_select")
-        if chosen != preset_labels[0]:
-            _, pseq, pch = next(p for p in PRESETS if p[0] == chosen)
-            if st.button("Aplicar exemplo", use_container_width=True):
-                apply_preset(pseq, float(pch))
-                st.rerun()
+    preferred = "S_aureus_ATCC29213"
+    keys = list(target_options.keys())
+    idx_pref = keys.index(preferred) if preferred in keys else 0
 
-        st.markdown(
-            '<div class="pm-hint-box">'
-            "<strong>Peptídeo novo com MIC da bancada?</strong> "
-            "Edite <code>data/bench/mic_bench.csv</code> e rode "
-            "<code>python scripts/import_bench_mic.py --retrain</code>."
-            "</div>",
-            unsafe_allow_html=True,
-        )
-
-        st.markdown("##### Lote: vários peptídeos de uma vez")
-        st.caption(
-            "Envie **um multi-FASTA**, **vários arquivos** `.fasta`/`.fa`, ou **cole** "
-            "vários registros (`>header` + sequência). Todos usam a mesma membrana-alvo abaixo."
-        )
-        fasta_files = st.file_uploader(
-            "Arquivo(s) FASTA",
-            type=["fasta", "fa", "faa", "fna", "txt"],
-            accept_multiple_files=True,
-            help="Um multi-FASTA ou vários arquivos; cada >header vira uma predição",
-            key="fasta_upload",
-        )
-        fasta_paste = st.text_area(
-            "Ou cole multi-FASTA aqui",
-            height=110,
-            placeholder=">pep1\nFFSLIPKLVKGLISAFK\n>pep2\nGILGKLWEGVKSIF\n…",
-            key="fasta_paste",
-        )
-
-        fasta_recs: list[dict] = []
-        try:
-            fasta_recs.extend(merge_fasta_uploads(fasta_files))
-            if (fasta_paste or "").strip():
-                fasta_recs.extend(load_fasta_from_text(fasta_paste, source="colar"))
-        except Exception as e:
-            st.error(f"FASTA inválido: {e}")
-            fasta_recs = []
-
-        # Deduplica por sequência (mantém o primeiro header)
-        seen_seq: set[str] = set()
-        deduped: list[dict] = []
-        for r in fasta_recs:
-            seq = r["sequence"]
-            if seq in seen_seq:
-                continue
-            seen_seq.add(seq)
-            deduped.append(r)
-        fasta_recs = deduped
-
-        run_fasta_batch = False
-        if fasta_recs:
-            n_files = len(fasta_files) if fasta_files else 0
-            src_note = []
-            if n_files:
-                src_note.append(f"{n_files} arquivo(s)")
-            if (fasta_paste or "").strip():
-                src_note.append("texto colado")
-            st.success(
-                f"**{len(fasta_recs)}** peptídeo(s) prontos"
-                + (f" · {' + '.join(src_note)}" if src_note else "")
+    with sub_unica:
+        with st.container(border=True):
+            tile_title("Par peptídeo × membrana", "Uma sequência · uma membrana")
+            st.caption(
+                "Exemplos **conhecidos do projeto** já têm MIC no treino. "
+                "Exemplos **novos** servem só para testar a predição."
             )
-            preview = pd.DataFrame(
+
+            preset_labels = [p[0] for p in PRESETS]
+            chosen = st.selectbox(
+                "Carregar exemplo (opcional)", options=preset_labels, key="preset_select"
+            )
+            if chosen != preset_labels[0]:
+                _, pseq, pch = next(p for p in PRESETS if p[0] == chosen)
+                st.button(
+                    "Aplicar exemplo",
+                    use_container_width=True,
+                    key="pred_apply_preset",
+                    on_click=apply_preset,
+                    args=(pseq, float(pch)),
+                )
+
+            st.markdown(
+                '<div class="pm-hint-box">'
+                "<strong>Peptídeo novo com MIC da bancada?</strong> "
+                "Edite <code>data/bench/mic_bench.csv</code> e rode "
+                "<code>python scripts/import_bench_mic.py --retrain</code>."
+                "</div>",
+                unsafe_allow_html=True,
+            )
+
+            sequence = st.text_input(
+                "Sequência (letra única)",
+                key="seq_main",
+                help="Cole a sequência de aminoácidos",
+                placeholder="Ex.: FFSLIPKLVAGLISAFK",
+            )
+            if st.session_state.get("fasta_header"):
+                st.caption(f"FASTA: **{st.session_state['fasta_header']}**")
+            hit = lookup_sequence(sequence or "")
+            if hit is not None:
+                st.caption(
+                    f"Este peptídeo já está no projeto: **{hit.get('peptide_id')} · {hit.get('name')}**"
+                )
+            else:
+                st.caption("Sequência nova para o modelo (predição generalizada).")
+
+            c1, c2 = st.columns(2)
+            with c1:
+                use_charge = st.checkbox("Informar carga manualmente", key="use_charge_main")
+            with c2:
+                net_charge = st.number_input(
+                    "Carga líquida",
+                    step=1.0,
+                    format="%.1f",
+                    key="charge_main",
+                    disabled=not use_charge,
+                )
+            charge = float(net_charge) if use_charge else None
+
+            target_id = st.selectbox(
+                "Membrana-alvo",
+                options=keys,
+                index=idx_pref,
+                format_func=format_target_label,
+                key="target_unica",
+            )
+            run_pred = st.button("Predizer", type="primary", use_container_width=True)
+
+        if run_pred:
+            with st.spinner("Descritores · PMI · modelo RF…"):
+                try:
+                    res = predictor.predict_pair(sequence, target_id, net_charge=charge)
+                except ValueError as e:
+                    st.error(str(e))
+                    st.stop()
+
+            neighbors = predictor.find_neighbors(sequence, k=5, target_id=target_id)
+            shap_top = None
+            try:
+                expl = cached_explain(sequence, target_id, charge)
+                shap_top = expl.get("shap_contributions")
+            except Exception:
+                expl = None
+
+            lo = res.get("pred_interval_low")
+            hi = res.get("pred_interval_high")
+            interval = (
+                f"{100 * float(lo):.0f}–{100 * float(hi):.0f}%"
+                if lo is not None and hi is not None
+                else "—"
+            )
+            st.session_state["last_single"] = {
+                "res": res,
+                "sequence": sequence,
+                "target_id": target_id,
+                "target_label": target_options[target_id],
+                "charge": charge,
+                "hit": hit,
+                "neighbors": neighbors,
+                "expl": expl,
+                "interval": interval,
+            }
+            st.session_state.pop("last_single_narrative", None)
+
+        if st.session_state.get("last_single"):
+            snap = st.session_state["last_single"]
+            res = snap["res"]
+            sequence = snap["sequence"]
+            target_id = snap["target_id"]
+            hit = snap.get("hit")
+            neighbors = snap.get("neighbors") or []
+            expl = snap.get("expl")
+            interval = snap.get("interval") or "—"
+            prob = float(res["pred_high_activity_prob"])
+
+            render_result_banner(prob, hit)
+            kpi_row(
                 [
                     {
-                        "header": (r.get("header") or f"seq_{i+1}")[:48],
-                        "sequence": r["sequence"],
-                        "aa": len(r["sequence"]),
-                        "origem": r.get("source", ""),
-                    }
-                    for i, r in enumerate(fasta_recs)
-                ]
+                        "label": "PMI",
+                        "value": f"{res['pmi']:.3f}",
+                        "hint": "índice peptídeo–membrana",
+                        "tone": "membrane",
+                    },
+                    {
+                        "label": "Prob. calibrada",
+                        "value": f"{prob:.1%}",
+                        "hint": "isotonic LOPO",
+                        "tone": "ok" if prob >= 0.7 else ("warn" if prob < 0.4 else None),
+                    },
+                    {
+                        "label": "Intervalo (árvores)",
+                        "value": interval,
+                        "hint": f"σ = {float(res.get('pred_uncertainty_std') or 0):.3f}",
+                    },
+                    {
+                        "label": "Carga (q)",
+                        "value": f"{res['q_peptide']:.1f}",
+                        "hint": "peptídeo catiônico",
+                    },
+                ],
+                cols=4,
             )
-            show_table(preview, max_text_len=42)
 
-            labels = [
-                f"{(r.get('header') or f'seq_{i+1}')[:40]} · {r['sequence'][:14]}"
-                + ("…" if len(r["sequence"]) > 14 else "")
-                for i, r in enumerate(fasta_recs)
-            ]
-            pick = st.selectbox(
-                "Usar uma sequência no formulário abaixo (opcional)",
-                options=list(range(len(fasta_recs))),
-                format_func=lambda i: labels[i],
-                key="fasta_pick",
-            )
-            c_fa1, c_fa2 = st.columns(2)
-            with c_fa1:
-                st.button(
-                    "Usar esta sequência",
-                    use_container_width=True,
-                    on_click=apply_fasta_sequence,
-                    args=(
-                        fasta_recs[pick]["sequence"],
-                        fasta_recs[pick].get("header") or "",
-                    ),
+            if res.get("pred_high_activity_prob_raw") is not None:
+                st.caption(
+                    f"Prob. bruta: {float(res['pred_high_activity_prob_raw']):.1%} · "
+                    f"σ árvores: {float(res.get('pred_uncertainty_std') or 0):.3f}"
                 )
-            with c_fa2:
-                run_fasta_batch = st.button(
-                    f"Predizer todas ({len(fasta_recs)})",
-                    type="primary",
-                    use_container_width=True,
-                    key="fasta_batch_btn",
+
+            with st.container(border=True):
+                tile_title("Explicação em português", "Priorização para bancada")
+                narrative_engine_caption()
+                if st.button("Explicar resultado", type="primary", key="btn_narrate_single"):
+                    with st.spinner("Gerando explicação…"):
+                        out = narrate_single(
+                            sequence=sequence,
+                            target_label=snap["target_label"],
+                            prob=prob,
+                            pmi=float(res["pmi"]),
+                            interval=interval,
+                            q_peptide=float(res["q_peptide"]),
+                            neighbors=neighbors,
+                            shap_top=expl.get("shap_contributions") if expl else None,
+                            in_project=hit is not None,
+                            prefer_llm=True,
+                        )
+                        st.session_state["last_single_narrative"] = out
+                if st.session_state.get("last_single_narrative"):
+                    out = st.session_state["last_single_narrative"]
+                    render_narrative_box(out["text"], out["source"])
+
+                narr = (st.session_state.get("last_single_narrative") or {}).get("text")
+                shap_rows = expl.get("shap_contributions") if expl is not None else None
+                report = build_single_report(
+                    sequence=sequence,
+                    target_label=snap["target_label"],
+                    res=res,
+                    narrative=narr,
+                    neighbors=neighbors,
+                    shap_top=shap_rows,
+                    interval=interval,
+                    in_project=hit is not None,
                 )
-            st.session_state["fasta_records"] = fasta_recs
+                render_report_downloads(report, "single_report", "pepmem_relatorio_predicao")
+
+            with st.container(border=True):
+                tile_title("Vizinhos no treino", "Identidade + cosine ESM-2")
+                st.caption(
+                    "Peptídeos parecidos no treino ajudam a contextualizar o resultado."
+                )
+                if neighbors:
+                    ndf = pd.DataFrame(neighbors)[
+                        [
+                            "peptide_id",
+                            "name",
+                            "identity",
+                            "neighbor_score",
+                            "mic_median_uM",
+                            "frac_high_activity",
+                        ]
+                    ]
+                    if "mic_on_target_uM" in neighbors[0]:
+                        ndf["mic_alvo"] = [n.get("mic_on_target_uM") for n in neighbors]
+                    show_table(ndf, max_text_len=28)
+                    top = neighbors[0]
+                    st.caption(
+                        f"Mais próximo: **{top['peptide_id']}** ({top.get('name')}) · "
+                        f"identidade {100 * top['identity']:.0f}% · "
+                        f"MIC mediana {top['mic_median_uM']} µM"
+                    )
+                else:
+                    st.caption("Sem índice MIC para vizinhos.")
+
+            with st.expander("Detalhes da resposta"):
+                st.code(res["sequence"], language=None)
+                st.json({k: v for k, v in res.items() if k != "sequence"})
+
+            with st.expander("Explicação SHAP (contribuições locais)"):
+                if expl is not None:
+                    render_shap_block(expl, snap["target_label"])
+                else:
+                    try:
+                        expl2 = cached_explain(sequence, target_id, snap.get("charge"))
+                        render_shap_block(expl2, snap["target_label"])
+                    except Exception as e:
+                        st.warning(f"SHAP indisponível: {e}")
         else:
-            if fasta_files or (fasta_paste or "").strip():
-                st.warning(
-                    "Nenhuma sequência válida encontrada. Use headers `>` e aminoácidos A–Y."
-                )
-            if "fasta_records" in st.session_state:
-                del st.session_state["fasta_records"]
+            empty_cta(
+                "Ainda sem predição nesta sessão",
+                "Cole uma sequência (ou aplique um exemplo), escolha a membrana e clique em Predizer.",
+            )
 
-        st.markdown("##### Predição única")
-        sequence = st.text_input(
-            "Sequência (letra única)",
-            key="seq_main",
-            help="Cole a sequência de aminoácidos",
-            placeholder="Ex.: FFSLIPKLVAGLISAFK",
-        )
-        if st.session_state.get("fasta_header"):
-            st.caption(f"FASTA: **{st.session_state['fasta_header']}**")
-        hit = lookup_sequence(sequence or "")
-        if hit is not None:
+    with sub_lote:
+        with st.container(border=True):
+            tile_title("Lote FASTA", "Vários peptídeos · mesma membrana")
             st.caption(
-                f"Este peptídeo já está no projeto: **{hit.get('peptide_id')} · {hit.get('name')}**"
+                "Envie **um multi-FASTA**, **vários arquivos** `.fasta`/`.fa`, ou **cole** "
+                "vários registros (`>header` + sequência)."
             )
-        else:
-            st.caption("Sequência nova para o modelo (predição generalizada).")
+            fasta_files = st.file_uploader(
+                "Arquivo(s) FASTA",
+                type=["fasta", "fa", "faa", "fna", "txt"],
+                accept_multiple_files=True,
+                help="Um multi-FASTA ou vários arquivos; cada >header vira uma predição",
+                key="fasta_upload",
+            )
+            fasta_paste = st.text_area(
+                "Ou cole multi-FASTA aqui",
+                height=110,
+                placeholder=">pep1\nFFSLIPKLVKGLISAFK\n>pep2\nGILGKLWEGVKSIF\n…",
+                key="fasta_paste",
+            )
 
-        c1, c2 = st.columns(2)
-        with c1:
-            use_charge = st.checkbox("Informar carga manualmente", key="use_charge_main")
-        with c2:
-            net_charge = st.number_input(
-                "Carga líquida",
+            fasta_recs: list[dict] = []
+            try:
+                fasta_recs.extend(merge_fasta_uploads(fasta_files))
+                if (fasta_paste or "").strip():
+                    fasta_recs.extend(load_fasta_from_text(fasta_paste, source="colar"))
+            except Exception as e:
+                st.error(f"FASTA inválido: {e}")
+                fasta_recs = []
+
+            seen_seq: set[str] = set()
+            deduped: list[dict] = []
+            for r in fasta_recs:
+                seq = r["sequence"]
+                if seq in seen_seq:
+                    continue
+                seen_seq.add(seq)
+                deduped.append(r)
+            fasta_recs = deduped
+
+            use_charge_batch = st.checkbox(
+                "Fixar carga para todo o lote",
+                key="use_charge_batch",
+            )
+            net_charge_batch = st.number_input(
+                "Carga líquida (lote)",
                 step=1.0,
                 format="%.1f",
-                key="charge_main",
-                disabled=not use_charge,
+                key="charge_batch",
+                disabled=not use_charge_batch,
             )
-        charge = float(net_charge) if use_charge else None
+            batch_charge = float(net_charge_batch) if use_charge_batch else None
 
-        preferred = "S_aureus_ATCC29213"
-        keys = list(target_options.keys())
-        idx = keys.index(preferred) if preferred in keys else 0
-        target_id = st.selectbox(
-            "Membrana-alvo",
-            options=keys,
-            index=idx,
-            format_func=format_target_label,
-        )
-        run_pred = st.button("Predizer (única)", use_container_width=True)
-
-    if run_fasta_batch:
-        batch_recs = st.session_state.get("fasta_records") or []
-        if not batch_recs:
-            st.warning("Carregue ou cole um FASTA antes de predizer em lote.")
-        else:
-            # No lote: carga automática por sequência, salvo override manual
-            batch_charge = charge  # None → estimado por peptídeo
-            charge_note = (
-                f"carga fixa {batch_charge:g}"
-                if batch_charge is not None
-                else "carga estimada por sequência"
+            target_id_lote = st.selectbox(
+                "Membrana-alvo (lote)",
+                options=keys,
+                index=idx_pref,
+                format_func=format_target_label,
+                key="target_lote",
             )
-            with st.spinner(f"Predizendo {len(batch_recs)} sequências…"):
+
+            run_fasta_batch = False
+            if fasta_recs:
+                n_files = len(fasta_files) if fasta_files else 0
+                src_note = []
+                if n_files:
+                    src_note.append(f"{n_files} arquivo(s)")
+                if (fasta_paste or "").strip():
+                    src_note.append("texto colado")
+                st.success(
+                    f"**{len(fasta_recs)}** peptídeo(s) prontos"
+                    + (f" · {' + '.join(src_note)}" if src_note else "")
+                )
+                preview = pd.DataFrame(
+                    [
+                        {
+                            "header": (r.get("header") or f"seq_{i+1}")[:48],
+                            "sequence": r["sequence"],
+                            "aa": len(r["sequence"]),
+                            "origem": r.get("source", ""),
+                        }
+                        for i, r in enumerate(fasta_recs)
+                    ]
+                )
+                show_table(preview, max_text_len=42)
+
+                labels = [
+                    f"{(r.get('header') or f'seq_{i+1}')[:40]} · {r['sequence'][:14]}"
+                    + ("…" if len(r["sequence"]) > 14 else "")
+                    for i, r in enumerate(fasta_recs)
+                ]
+                pick = st.selectbox(
+                    "Usar uma sequência na aba Única (opcional)",
+                    options=list(range(len(fasta_recs))),
+                    format_func=lambda i: labels[i],
+                    key="fasta_pick",
+                )
+                c_fa1, c_fa2 = st.columns(2)
+                with c_fa1:
+                    st.button(
+                        "Usar esta sequência",
+                        use_container_width=True,
+                        on_click=apply_fasta_sequence,
+                        args=(
+                            fasta_recs[pick]["sequence"],
+                            fasta_recs[pick].get("header") or "",
+                        ),
+                    )
+                with c_fa2:
+                    run_fasta_batch = st.button(
+                        f"Predizer todas ({len(fasta_recs)})",
+                        type="primary",
+                        use_container_width=True,
+                        key="fasta_batch_btn",
+                    )
+                st.session_state["fasta_records"] = fasta_recs
+            else:
+                if fasta_files or (fasta_paste or "").strip():
+                    st.warning(
+                        "Nenhuma sequência válida encontrada. Use headers `>` e aminoácidos A–Y."
+                    )
+                if "fasta_records" in st.session_state:
+                    del st.session_state["fasta_records"]
+                empty_cta(
+                    "Nenhum FASTA carregado",
+                    "Envie arquivo(s) ou cole um multi-FASTA, escolha a membrana e clique em Predizer todas.",
+                )
+
+        if run_fasta_batch:
+            batch_recs = st.session_state.get("fasta_records") or []
+            if not batch_recs:
+                st.warning("Carregue ou cole um FASTA antes de predizer em lote.")
+            else:
+                charge_note = (
+                    f"carga fixa {batch_charge:g}"
+                    if batch_charge is not None
+                    else "carga estimada por sequência"
+                )
+                n_total = len(batch_recs)
+                progress = st.progress(0)
+                status = st.empty()
                 rows = []
-                for r in batch_recs:
+                for i, r in enumerate(batch_recs):
                     seq = r["sequence"]
+                    hdr = (r.get("header") or f"seq_{i+1}")[:48]
+                    status.markdown(f"**{i + 1}/{n_total}** · `{hdr}`")
                     try:
-                        res = predictor.predict_pair(seq, target_id, net_charge=batch_charge)
+                        res = predictor.predict_pair(
+                            seq, target_id_lote, net_charge=batch_charge
+                        )
                         prob = float(res["pred_high_activity_prob"])
-                        band, band_title, _ = activity_band(prob)
+                        _, band_title, _ = activity_band(prob)
                         rows.append(
                             {
                                 "header": (r.get("header") or "")[:60],
@@ -866,20 +1178,35 @@ with tab_pred:
                                 "erro": str(e),
                             }
                         )
-            with st.container(border=True):
-                tile_title(
-                    f"Lote × {format_target_label(target_id)}",
-                    f"{len(rows)} peptídeos · {charge_note}",
-                )
+                    progress.progress((i + 1) / n_total)
+                progress.empty()
+                status.empty()
+
                 batch_df = pd.DataFrame(rows)
                 if "prob_calibrada" in batch_df.columns:
                     batch_df = batch_df.sort_values(
                         "prob_calibrada", ascending=False, na_position="last"
                     )
-                n_ok = int(batch_df["prob_calibrada"].notna().sum()) if "prob_calibrada" in batch_df else 0
+                st.session_state["last_batch"] = {
+                    "target_id": target_id_lote,
+                    "target_label": format_target_label(target_id_lote),
+                    "rows": batch_df.to_dict(orient="records"),
+                    "charge_note": charge_note,
+                }
+                st.session_state.pop("last_batch_narrative", None)
+
+        if st.session_state.get("last_batch"):
+            prev = st.session_state["last_batch"]
+            with st.container(border=True):
+                tile_title(
+                    f"Lote × {prev['target_label']}",
+                    f"{len(prev['rows'])} peptídeos · {prev.get('charge_note', '')}",
+                )
+                bdf = pd.DataFrame(prev["rows"])
+                n_ok = int(bdf["prob_calibrada"].notna().sum()) if "prob_calibrada" in bdf else 0
                 n_high = (
-                    int((batch_df["prob_calibrada"] >= 0.70).sum())
-                    if "prob_calibrada" in batch_df
+                    int((bdf["prob_calibrada"] >= 0.70).sum())
+                    if "prob_calibrada" in bdf
                     else 0
                 )
                 kpi_row(
@@ -887,7 +1214,7 @@ with tab_pred:
                         {
                             "label": "Preditas",
                             "value": str(n_ok),
-                            "hint": f"de {len(rows)}",
+                            "hint": f"de {len(prev['rows'])}",
                             "tone": "membrane",
                         },
                         {
@@ -899,232 +1226,43 @@ with tab_pred:
                     ],
                     cols=2,
                 )
-                show_table(batch_df, max_text_len=36)
+                show_table(bdf, max_text_len=36, highlight_col="prob_calibrada")
                 st.download_button(
                     "Baixar CSV do lote",
-                    data=batch_df.to_csv(index=False).encode("utf-8"),
+                    data=bdf.to_csv(index=False).encode("utf-8"),
                     file_name="pepmem_fasta_predicoes.csv",
                     mime="text/csv",
                     use_container_width=True,
+                    key="batch_csv_persist",
                 )
-                st.session_state["last_batch"] = {
-                    "target_id": target_id,
-                    "target_label": format_target_label(target_id),
-                    "rows": batch_df.to_dict(orient="records"),
-                    "charge_note": charge_note,
-                }
-                st.session_state.pop("last_batch_narrative", None)
 
-    # Lote persistido (permite explicar / baixar após o rerun do botão)
-    if st.session_state.get("last_batch") and not run_fasta_batch:
-        prev = st.session_state["last_batch"]
-        with st.container(border=True):
-            tile_title(
-                f"Lote × {prev['target_label']}",
-                f"{len(prev['rows'])} peptídeos · {prev.get('charge_note', '')}",
-            )
-            bdf = pd.DataFrame(prev["rows"])
-            show_table(bdf, max_text_len=36)
-            st.download_button(
-                "Baixar CSV do lote",
-                data=bdf.to_csv(index=False).encode("utf-8"),
-                file_name="pepmem_fasta_predicoes.csv",
-                mime="text/csv",
-                use_container_width=True,
-                key="batch_csv_persist",
-            )
-
-    if st.session_state.get("last_batch"):
-        narrative_engine_caption()
-        if st.button("Explicar lote em português", key="btn_narrate_batch"):
-            with st.spinner("Gerando explicação…"):
-                nb = st.session_state["last_batch"]
-                out = narrate_batch(
-                    target_label=nb["target_label"],
-                    rows=nb["rows"],
-                    prefer_llm=True,
-                )
-                st.session_state["last_batch_narrative"] = out
-        if st.session_state.get("last_batch_narrative"):
-            out = st.session_state["last_batch_narrative"]
-            render_narrative_box(out["text"], out["source"])
-        nb = st.session_state["last_batch"]
-        narr = (st.session_state.get("last_batch_narrative") or {}).get("text")
-        report = build_batch_report(
-            target_label=nb["target_label"],
-            rows=nb["rows"],
-            narrative=narr,
-            charge_note=nb.get("charge_note") or "",
-        )
-        render_report_downloads(report, "batch_report", "pepmem_relatorio_lote")
-
-    if run_pred:
-        with st.spinner("Descritores · PMI · modelo RF…"):
-            try:
-                res = predictor.predict_pair(sequence, target_id, net_charge=charge)
-            except ValueError as e:
-                st.error(str(e))
-                st.stop()
-
-        neighbors = predictor.find_neighbors(sequence, k=5, target_id=target_id)
-        shap_top = None
-        try:
-            expl = cached_explain(sequence, target_id, charge)
-            shap_top = expl.get("shap_contributions")
-        except Exception:
-            expl = None
-
-        lo = res.get("pred_interval_low")
-        hi = res.get("pred_interval_high")
-        interval = (
-            f"{100 * float(lo):.0f}–{100 * float(hi):.0f}%"
-            if lo is not None and hi is not None
-            else "—"
-        )
-        st.session_state["last_single"] = {
-            "res": res,
-            "sequence": sequence,
-            "target_id": target_id,
-            "target_label": target_options[target_id],
-            "charge": charge,
-            "hit": hit,
-            "neighbors": neighbors,
-            "expl": expl,
-            "interval": interval,
-        }
-        st.session_state.pop("last_single_narrative", None)
-
-    # Predição única persistida
-    if st.session_state.get("last_single"):
-        snap = st.session_state["last_single"]
-        res = snap["res"]
-        sequence = snap["sequence"]
-        target_id = snap["target_id"]
-        hit = snap.get("hit")
-        neighbors = snap.get("neighbors") or []
-        expl = snap.get("expl")
-        interval = snap.get("interval") or "—"
-        prob = float(res["pred_high_activity_prob"])
-
-        render_result_banner(prob, hit)
-        kpi_row(
-            [
-                {
-                    "label": "PMI",
-                    "value": f"{res['pmi']:.3f}",
-                    "hint": "índice peptídeo–membrana",
-                    "tone": "membrane",
-                },
-                {
-                    "label": "Prob. calibrada",
-                    "value": f"{prob:.1%}",
-                    "hint": "isotonic LOPO",
-                    "tone": "ok" if prob >= 0.7 else ("warn" if prob < 0.4 else None),
-                },
-                {
-                    "label": "Intervalo (árvores)",
-                    "value": interval,
-                    "hint": f"σ = {float(res.get('pred_uncertainty_std') or 0):.3f}",
-                },
-                {
-                    "label": "Carga (q)",
-                    "value": f"{res['q_peptide']:.1f}",
-                    "hint": "peptídeo catiônico",
-                },
-            ],
-            cols=4,
-        )
-
-        if res.get("pred_high_activity_prob_raw") is not None:
-            st.caption(
-                f"Prob. bruta: {float(res['pred_high_activity_prob_raw']):.1%} · "
-                f"σ árvores: {float(res.get('pred_uncertainty_std') or 0):.3f}"
-            )
-
-        with st.container(border=True):
-            tile_title("Explicação em português", "Priorização para bancada")
             narrative_engine_caption()
-            if st.button("Explicar resultado", type="primary", key="btn_narrate_single"):
+            if st.button("Explicar lote em português", key="btn_narrate_batch"):
                 with st.spinner("Gerando explicação…"):
-                    out = narrate_single(
-                        sequence=sequence,
-                        target_label=snap["target_label"],
-                        prob=prob,
-                        pmi=float(res["pmi"]),
-                        interval=interval,
-                        q_peptide=float(res["q_peptide"]),
-                        neighbors=neighbors,
-                        shap_top=expl.get("shap_contributions") if expl else None,
-                        in_project=hit is not None,
+                    nb = st.session_state["last_batch"]
+                    out = narrate_batch(
+                        target_label=nb["target_label"],
+                        rows=nb["rows"],
                         prefer_llm=True,
                     )
-                    st.session_state["last_single_narrative"] = out
-            if st.session_state.get("last_single_narrative"):
-                out = st.session_state["last_single_narrative"]
+                    st.session_state["last_batch_narrative"] = out
+            if st.session_state.get("last_batch_narrative"):
+                out = st.session_state["last_batch_narrative"]
                 render_narrative_box(out["text"], out["source"])
-
-            narr = (st.session_state.get("last_single_narrative") or {}).get("text")
-            shap_rows = None
-            if expl is not None:
-                shap_rows = expl.get("shap_contributions")
-            report = build_single_report(
-                sequence=sequence,
-                target_label=snap["target_label"],
-                res=res,
+            nb = st.session_state["last_batch"]
+            narr = (st.session_state.get("last_batch_narrative") or {}).get("text")
+            report = build_batch_report(
+                target_label=nb["target_label"],
+                rows=nb["rows"],
                 narrative=narr,
-                neighbors=neighbors,
-                shap_top=shap_rows,
-                interval=interval,
-                in_project=hit is not None,
+                charge_note=nb.get("charge_note") or "",
             )
-            render_report_downloads(report, "single_report", "pepmem_relatorio_predicao")
+            render_report_downloads(report, "batch_report", "pepmem_relatorio_lote")
 
-        with st.container(border=True):
-            tile_title("Vizinhos no treino", "Identidade + cosine ESM-2")
-            st.caption(
-                "Peptídeos parecidos no treino ajudam a contextualizar o resultado: "
-                "se os vizinhos têm MIC baixo no mesmo alvo, a predição fica mais crível."
-            )
-            if neighbors:
-                ndf = pd.DataFrame(neighbors)[
-                    [
-                        "peptide_id",
-                        "name",
-                        "identity",
-                        "neighbor_score",
-                        "mic_median_uM",
-                        "frac_high_activity",
-                    ]
-                ]
-                if "mic_on_target_uM" in neighbors[0]:
-                    ndf["mic_alvo"] = [n.get("mic_on_target_uM") for n in neighbors]
-                show_table(ndf, max_text_len=28)
-                top = neighbors[0]
-                st.caption(
-                    f"Mais próximo: **{top['peptide_id']}** ({top.get('name')}) · "
-                    f"identidade {100 * top['identity']:.0f}% · "
-                    f"MIC mediana {top['mic_median_uM']} µM"
-                )
-            else:
-                st.caption("Sem índice MIC para vizinhos.")
-
-        with st.expander("Detalhes da resposta"):
-            st.code(res["sequence"], language=None)
-            st.json({k: v for k, v in res.items() if k != "sequence"})
-
-        with st.container(border=True):
-            tile_title("Explicação SHAP", "Contribuições locais do RF")
-            if expl is not None:
-                render_shap_block(expl, snap["target_label"])
-            else:
-                try:
-                    expl2 = cached_explain(sequence, target_id, snap.get("charge"))
-                    render_shap_block(expl2, snap["target_label"])
-                except Exception as e:
-                    st.warning(f"SHAP indisponível: {e}")
-
-# --- aba Ranking ---
-with tab_rank:
+# ---------------------------------------------------------------------------
+# Ranking
+# ---------------------------------------------------------------------------
+elif page == "Ranking":
     info_box(
         "Ranking — o que faz",
         "Compara o <strong>mesmo peptídeo</strong> em várias membranas e ordena por "
@@ -1190,13 +1328,9 @@ with tab_rank:
                 "final_score",
             ]
         ].copy()
-        if "pred_high_activity_prob" in show.columns:
-            show["pred_high_activity_prob"] = show["pred_high_activity_prob"].map(
-                lambda x: f"{float(x):.1%}" if x is not None and not isinstance(x, str) else x
-            )
         with st.container(border=True):
-            tile_title("Matriz de ranking", "Ordenado por score final")
-            show_table(show, max_text_len=32)
+            tile_title("Matriz de ranking", "Ordenado por score final · verde ≥ 70%")
+            show_table(show, max_text_len=32, highlight_col="pred_high_activity_prob")
 
         if "final_score" in df.columns and "target_id" in df.columns:
             chart = df.set_index("target_id")["final_score"].dropna().sort_values(ascending=False)
@@ -1229,6 +1363,11 @@ with tab_rank:
                 type_filter=snap.get("type_filter") or [],
             )
             render_report_downloads(report, "rank_report", "pepmem_relatorio_ranking")
+    else:
+        empty_cta(
+            "Ainda sem ranking",
+            "Cole uma sequência à esquerda, ajuste λ se quiser, e clique em Gerar ranking.",
+        )
 
     st.markdown("---")
     with st.container(border=True):
@@ -1247,100 +1386,52 @@ with tab_rank:
                     ["peptide_id", "target_id", "pmi", "pmi_sel", "pred_high_activity_prob"]
                 ],
                 max_text_len=28,
+                highlight_col="pred_high_activity_prob",
             )
 
-# --- aba XAI ---
-with tab_xai:
+# ---------------------------------------------------------------------------
+# XAI (lazy: só roda quando esta página está ativa)
+# ---------------------------------------------------------------------------
+elif page == "XAI":
     with st.container(border=True):
         tile_title("Como funciona o SHAP neste projeto", "XAI do Random Forest · PepMem-AI")
         st.markdown(
-            f"""
-**SHAP** (*SHapley Additive exPlanations*) estima **quanto cada descritor contribui**
-para a saída do modelo — aqui, a chance de **alta atividade** (MIC ≤ 3,4 µM).
+            """
+**SHAP** estima **quanto cada descritor contribui** para a chance de **alta atividade**
+(MIC ≤ 3,4 µM), via **TreeExplainer** no Random Forest.
 
-A ideia vem dos valores de Shapley (teoria dos jogos): cada feature recebe um “crédito”
-justo pela diferença entre a predição com e sem ela, em média sobre combinações possíveis.
-No PepMem-AI usamos **TreeExplainer** sobre o Random Forest (baseline e, no Space, multimodal).
+| Sinal | Significado |
+|-------|-------------|
+| **Positivo** | Empurra **para** alta atividade |
+| **Negativo** | Empurra **contra** alta atividade |
+"""
+        )
+        with st.expander("Saiba mais — SHAP, ESM-2 e limites"):
+            st.markdown(
+                f"""
+A ideia vem dos valores de Shapley: cada feature recebe um “crédito” justo pela diferença
+entre a predição com e sem ela. No PepMem-AI usamos TreeExplainer (baseline e, no Space, multimodal).
 
-### O que o SHAP responde
-- **Por que** este peptídeo × membrana ficou com essa probabilidade?
-- Quais fatores (**PMI**, carga, LPS, peptidoglicano, embedding ESM-2 agregado, etc.)
-  **empurram a favor** ou **contra** a alta atividade **nesta** instância?
-- No treino inteiro, quais descritores o modelo **mais usa** em média?
+### Três visuais
+1. **Importância global** — média de |SHAP| nos ~{n_train} pares MIC
+2. **Beeswarm** — cada ponto = um par MIC; cor ≈ valor do descritor
+3. **SHAP local** — barras para **uma** sequência × membrana
 
-### Como ler os sinais
-| Sinal | Significado no PepMem-AI |
-|-------|---------------------------|
-| Valor **positivo** | Empurra a predição **para** alta atividade (MIC ≤ 3,4 µM) |
-| Valor **negativo** | Empurra **contra** alta atividade |
+### ESM-2
+Modelo de linguagem de proteínas (`facebook/esm2_t6_8M_UR50D`). No multimodal, o embedding
+(~320 dims, mean-pool) entra com as features clássicas; no SHAP aparece agregado como
+**“ESM-2 (embedding agregado)”**. No Cloud leve (sem PyTorch) o app usa só o baseline.
 
-A soma das contribuições + valor-base do modelo aproxima a saída bruta do RF
-(antes da calibração isotônica mostrada no dashboard).
+**Por quê t6 8M:** feito para proteínas, só precisa da sequência, complementa o PMI e cabe
+em CPU/Space — melhor custo–benefício para o PoC.
 
-### Três visuais nesta aba
-1. **Importância global** — média de |SHAP| nos ~{n_train} pares MIC de treino:
-   ranking dos descritores que o modelo mais “consulta” em geral.
-2. **Beeswarm** — cada ponto = um par MIC; posição horizontal = impacto SHAP;
-   cor ≈ valor do descritor (alto/baixo). Mostra **dispersão** e interação tipica.
-3. **SHAP local** — barras para **uma** sequência × membrana que você escolher:
-   a história daquela predição específica.
-
-### O que é o ESM-2
-**ESM-2** (*Evolutionary Scale Modeling*) é um modelo de linguagem de proteínas
-treinado em dezenas de milhões de sequências. Dada uma sequência de aminoácidos,
-ele produz um **embedding** — um vetor numérico que resume padrões evolutivos e
-estruturais aprendidos (sem ser uma estrutura 3D explícita).
-
-No PepMem-AI usamos a variante leve **`facebook/esm2_t6_8M_UR50D`**:
-- a sequência passa pelo ESM-2 e fazemos **mean-pooling** das representações dos resíduos;
-- no modelo **multimodal**, esse vetor (~320 dimensões) entra junto com as features clássicas
-  (carga, PMI, LPS, etc.) no Random Forest;
-- no SHAP, as muitas dimensões ESM costumam aparecer agregadas como
-  **“ESM-2 (embedding agregado)”**, para a leitura ficar interpretável.
-
-**Para quê serve aqui:** capturar similaridade de sequência além dos descritores
-físico-químicos manuais — útil para análogos e mutantes, mas **não substitui** MIC
-nem o PMI. No **Cloud leve** (sem PyTorch) o app usa só o **baseline**; o multimodal
-com ESM-2 roda no Space HF / ambiente local com `requirements-space.txt`.
-
-**Por que o ESM-2 (e justamente o t6 8M)?**
-- **Feito para proteínas:** treinado em escala evolutiva (Lin et al., *Science* 2023);
-  embeddings de sequência são padrão de fato em bioinformática moderna.
-- **Só precisa da sequência:** peptídeos AMP / Stigmurin raramente têm estrutura 3D
-  resolvida; ESM-2 não exige PDB nem docking.
-- **Complementa o PMI:** descritores clássicos + PMI são interpretáveis; o embedding
-  acrescenta padrões de sequência que regras manuais não cobrem (análogos, mutantes).
-- **Variante pequena de propósito:** `t6_8M` (~320 dims) cabe em CPU / HF Space,
-  baixa rápido do Hugging Face e evita modelos gigantes (150M–15B) incompatíveis
-  com o deploy gratuito do PoC.
-- **Ecossistema aberto:** pesos no Hugging Face, licença clara, fácil de versionar
-  em `esm2_all.npz` e de recalcular só peptídeos novos (`--missing-only`).
-
-Não foi escolhido por ser “o maior”: foi o melhor **custo–benefício** entre qualidade
-de representação de sequência e viabilidade no pipeline PepMem (treino LOPO + Space +
-SHAP agregável).
-
-### Baseline × multimodal
-- **Baseline:** descritores clássicos + PMI (o que o Cloud leve costuma usar).
-- **Multimodal:** clássicas + embedding ESM-2 (quando há PyTorch). No Cloud sem torch,
-  o beeswarm multimodal pode ser só o PNG pré-computado.
-
-### Limites importantes
-- SHAP explica o **modelo treinado**, não prova mecanismo biológico nem substitui MIC.
-- Com poucos peptídeos/análogos, importância global pode refletir **vieses da amostra**.
-- A probabilidade do dashboard é **calibrada (LOPO)**; o SHAP local costuma falar da
-  saída do RF — use os dois juntos: números calibrados + narrativa das features.
+### Limites
+- SHAP explica o **modelo**, não prova mecanismo biológico nem substitui MIC.
+- Com poucos análogos, importância global pode refletir vieses da amostra.
+- Probabilidade do dashboard é **calibrada (LOPO)**; SHAP local fala da saída do RF.
 
 Treino atual: **{n_train}** pares MIC · rótulo: MIC ≤ 3,4 µM = alta atividade.
 """
-        )
-        with st.expander("Leitura rápida (resumo)"):
-            st.markdown(
-                "- **Global** → o que o modelo mais usa no treino\n"
-                "- **Beeswarm** → como cada feature se comporta nos MICs\n"
-                "- **Local** → por que *este* par teve *esta* predição\n"
-                "- Positivo = favorece alta atividade · Negativo = desfavorece\n"
-                "- Sempre priorize ensaio in vitro; SHAP é mapa do modelo"
             )
 
     global_report = predictor.global_shap_report()
@@ -1376,7 +1467,10 @@ Treino atual: **{n_train}** pares MIC · rótulo: MIC ≤ 3,4 µM = alta ativida
     g1, g2 = st.columns(2)
     with g1:
         with st.container(border=True):
-            tile_title("Importância global — multimodal", f"{(global_report or {}).get('n_samples', '—')} MICs")
+            tile_title(
+                "Importância global — multimodal",
+                f"{(global_report or {}).get('n_samples', '—')} MICs",
+            )
             if global_report:
                 st.pyplot(
                     plot_global_importance(global_report["global_importance"]),
@@ -1385,7 +1479,10 @@ Treino atual: **{n_train}** pares MIC · rótulo: MIC ≤ 3,4 µM = alta ativida
                 )
     with g2:
         with st.container(border=True):
-            tile_title("Importância global — baseline", f"{(baseline_report or {}).get('n_samples', '—')} MICs")
+            tile_title(
+                "Importância global — baseline",
+                f"{(baseline_report or {}).get('n_samples', '—')} MICs",
+            )
             if baseline_report:
                 st.pyplot(
                     plot_global_importance(
@@ -1414,6 +1511,11 @@ Treino atual: **{n_train}** pares MIC · rótulo: MIC ≤ 3,4 µM = alta ativida
 
     with st.container(border=True):
         tile_title("Explicação local", "Instância peptídeo × membrana")
+        if not st.session_state.get("last_xai_local"):
+            empty_cta(
+                "Ainda sem SHAP local",
+                "Informe a sequência e a membrana abaixo e clique em Calcular SHAP local.",
+            )
         xai_seq = st.text_input(
             "Sequência",
             value=st.session_state.get("seq_main", "FFSLIPSLVGGLISAFK"),
@@ -1485,8 +1587,10 @@ Treino atual: **{n_train}** pares MIC · rótulo: MIC ≤ 3,4 µM = alta ativida
             )
             render_report_downloads(report, "xai_local_report", "pepmem_relatorio_shap_local")
 
-# --- aba Datasets ---
-with tab_data:
+# ---------------------------------------------------------------------------
+# Dados (+ API no expander)
+# ---------------------------------------------------------------------------
+elif page == "Dados":
     info_box(
         "Datasets",
         "Resumo do que alimenta o modelo: peptídeos do projeto, pares e MICs. "
@@ -1543,16 +1647,7 @@ with tab_data:
             view["nota"] = view.apply(flag, axis=1)
             show_table(view, max_text_len=40)
 
-# --- aba API ---
-with tab_api:
-    info_box(
-        "API",
-        "Mesmas predições via HTTP (útil para integrar com outros sistemas). "
-        "No Cloud público o foco é o dashboard; a API roda localmente com FastAPI.",
-    )
-
-    with st.container(border=True):
-        tile_title("API local (FastAPI)", "Integração via HTTP")
+    with st.expander("API local (FastAPI) — integração HTTP"):
         st.markdown(
             """
 Endpoints (`uvicorn api.main:app --port 8001`):
@@ -1572,10 +1667,9 @@ curl -X POST http://localhost:8001/predict \\
 ```
 """
         )
-    if info:
-        with st.container(border=True):
-            tile_title("Modelo carregado", "Metadados do relatório")
-            st.write(f"- Tipo: {info.get('model_type', '—')}")
-            st.write(f"- Amostras: {info.get('n_samples', '—')}")
-            st.write(f"- LOO AUC: {info.get('loo_auc', '—')}")
-            st.write(f"- Leave-peptide AUC: {info.get('leave_one_peptide_auc', '—')}")
+        if info:
+            st.caption(
+                f"Modelo carregado: {info.get('model_type', '—')} · "
+                f"amostras {info.get('n_samples', '—')} · "
+                f"LOPO AUC {info.get('leave_one_peptide_auc', info.get('loo_auc', '—'))}"
+            )

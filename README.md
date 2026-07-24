@@ -26,9 +26,7 @@ O sistema combina dados públicos (OPM, APD), descritores físico-químicos, emb
 - [Peptídeos do projeto](#peptídeos-do-projeto)
 - [Estrutura de diretórios](#estrutura-de-diretórios)
 - [Deploy](#deploy-gratuito-colaboradores)
-- [Limitações e próximos passos](#limitações-e-próximos-passos)
 - [Referências](#referências)
-- [Créditos](#créditos)
 
 ---
 
@@ -548,25 +546,6 @@ Quanto mais MICs rotulados, mais confiáveis ficam as **probabilidades do RF** e
 
 ---
 
-## Limitações e próximos passos
-
-| Limitação | Próximo passo |
-|-----------|---------------|
-| 90 MICs (ainda pouco vs. diversidade) | Extrair StigA15, TanP, TisTH, CC50/biofilme das papers do mapa |
-| CAMP não integrado | Scraping paginado ou dados suplementares CAMPR4 |
-| Modelo RF simples | Encoder multimodal PyTorch (ProtBERT + MLP membrana) |
-| Sem teste externo robusto | Split por cluster de sequência + teste prospectivo |
-| Alguns análogos CNPq com sequência placeholder | Curar P01–P09 com sequências reais das patentes |
-| Endpoints limitados a MIC | IC50, CC50, EC50, SI, biofilme |
-
-**Roadmap sugerido:**
-
-1. Curto prazo — completar endpoints do mapa de estudos (`docs/peptideos/`)
-2. Médio prazo — modelo multimodal PyTorch; ~~XAI (SHAP)~~ **SHAP integrado** (RF + dashboard)
-3. Longo prazo — validação experimental + *active learning* + publicação do dataset (Zenodo/DOI)
-
----
-
 ## Referências
 
 - Wang et al. (2016). **APD3** — Antimicrobial Peptide Database. *Nucleic Acids Research*.
@@ -575,20 +554,3 @@ Quanto mais MICs rotulados, mais confiáveis ficam as **probabilidades do RF** e
 - Parente (2022). *Structural evaluation and antimicrobial activity of analog peptides from Stigmurin*. UFRN.
 - Lee et al. (2016). Mapping membrane activity with machine learning. *PNAS*.
 - Documentação interna: [`docs/pipeline/`](docs/pipeline/) · peptídeos do grupo: [`docs/peptideos/`](docs/peptideos/)
-
----
-
-## Créditos
-
-- **InovAI Lab** / **LANCE** — IMD/UFRN  
-- **Prof. Marcelo A. C. Fernandes** — pipeline computacional  
-- **Dra. Allanny Alves Furtado / Prof. Matheus Pedrosa** — projeto CNPq de bioprospecção  
-- **Dra. Adriana Parente** — dados StigA6/StigA16 (tese 2022)
-
----
-
-## Licença de dados de terceiros
-
-- **OPM:** [University of Michigan](https://opm.phar.umich.edu/) — citar ao usar os dados.
-- **APD6:** [aps.unmc.edu](https://aps.unmc.edu/) — citar APD3/APD6 em publicações.
-- **ESM-2:** Meta AI / Hugging Face — ver licença do modelo `facebook/esm2_t6_8M_UR50D`.
