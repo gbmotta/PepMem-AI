@@ -30,11 +30,13 @@ from pepmem.paths import project_root
 from narrative_lib import (  # type: ignore  # noqa: E402
     llm_status,
     narrate_batch,
+    narrate_ranking,
     narrate_shap_overview,
     narrate_single,
 )
 from report_export import (  # type: ignore  # noqa: E402
     build_batch_report,
+    build_ranking_report,
     build_shap_overview_report,
     build_single_report,
     export_report_bundle,
@@ -533,7 +535,7 @@ with st.sidebar:
     st.markdown("##### Onde ir")
     st.markdown(
         "- **Predição** — 1 peptídeo ou lote FASTA\n"
-        "- **Ranking** — mesmo peptídeo × vários alvos\n"
+        "- **Ranking** — multi-alvo + relatório\n"
         "- **XAI** — SHAP / beeswarm\n"
         "- **Datasets** — peptídeos do projeto"
     )
@@ -559,6 +561,8 @@ with st.sidebar:
                 "last_shap_overview_narrative",
                 "last_xai_local",
                 "last_xai_narrative",
+                "last_rank",
+                "last_rank_narrative",
             ):
                 st.session_state.pop(k, None)
             st.rerun()
@@ -1162,6 +1166,17 @@ with tab_rank:
         df = predictor.rank_peptide(seq_rank, target_ids=tids, lambda_tox=lam)
         if type_filter:
             df = df[df["target_type"].isin(type_filter)]
+        st.session_state["last_rank"] = {
+            "sequence": seq_rank,
+            "lambda_tox": float(lam),
+            "type_filter": list(type_filter) if type_filter else [],
+            "rows": df.to_dict(orient="records"),
+        }
+        st.session_state.pop("last_rank_narrative", None)
+
+    if st.session_state.get("last_rank"):
+        snap = st.session_state["last_rank"]
+        df = pd.DataFrame(snap["rows"])
         show = df[
             [
                 "target_id",
@@ -1172,16 +1187,45 @@ with tab_rank:
                 "final_score",
             ]
         ].copy()
-        show["pred_high_activity_prob"] = show["pred_high_activity_prob"].map(lambda x: f"{x:.1%}")
+        if "pred_high_activity_prob" in show.columns:
+            show["pred_high_activity_prob"] = show["pred_high_activity_prob"].map(
+                lambda x: f"{float(x):.1%}" if x is not None and not isinstance(x, str) else x
+            )
         with st.container(border=True):
             tile_title("Matriz de ranking", "Ordenado por score final")
             show_table(show, max_text_len=32)
 
-        chart = df.set_index("target_id")["final_score"].dropna().sort_values(ascending=False)
-        chart.index = chart.index.map(lambda x: truncate_text(str(x), 28))
+        if "final_score" in df.columns and "target_id" in df.columns:
+            chart = df.set_index("target_id")["final_score"].dropna().sort_values(ascending=False)
+            chart.index = chart.index.map(lambda x: truncate_text(str(x), 28))
+            with st.container(border=True):
+                tile_title("Score final por alvo", "Visual de barras")
+                st.bar_chart(chart, color=PM_PURPLE)
+
         with st.container(border=True):
-            tile_title("Score final por alvo", "Visual de barras")
-            st.bar_chart(chart, color=PM_PURPLE)
+            tile_title("Explicação em português", "Priorização multi-alvo")
+            narrative_engine_caption()
+            if st.button("Explicar ranking", type="primary", key="btn_narrate_rank"):
+                with st.spinner("Gerando explicação…"):
+                    out = narrate_ranking(
+                        sequence=snap["sequence"],
+                        lambda_tox=float(snap["lambda_tox"]),
+                        rows=snap["rows"],
+                        prefer_llm=True,
+                    )
+                    st.session_state["last_rank_narrative"] = out
+            if st.session_state.get("last_rank_narrative"):
+                out = st.session_state["last_rank_narrative"]
+                render_narrative_box(out["text"], out["source"])
+            narr = (st.session_state.get("last_rank_narrative") or {}).get("text")
+            report = build_ranking_report(
+                sequence=snap["sequence"],
+                lambda_tox=float(snap["lambda_tox"]),
+                rows=snap["rows"],
+                narrative=narr,
+                type_filter=snap.get("type_filter") or [],
+            )
+            render_report_downloads(report, "rank_report", "pepmem_relatorio_ranking")
 
     st.markdown("---")
     with st.container(border=True):

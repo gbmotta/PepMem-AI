@@ -324,6 +324,93 @@ def build_shap_overview_report(
     return report
 
 
+def build_ranking_report(
+    *,
+    sequence: str,
+    lambda_tox: float,
+    rows: list[dict[str, Any]],
+    narrative: str | None = None,
+    type_filter: list[str] | None = None,
+) -> PepMemReport:
+    """Monta relatório do ranking multi-alvo."""
+    now = datetime.now().strftime("%d/%m/%Y %H:%M")
+    report = PepMemReport(
+        title="Relatório PepMem-AI — Ranking",
+        subtitle="Priorização multi-alvo · InovAI Lab / UFRN",
+        generated_at=now,
+    )
+    filt = ", ".join(type_filter) if type_filter else "todos os tipos"
+    report.sections.append(
+        ReportSection(
+            title="1. Identificação",
+            bullets=[
+                f"Sequência: {sequence}",
+                f"Comprimento: {len(sequence)} aminoácidos",
+                f"Penalização toxicidade (λ): {lambda_tox:.2f}",
+                f"Filtro de tipo de alvo: {filt}",
+                f"Alvos no ranking: {len(rows)}",
+                f"Gerado em: {now}",
+            ],
+        )
+    )
+    if narrative:
+        report.sections.append(
+            ReportSection(
+                title="2. Explicação em português",
+                paragraphs=[narrative.strip()],
+            )
+        )
+
+    ranked = sorted(
+        [r for r in rows if r.get("final_score") is not None],
+        key=lambda r: float(r["final_score"]),
+        reverse=True,
+    )
+    headers = ["Alvo", "Tipo", "PMI", "PMI sel.", "Prob.", "Score final"]
+    table: list[list[str]] = []
+    for r in ranked:
+        prob = r.get("pred_high_activity_prob")
+        if isinstance(prob, str):
+            prob_s = prob
+        elif prob is not None:
+            prob_s = f"{float(prob):.1%}"
+        else:
+            prob_s = "—"
+        table.append(
+            [
+                str(r.get("target_id") or "—")[:36],
+                str(r.get("target_type") or "—")[:16],
+                f"{float(r['pmi']):.3f}" if r.get("pmi") is not None else "—",
+                f"{float(r['pmi_sel']):.3f}" if r.get("pmi_sel") is not None else "—",
+                prob_s,
+                f"{float(r['final_score']):.4f}",
+            ]
+        )
+    report.sections.append(
+        ReportSection(
+            title="3. Matriz ordenada por score final",
+            paragraphs=[
+                "Score ≈ probabilidade de alta atividade − λ × toxicidade estimada "
+                "+ bônus de PMI seletivo. Topo = priorizar primeiro na bancada."
+            ],
+            table_headers=headers,
+            table_rows=table,
+        )
+    )
+    report.sections.append(
+        ReportSection(
+            title="4. Notas de uso",
+            bullets=[
+                "Alta atividade no modelo = MIC ≤ 3,4 µM.",
+                "λ alto = mais cautela com toxicidade proxy (célula normal).",
+                "Confirme sempre in vitro — priorização, não substituto experimental.",
+                "PepMem-AI · InovAI Lab / UFRN.",
+            ],
+        )
+    )
+    return report
+
+
 # --- renderers ---
 
 

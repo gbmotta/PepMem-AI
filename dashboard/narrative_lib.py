@@ -156,6 +156,52 @@ def template_explain_shap_overview(
     return " ".join(parts)
 
 
+def template_explain_ranking(
+    *,
+    sequence: str,
+    lambda_tox: float,
+    rows: list[dict[str, Any]],
+) -> str:
+    """Narrativa do ranking multi-alvo."""
+    seq_short = sequence if len(sequence) <= 24 else f"{sequence[:21]}…"
+    n = len(rows)
+    parts = [
+        f"Ranking do peptídeo {seq_short} em {n} membrana(s), com penalização de "
+        f"toxicidade λ = {lambda_tox:.2f}."
+    ]
+    ranked = sorted(
+        [r for r in rows if r.get("final_score") is not None],
+        key=lambda r: float(r["final_score"]),
+        reverse=True,
+    )
+    if ranked:
+        top = ranked[:3]
+        bits = []
+        for r in top:
+            tid = r.get("target_id") or r.get("alvo") or "?"
+            prob = r.get("pred_high_activity_prob")
+            score = float(r["final_score"])
+            pmi_sel = r.get("pmi_sel")
+            bit = f"{tid} (score {score:.3f}"
+            if prob is not None:
+                try:
+                    bit += f", prob {float(prob):.0%}"
+                except (TypeError, ValueError):
+                    bit += f", prob {prob}"
+            if pmi_sel is not None:
+                bit += f", PMI_sel {float(pmi_sel):.3f}"
+            bit += ")"
+            bits.append(bit)
+        parts.append("Topo sugerido para priorizar ensaios: " + "; ".join(bits) + ".")
+    parts.append(
+        "O score final combina probabilidade de alta atividade, penalização de toxicidade "
+        "(proxy em célula normal) e bônus de PMI seletivo. Ajuste λ se quiser mais ou menos "
+        "cautela toxicológica."
+    )
+    parts.append("Use isso para priorizar ensaios in vitro.")
+    return " ".join(parts)
+
+
 def narrate_single(**kwargs: Any) -> dict[str, str]:
     try:
         from pepmem.narrative import narrate_single as _ns
@@ -204,6 +250,22 @@ def narrate_shap_overview(**kwargs: Any) -> dict[str, str]:
                 n_train=int(kwargs["n_train"]),
                 baseline_importance=kwargs.get("baseline_importance"),
                 multimodal_importance=kwargs.get("multimodal_importance"),
+            ),
+            "source": "template",
+        }
+
+
+def narrate_ranking(**kwargs: Any) -> dict[str, str]:
+    try:
+        from pepmem.narrative import narrate_ranking as _nr
+
+        return _nr(**kwargs)
+    except Exception:
+        return {
+            "text": template_explain_ranking(
+                sequence=kwargs["sequence"],
+                lambda_tox=float(kwargs.get("lambda_tox") or 0.5),
+                rows=kwargs["rows"],
             ),
             "source": "template",
         }
