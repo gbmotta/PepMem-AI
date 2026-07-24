@@ -1273,7 +1273,6 @@ No PepMem-AI usamos **TreeExplainer** sobre o Random Forest (baseline e, no Spac
 |-------|---------------------------|
 | Valor **positivo** | Empurra a predição **para** alta atividade (MIC ≤ 3,4 µM) |
 | Valor **negativo** | Empurra **contra** alta atividade |
-| |SHAP| grande | Feature influente **nessa** predição (ou no treino, se for global) |
 
 A soma das contribuições + valor-base do modelo aproxima a saída bruta do RF
 (antes da calibração isotônica mostrada no dashboard).
