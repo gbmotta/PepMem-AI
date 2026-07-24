@@ -1,15 +1,13 @@
-# Streamlit Community Cloud — pin CPU (evita CUDA e mismatch torch/vision)
-# Em Advanced settings do app: Python 3.11 ou 3.12 (não use 3.13+)
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.2.2+cpu
-numpy==1.26.4
+# Streamlit Community Cloud — leve (sem PyTorch).
+# O dashboard usa o RF baseline + PMI; multimodal (ESM-2) fica no HF Space.
+#
+# Advanced settings → Python 3.11 ou 3.12
+streamlit==1.37.1
 pandas==2.2.2
+numpy==1.26.4
 pyarrow==16.1.0
 scikit-learn==1.5.1
 joblib==1.4.2
-transformers==4.44.2
-huggingface-hub==0.24.6
-streamlit==1.37.1
 shap==0.46.0
 matplotlib==3.9.2
 tqdm==4.66.5

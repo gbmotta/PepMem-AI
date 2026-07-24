@@ -125,16 +125,15 @@ Mesmo fluxo do PoC Gertec: repo no GitHub → **New app** no share.streamlit.io.
    - **Branch:** `main`
    - **Main file path:** `dashboard/app.py`
    - **App URL:** `pepmem-ai` (ou outro nome livre)
-   - **Python version:** **3.11** (Advanced settings — não use 3.13+)
+   - **Python version:** **3.11** ou **3.12** (Advanced settings)
 
 3. Deploy. URL pública: `https://pepmem-ai.streamlit.app` (ou o nome escolhido).
 
-> `requirements.txt` usa `torch==2.2.2+cpu` (sem torchvision).  
-> Se aparecer *Error installing requirements*: confirme Python **3.11** → **Reboot app**.
+> O `requirements.txt` do Cloud é **leve (sem PyTorch)** — usa RF baseline + PMI.  
+> Multimodal (ESM-2) continua no Space HF: https://huggingface.co/spaces/gbmotta/pepmem-ai  
+> Após o push: **Reboot app** no Manage app.
 
-**Se o build falhar** (timeout / memória): use o Space HF  
-`https://huggingface.co/spaces/gbmotta/pepmem-ai` ou o Render (Docker).
-
+**Se o build falhar** ainda assim: cole o log do terminal (Manage app) ou use o Space HF / Render.
 ---
 
 ## Opção 3 — Render (Docker, free tier)

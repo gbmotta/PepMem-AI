@@ -1,2 +1,0 @@
-# Apt packages for Streamlit Community Cloud (compilação leve se necessário)
-build-essential

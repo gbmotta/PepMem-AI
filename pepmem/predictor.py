@@ -20,14 +20,22 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
-import torch
-from transformers import AutoModel, AutoTokenizer
 
 from pepmem.features import CLASSIC_FEATURES, load_targets, pair_features, peptide_row_from_sequence, vectorize
 from pepmem.paths import project_root
 
 ROOT = project_root()
 ESM_MODEL = "facebook/esm2_t6_8M_UR50D"
+
+
+def torch_available() -> bool:
+    """True se PyTorch estiver instalado (Cloud leve pode rodar sem ele)."""
+    try:
+        import torch  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
 
 
 def _seq_identity(a: str, b: str) -> float:
@@ -45,9 +53,12 @@ class PepMemPredictor:
     """Orquestra modelo, embeddings e índice MIC para uma sessão de inferência."""
 
     def __init__(self, use_embeddings: bool = True) -> None:
+        # Sem torch/transformers (ex.: Streamlit Cloud leve) → só baseline + PMI
+        if use_embeddings and not torch_available():
+            use_embeddings = False
         self.use_embeddings = use_embeddings
         self.targets = load_targets()
-        self._embeddings_cache = self._load_embedding_index()
+        self._embeddings_cache = self._load_embedding_index() if use_embeddings else {}
         self._model = self._load_model()
         self._calibrator = self._load_calibrator()
         self._mic_index = self._load_mic_index()
@@ -119,9 +130,18 @@ class PepMemPredictor:
         """Lazy-load do ESM-2 pequeno (t6_8M) para sequências novas."""
         if self._esm is not None:
             return
+        if not torch_available():
+            raise RuntimeError(
+                "PyTorch/transformers ausentes: use o modelo baseline "
+                "ou rode localmente / no Space HF com requirements-space.txt."
+            )
+        import torch
+        from transformers import AutoModel, AutoTokenizer
+
         self._tokenizer = AutoTokenizer.from_pretrained(ESM_MODEL)
         self._esm = AutoModel.from_pretrained(ESM_MODEL)
         self._esm.eval()
+        self._torch = torch
 
     def embed_sequence(self, sequence: str) -> np.ndarray:
         """Retorna embedding mean-pooled; usa cache em disco quando a seq já existe."""
@@ -130,6 +150,7 @@ class PepMemPredictor:
             return self._embeddings_cache[seq]
         self._load_esm()
         assert self._tokenizer and self._esm
+        torch = self._torch
         with torch.no_grad():
             inputs = self._tokenizer(seq, return_tensors="pt", truncation=True, max_length=512)
             out = self._esm(**inputs)
@@ -348,10 +369,18 @@ class PepMemPredictor:
     @property
     def model_info(self) -> dict[str, Any]:
         """Metadados LOO/LOPO e calibração do modelo ativo (JSON de treino)."""
-        meta_path = ROOT / "data" / "processed" / "models" / "multimodal_mic_loo.json"
-        if meta_path.exists():
-            return json.loads(meta_path.read_text(encoding="utf-8"))
-        meta_path = ROOT / "data" / "processed" / "models" / "baseline_mic_loo.json"
-        if meta_path.exists():
-            return json.loads(meta_path.read_text(encoding="utf-8"))
+        models = ROOT / "data" / "processed" / "models"
+        preferred = (
+            models / "multimodal_mic_loo.json"
+            if self.use_embeddings
+            else models / "baseline_mic_loo.json"
+        )
+        fallback = (
+            models / "baseline_mic_loo.json"
+            if self.use_embeddings
+            else models / "multimodal_mic_loo.json"
+        )
+        for path in (preferred, fallback):
+            if path.exists():
+                return json.loads(path.read_text(encoding="utf-8"))
         return {}

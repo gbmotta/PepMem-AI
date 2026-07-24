@@ -1,4 +1,4 @@
-# Espelho CPU para HF Spaces (alinhar com requirements.txt do Cloud)
+# HF Spaces / local com ESM-2 (PyTorch CPU)
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.2.2+cpu
 numpy==1.26.4

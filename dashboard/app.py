@@ -22,7 +22,7 @@ from pepmem.paths import project_root
 ROOT = project_root()
 sys.path.insert(0, str(ROOT))
 
-from pepmem.predictor import PepMemPredictor
+from pepmem.predictor import PepMemPredictor, torch_available
 from pepmem.shap_explain import plot_beeswarm, plot_contributions, plot_global_importance
 
 # --- paleta (carapaça · veneno · membrana) ---
@@ -129,8 +129,8 @@ PRESETS_NOVEL = [
 
 @st.cache_resource
 def get_predictor() -> PepMemPredictor:
-    """Singleton do predictor (modelo + ESM + calibrador) em cache de recurso."""
-    return PepMemPredictor(use_embeddings=True)
+    """Singleton do predictor. No Cloud (sem torch) usa só o baseline."""
+    return PepMemPredictor(use_embeddings=torch_available())
 
 
 @st.cache_data
@@ -143,8 +143,13 @@ def load_project_peptides() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner="Gerando beeswarm SHAP...")
-def cached_beeswarm(use_embeddings: bool, n_mic: int, _layout_version: int = 6) -> bytes:
-    """PNG do beeswarm global; ``n_mic`` / ``_layout_version`` invalidam o cache."""
+def cached_beeswarm(use_embeddings: bool, n_mic: int, _layout_version: int = 7) -> bytes:
+    """PNG do beeswarm: prefere artefato offline; regenera se necessário."""
+    kind = "multimodal" if use_embeddings else "baseline"
+    static = ROOT / "data" / "processed" / "models" / f"shap_beeswarm_{kind}.png"
+    if static.exists():
+        return static.read_bytes()
+
     import io
 
     import joblib
@@ -155,7 +160,6 @@ def cached_beeswarm(use_embeddings: bool, n_mic: int, _layout_version: int = 6) 
     if not path.exists():
         raise FileNotFoundError(f"Modelo ausente: {fname}")
     pipe = joblib.load(path)
-    kind = "multimodal" if use_embeddings else "baseline"
     fig = plot_beeswarm(pipe, use_embeddings, title=f"Beeswarm SHAP — {kind} ({n_mic} MICs)")
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=110, bbox_inches="tight", pad_inches=0.08)
@@ -186,6 +190,7 @@ info = predictor.model_info or {}
 n_train = int(info.get("n_samples") or 90)
 loo_auc = info.get("loo_auc")
 lope = info.get("leave_one_peptide_auc")
+HAS_TORCH = torch_available()
 
 
 def format_target_label(target_id: str) -> str:
@@ -329,8 +334,13 @@ with st.sidebar:
         )
 
 # --- barra de relatório + KPIs globais ---
+mode_label = (
+    "PoC priorização in vitro · peçonha escorpiônica"
+    if HAS_TORCH
+    else "Modo Cloud (baseline + PMI) · multimodal no Space HF"
+)
 report_bar(
-    "PoC priorização in vitro · peçonha escorpiônica",
+    mode_label,
     n_train,
     float(lope) if lope is not None else None,
 )
