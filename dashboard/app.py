@@ -1,18 +1,18 @@
-"""Dashboard Streamlit do PepMem-AI.
+"""Dashboard Streamlit do PepMem-AI — layout estilo Power BI.
 
-Interface para predizer atividade peptídeo–membrana, explorar vizinhos do
-treino, ranking de alvos e visualizações SHAP (local + beeswarm global).
+Relatório analítico: barra de relatório · painel de filtros · páginas (abas)
+· faixa de KPIs · tiles de visuais. Paleta peçonha / peptídeo / membrana.
 
 Execução local:
     streamlit run dashboard/app.py
-
-Artefatos esperados em ``data/processed/models/`` (RF, calibrador, SHAP).
 """
 
 from __future__ import annotations
 
+import html
 import json
 import sys
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -25,169 +25,92 @@ sys.path.insert(0, str(ROOT))
 from pepmem.predictor import PepMemPredictor
 from pepmem.shap_explain import plot_beeswarm, plot_contributions, plot_global_importance
 
-# --- configuração da página ---
+# --- paleta (carapaça · veneno · membrana) ---
+PM_VENOM = "#d4a017"
+PM_MEMBRANE = "#1e5c5a"
+PM_CARAPACE = "#1c1410"
+
+ASSETS = Path(__file__).resolve().parent / "assets"
+THEME_CSS = ASSETS / "theme_pepmem.css"
+
 st.set_page_config(
-    page_title="PepMem-AI",
-    page_icon="🧬",
+    page_title="PepMem-AI · Relatório",
+    page_icon="◈",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# --- tema visual (bicamada suave) ---
-st.markdown(
-    """
-    <style>
-      :root {
-        --pm-amber: #b0893a;
-        --pm-amber-deep: #8a6b2e;
-        --pm-amber-soft: #f2ead8;
-        --pm-navy: #1a2433;
-        --pm-membrane: #243447;
-        --pm-polar: #5f7d8a;
-        --pm-aqueous: #f3f5f7;
-        --pm-ink: #1e2733;
-        --pm-muted: #6b7785;
-        --pm-ok: #3d6b5c;
-        --pm-mid: #9a6b2f;
-        --pm-low: #8b4a4a;
-      }
-      html, body, .stApp {
-        /* Bicamada bem diluída — só um véu, sem faixas fortes */
-        background:
-          linear-gradient(180deg,
-            #f5f7f9 0%,
-            #eef2f5 35%,
-            #f4efe6 48%,
-            #eef2f5 62%,
-            #f5f7f9 100%
-          );
-        background-attachment: fixed;
-        color: var(--pm-ink);
-      }
-      .block-container {
-        padding-top: 1.25rem !important;
-        padding-bottom: 3rem !important;
-        max-width: 1100px !important;
-      }
-      [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1a2433 0%, #243447 100%);
-        border-right: 1px solid #2f4054;
-      }
-      [data-testid="stSidebar"] * { color: #e8edf2 !important; }
-      [data-testid="stSidebar"] .stCaption,
-      [data-testid="stSidebar"] label {
-        color: #9aa8b5 !important;
-      }
-      [data-testid="stSidebar"] div[data-baseweb="select"] > div {
-        background: #2a3a4d !important;
-        border-color: #3d5166 !important;
-      }
-      [data-testid="stSidebar"] .stButton > button {
-        background: transparent;
-        border: 1px solid #3d5166;
-        color: #e4d8bc !important;
-      }
-      [data-testid="stSidebar"] .stButton > button:hover {
-        border-color: #b0893a;
-        background: rgba(176, 137, 58, 0.1);
-      }
-      h1.pm-brand {
-        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-        font-weight: 700;
-        letter-spacing: -0.03em;
-        font-size: 2.2rem;
-        margin: 0 0 0.15rem 0;
-        color: var(--pm-navy);
-      }
-      h1.pm-brand span.pm-accent {
-        color: var(--pm-amber-deep);
-      }
-      p.pm-tagline {
-        color: var(--pm-muted);
-        font-size: 1.02rem;
-        margin: 0 0 1.1rem 0;
-        max-width: 42rem;
-      }
-      .pm-chip-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.35rem 0 0.85rem; }
-      .pm-chip {
-        display: inline-block;
-        padding: 0.18rem 0.55rem;
-        border-radius: 999px;
-        font-size: 0.74rem;
-        font-weight: 600;
-        border: 1px solid #c5d0da;
-        background: rgba(255,255,255,0.7);
-        color: #3a4a5a;
-      }
-      .pm-chip.novel {
-        border-color: #d4c4a0;
-        background: var(--pm-amber-soft);
-        color: var(--pm-amber-deep);
-      }
-      .pm-result {
-        border-radius: 12px;
-        padding: 0.95rem 1.05rem;
-        margin: 0.7rem 0 0.95rem;
-        border: 1px solid #d0d8e0;
-        background: rgba(255,255,255,0.88);
-      }
-      .pm-result.high { border-left: 4px solid var(--pm-amber); }
-      .pm-result.mid  { border-left: 4px solid var(--pm-mid); }
-      .pm-result.low  { border-left: 4px solid var(--pm-low); }
-      .pm-result h3 {
-        margin: 0 0 0.3rem 0;
-        font-size: 1.02rem;
-        color: var(--pm-ink);
-      }
-      .pm-result p { margin: 0; color: var(--pm-muted); font-size: 0.9rem; line-height: 1.45; }
-      .pm-badge {
-        display: inline-block;
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        padding: 0.18rem 0.45rem;
-        border-radius: 5px;
-        margin-bottom: 0.4rem;
-      }
-      .pm-badge.in { background: #e4ebf2; color: #2a3d52; }
-      .pm-badge.out { background: var(--pm-amber-soft); color: var(--pm-amber-deep); }
-      .pm-badge.ph { background: #e8ebef; color: #5a6570; }
-      [data-testid="stMetric"] {
-        background: rgba(255,255,255,0.9);
-        border: 1px solid #d5dde5;
-        border-radius: 10px;
-        padding: 0.6rem 0.8rem;
-      }
-      [data-testid="stTabs"] [data-baseweb="tab-list"] {
-        gap: 0.3rem;
-        border-bottom: 1px solid #d5dde5;
-      }
-      [data-testid="stTabs"] [data-baseweb="tab"] {
-        border-radius: 8px 8px 0 0;
-        font-weight: 600;
-      }
-      div[data-testid="stHorizontalBlock"] { gap: 0.75rem; }
-      [data-testid="stImage"] img,
-      [data-testid="stPyplot"] img { border-radius: 8px; }
-      .stButton > button[kind="primary"],
-      button[data-testid="baseButton-primary"] {
-        background: var(--pm-amber-deep) !important;
-        border: 1px solid var(--pm-amber-deep) !important;
-        color: #faf8f4 !important;
-        font-weight: 600 !important;
-      }
-      .stButton > button[kind="primary"]:hover,
-      button[data-testid="baseButton-primary"]:hover {
-        background: var(--pm-amber) !important;
-        border-color: var(--pm-amber) !important;
-      }
-      .stMarkdown table { width: 100%; }
-      footer { visibility: hidden; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+
+def inject_theme() -> None:
+    """Injeta CSS Power BI + paleta peçonha."""
+    css = THEME_CSS.read_text(encoding="utf-8") if THEME_CSS.exists() else ""
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+
+def report_bar(subtitulo: str, n_mics: int, lope_auc: float | None) -> None:
+    """Barra superior estilo relatório Power BI."""
+    auc_txt = f"{lope_auc:.3f}" if lope_auc is not None else "—"
+    st.markdown(
+        f"""
+        <div class="pbi-bar">
+          <div>
+            <div class="brand">InovAI Lab · UFRN · Tityus stigmurus</div>
+            <div class="title">PepMem-AI — Interação peptídeo–membrana</div>
+          </div>
+          <div class="meta">
+            {html.escape(subtitulo)}<br/>
+            Treino <strong>{n_mics} MICs</strong>
+            · Leave-peptide AUC <strong>{auc_txt}</strong>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def kpi_row(items: list[dict], cols: int | None = None) -> None:
+    """Faixa de cards KPI (tile Power BI)."""
+    n = cols or len(items)
+    cells = []
+    for i, it in enumerate(items):
+        cls = "pbi-kpi"
+        tone = it.get("tone")
+        if tone == "warn":
+            cls += " warn"
+        elif tone == "ok":
+            cls += " ok"
+        elif tone == "membrane":
+            cls += " membrane"
+        hint = (
+            f'<div class="hint">{html.escape(it.get("hint", ""))}</div>'
+            if it.get("hint")
+            else ""
+        )
+        cells.append(
+            f'<div class="{cls}" style="animation-delay:{0.04 * i}s">'
+            f'<div class="label">{html.escape(it["label"])}</div>'
+            f'<div class="value">{html.escape(str(it["value"]))}</div>'
+            f"{hint}</div>"
+        )
+    st.markdown(
+        f'<div class="pbi-kpi-row" style="grid-template-columns:repeat({n},minmax(0,1fr))">'
+        f'{"".join(cells)}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def tile_title(title: str, subtitle: str = "") -> None:
+    """Título de visual / tile."""
+    sub = f'<div class="pbi-tile-sub">{html.escape(subtitle)}</div>' if subtitle else ""
+    st.markdown(
+        f'<div class="pbi-tile-title">{html.escape(title)}</div>{sub}',
+        unsafe_allow_html=True,
+    )
+
+
+def filter_label(text: str) -> None:
+    st.markdown(f'<div class="pbi-filter-label">{html.escape(text)}</div>', unsafe_allow_html=True)
+
 
 # --- presets ---
 PRESETS_KNOWN = [
@@ -220,7 +143,7 @@ def load_project_peptides() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner="Gerando beeswarm SHAP...")
-def cached_beeswarm(use_embeddings: bool, n_mic: int, _layout_version: int = 5) -> bytes:
+def cached_beeswarm(use_embeddings: bool, n_mic: int, _layout_version: int = 6) -> bytes:
     """PNG do beeswarm global; ``n_mic`` / ``_layout_version`` invalidam o cache."""
     import io
 
@@ -246,7 +169,9 @@ def cached_explain(sequence: str, target_id: str, net_charge: float | None) -> d
     return get_predictor().explain_pair(sequence, target_id, net_charge=net_charge)
 
 
-# --- estado compartilhado da sessão ---
+inject_theme()
+
+# --- estado compartilhado ---
 predictor = get_predictor()
 targets = predictor.targets
 target_options = targets.set_index("target_id")["target"].to_dict()
@@ -260,13 +185,13 @@ seq_to_project = (
 info = predictor.model_info or {}
 n_train = int(info.get("n_samples") or 90)
 loo_auc = info.get("loo_auc")
+lope = info.get("leave_one_peptide_auc")
 
 
 def format_target_label(target_id: str) -> str:
     """Rótulo curto do alvo para selectbox / títulos."""
     name = target_options.get(target_id, target_id)
-    short = name if len(name) <= 40 else f"{name[:37]}…"
-    return f"{short}"
+    return name if len(name) <= 40 else f"{name[:37]}…"
 
 
 def truncate_text(value: object, max_len: int = 40) -> object:
@@ -277,12 +202,12 @@ def truncate_text(value: object, max_len: int = 40) -> object:
 
 
 def show_table(df: pd.DataFrame, max_text_len: int = 40) -> None:
-    """``st.table`` com colunas texto truncadas."""
+    """Tabela truncada em estilo relatório."""
     view = df.copy()
     for col in view.columns:
         if view[col].dtype == object:
             view[col] = view[col].map(lambda x: truncate_text(x, max_text_len))
-    st.table(view)
+    st.dataframe(view, use_container_width=True, hide_index=True)
 
 
 def activity_band(prob: float) -> tuple[str, str, str]:
@@ -316,18 +241,33 @@ def render_result_banner(prob: float, in_db: dict | None) -> None:
     """Banner de interpretação + badge no banco / fora do treino."""
     css, title, msg = activity_band(prob)
     if in_db is not None:
-        badge = f'<span class="pm-badge in">No banco · {in_db.get("peptide_id")} · {in_db.get("name")}</span>'
+        badge = (
+            f'<span class="pm-badge in">No banco · '
+            f'{html.escape(str(in_db.get("peptide_id")))} · '
+            f'{html.escape(str(in_db.get("name")))}</span>'
+        )
     else:
         badge = '<span class="pm-badge out">Fora do treino · predição generalizada</span>'
     st.markdown(
-        f'<div class="pm-result {css}">{badge}<h3>{title}</h3><p>{msg}</p></div>',
+        f'<div class="pm-result {css}">{badge}<h3>{html.escape(title)}</h3>'
+        f"<p>{html.escape(msg)}</p></div>",
         unsafe_allow_html=True,
     )
 
 
 def render_shap_block(expl: dict, target_label: str) -> None:
     """Métricas + gráfico de contribuições SHAP locais."""
-    st.metric("Prob. alta atividade (RF)", f"{expl['pred_high_activity_prob']:.1%}")
+    kpi_row(
+        [
+            {
+                "label": "Prob. alta atividade",
+                "value": f"{expl['pred_high_activity_prob']:.1%}",
+                "tone": "ok" if expl["pred_high_activity_prob"] >= 0.7 else None,
+                "hint": "calibrada (isotonic LOPO)",
+            }
+        ],
+        cols=1,
+    )
     fig = plot_contributions(
         expl["shap_contributions"],
         title=f"SHAP — {target_label}",
@@ -347,7 +287,7 @@ def apply_preset(seq: str, charge: float) -> None:
     st.session_state["use_charge_main"] = True
 
 
-# Defaults antes de qualquer widget com essas keys (evita conflito Streamlit)
+# Defaults de sessão (antes dos widgets)
 if "seq_main" not in st.session_state:
     st.session_state["seq_main"] = "FFSLIPKLVKGLISAFK"
 if "charge_main" not in st.session_state:
@@ -355,24 +295,21 @@ if "charge_main" not in st.session_state:
 if "use_charge_main" not in st.session_state:
     st.session_state["use_charge_main"] = True
 
-# --- sidebar (métricas do modelo + atalhos) ---
+# --- sidebar = painel de filtros ---
 with st.sidebar:
-    st.markdown("### PepMem-AI")
-    st.caption("InovAI Lab · UFRN")
-    st.markdown("---")
-    st.markdown("**Modelo**")
+    st.markdown("### Filtros do relatório")
+    st.caption("Peptídeos de peçonha · membrana · modelo")
+    filter_label("Modelo")
     st.write(info.get("model_type", "Random Forest + ESM-2"))
     st.write(f"Treino: **{n_train}** MICs")
     if loo_auc is not None:
-        st.write(f"LOO amostra AUC: **{float(loo_auc):.3f}**")
-    lope = info.get("leave_one_peptide_auc")
+        st.write(f"LOO amostra: **{float(loo_auc):.3f}**")
     if lope is not None:
-        st.write(f"Leave-peptide AUC: **{float(lope):.3f}**")
-        st.caption("Leave-peptide = métrica honestada (sem vazar análogos 90% idênticos)")
-    st.caption("Rótulo: MIC ≤ 3,4 µM = alta atividade · probs calibradas (isotonic)")
-    st.markdown("---")
-    st.markdown("**Atalhos de teste**")
-    st.caption("No banco (valida UI)")
+        st.write(f"Leave-peptide: **{float(lope):.3f}**")
+        st.caption("Leave-peptide = métrica honesta (sem vazar análogos ~90% idênticos)")
+    st.caption("Rótulo: MIC ≤ 3,4 µM · probs calibradas")
+
+    filter_label("Atalhos — no banco")
     for label, seq, ch in PRESETS_KNOWN:
         st.button(
             label,
@@ -381,7 +318,7 @@ with st.sidebar:
             on_click=apply_preset,
             args=(seq, ch),
         )
-    st.caption("Fora do banco (generalização)")
+    filter_label("Atalhos — fora do banco")
     for label, seq, ch in PRESETS_NOVEL:
         st.button(
             label,
@@ -391,89 +328,112 @@ with st.sidebar:
             args=(seq, ch),
         )
 
-
-# --- header ---
-st.markdown('<h1 class="pm-brand">Pep<span class="pm-accent">Mem</span>-AI</h1>', unsafe_allow_html=True)
-st.markdown(
-    '<p class="pm-tagline">Interação peptídeo–membrana inspirada em peçonhas de '
-    "<em>Tityus stigmurus</em> — PMI + Random Forest multimodal para priorizar ensaios in vitro.</p>",
-    unsafe_allow_html=True,
+# --- barra de relatório + KPIs globais ---
+report_bar(
+    "PoC priorização in vitro · peçonha escorpiônica",
+    n_train,
+    float(lope) if lope is not None else None,
 )
-st.markdown(
-    '<div class="pm-chip-row">'
-    f'<span class="pm-chip">{n_train} MICs no treino</span>'
-    '<span class="pm-chip">Bicamada · carga · µH</span>'
-    '<span class="pm-chip novel">Peptídeo catiônico × membrana aniônica</span>'
-    "</div>",
-    unsafe_allow_html=True,
+
+kpi_row(
+    [
+        {
+            "label": "MICs no treino",
+            "value": str(n_train),
+            "hint": "literatura + bancada",
+            "tone": "membrane",
+        },
+        {
+            "label": "Leave-peptide AUC",
+            "value": f"{float(lope):.3f}" if lope is not None else "—",
+            "hint": "validação principal",
+            "tone": "ok" if lope is not None and float(lope) >= 0.8 else None,
+        },
+        {
+            "label": "Peptídeos projeto",
+            "value": str(len(project_df) if not project_df.empty else "—"),
+            "hint": "Stigmurin / StigA / TsAP",
+        },
+        {
+            "label": "Alvos membrana",
+            "value": str(len(target_options)),
+            "hint": "Gram+ · Gram− · fungo · célula",
+            "tone": "membrane",
+        },
+    ],
+    cols=4,
 )
 
 tab_pred, tab_rank, tab_xai, tab_data, tab_api = st.tabs(
     ["Predição", "Ranking", "XAI (SHAP)", "Datasets", "API"]
 )
 
-# --- aba Predição: um par peptídeo × alvo ---
+# --- aba Predição ---
 with tab_pred:
-    left, right = st.columns([1.35, 1.0], gap="large")
+    left, right = st.columns([1.35, 1.0], gap="medium")
 
     with left:
-        st.subheader("Par peptídeo × membrana")
-        sequence = st.text_input(
-            "Sequência (letra única)",
-            key="seq_main",
-            help="Ex.: StigA6 FFSLIPKLVKGLISAFK — ou uma mutação fora do treino",
-        )
-        hit = lookup_sequence(sequence or "")
-        if hit is not None:
-            st.caption(f"Correspondência: **{hit.get('peptide_id')} · {hit.get('name')}** (já no projeto)")
-        else:
-            st.caption("Sequência **não** encontrada no banco do projeto — predição generalizada.")
-
-        c1, c2 = st.columns(2)
-        with c1:
-            use_charge = st.checkbox("Informar carga manualmente", key="use_charge_main")
-        with c2:
-            net_charge = st.number_input(
-                "Carga líquida",
-                step=1.0,
-                format="%.1f",
-                key="charge_main",
-                disabled=not use_charge,
+        with st.container(border=True):
+            tile_title("Par peptídeo × membrana", "Entrada do relatório de predição")
+            sequence = st.text_input(
+                "Sequência (letra única)",
+                key="seq_main",
+                help="Ex.: StigA6 FFSLIPKLVKGLISAFK — ou mutação fora do treino",
             )
-        charge = float(net_charge) if use_charge else None
+            hit = lookup_sequence(sequence or "")
+            if hit is not None:
+                st.caption(
+                    f"Correspondência: **{hit.get('peptide_id')} · {hit.get('name')}** (já no projeto)"
+                )
+            else:
+                st.caption("Sequência **não** encontrada no banco — predição generalizada.")
 
-        preferred = "S_aureus_ATCC29213"
-        keys = list(target_options.keys())
-        idx = keys.index(preferred) if preferred in keys else 0
-        target_id = st.selectbox(
-            "Membrana-alvo",
-            options=keys,
-            index=idx,
-            format_func=format_target_label,
-        )
-        run_pred = st.button("Predizer", type="primary", use_container_width=True)
+            c1, c2 = st.columns(2)
+            with c1:
+                use_charge = st.checkbox("Informar carga manualmente", key="use_charge_main")
+            with c2:
+                net_charge = st.number_input(
+                    "Carga líquida",
+                    step=1.0,
+                    format="%.1f",
+                    key="charge_main",
+                    disabled=not use_charge,
+                )
+            charge = float(net_charge) if use_charge else None
+
+            preferred = "S_aureus_ATCC29213"
+            keys = list(target_options.keys())
+            idx = keys.index(preferred) if preferred in keys else 0
+            target_id = st.selectbox(
+                "Membrana-alvo",
+                options=keys,
+                index=idx,
+                format_func=format_target_label,
+            )
+            run_pred = st.button("Predizer", type="primary", use_container_width=True)
 
     with right:
-        st.subheader("Exemplos rápidos")
-        st.markdown("**Já no banco**")
-        cols = st.columns(2)
-        for i, (label, seq, ch) in enumerate(PRESETS_KNOWN[:4]):
-            cols[i % 2].button(
-                label,
-                key=f"qk_{i}",
-                use_container_width=True,
-                on_click=apply_preset,
-                args=(seq, ch),
-            )
-        st.markdown("**Fora do banco**")
-        for i, (label, seq, ch) in enumerate(PRESETS_NOVEL):
-            st.button(
-                label,
-                key=f"qn_{i}",
-                use_container_width=True,
-                on_click=apply_preset,
-                args=(seq, ch),
-            )
+        with st.container(border=True):
+            tile_title("Exemplos rápidos", "Veneno / análogos / mutantes")
+            st.caption("Já no banco")
+            cols = st.columns(2)
+            for i, (label, seq, ch) in enumerate(PRESETS_KNOWN[:4]):
+                cols[i % 2].button(
+                    label,
+                    key=f"qk_{i}",
+                    use_container_width=True,
+                    on_click=apply_preset,
+                    args=(seq, ch),
+                )
+            st.caption("Fora do banco")
+            for i, (label, seq, ch) in enumerate(PRESETS_NOVEL):
+                st.button(
+                    label,
+                    key=f"qn_{i}",
+                    use_container_width=True,
+                    on_click=apply_preset,
+                    args=(seq, ch),
+                )
 
     if run_pred:
         with st.spinner("Descritores · PMI · modelo RF…"):
@@ -486,8 +446,6 @@ with tab_pred:
         prob = float(res["pred_high_activity_prob"])
         render_result_banner(prob, hit)
 
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("PMI", f"{res['pmi']:.3f}")
         lo = res.get("pred_interval_low")
         hi = res.get("pred_interval_high")
         interval = (
@@ -495,84 +453,110 @@ with tab_pred:
             if lo is not None and hi is not None
             else "—"
         )
-        m2.metric(
-            "Prob. calibrada",
-            f"{prob:.1%}",
-            help="Isotonic em leave-one-peptide-out",
+        kpi_row(
+            [
+                {
+                    "label": "PMI",
+                    "value": f"{res['pmi']:.3f}",
+                    "hint": "índice peptídeo–membrana",
+                    "tone": "membrane",
+                },
+                {
+                    "label": "Prob. calibrada",
+                    "value": f"{prob:.1%}",
+                    "hint": "isotonic LOPO",
+                    "tone": "ok" if prob >= 0.7 else ("warn" if prob < 0.4 else None),
+                },
+                {
+                    "label": "Intervalo (árvores)",
+                    "value": interval,
+                    "hint": f"σ = {float(res.get('pred_uncertainty_std') or 0):.3f}",
+                },
+                {
+                    "label": "Carga (q)",
+                    "value": f"{res['q_peptide']:.1f}",
+                    "hint": "peptídeo catiônico",
+                },
+            ],
+            cols=4,
         )
-        m3.metric("Intervalo (árvores RF)", interval)
-        m4.metric("Carga (q)", f"{res['q_peptide']:.1f}")
 
         if res.get("pred_high_activity_prob_raw") is not None:
             st.caption(
-                f"Prob. bruta (antes da calibração): {float(res['pred_high_activity_prob_raw']):.1%} · "
+                f"Prob. bruta: {float(res['pred_high_activity_prob_raw']):.1%} · "
                 f"σ árvores: {float(res.get('pred_uncertainty_std') or 0):.3f}"
             )
 
-        st.markdown("#### Vizinhos no treino")
-        neighbors = predictor.find_neighbors(sequence, k=5, target_id=target_id)
-        if neighbors:
-            ndf = pd.DataFrame(neighbors)[
-                [
-                    "peptide_id",
-                    "name",
-                    "identity",
-                    "neighbor_score",
-                    "mic_median_uM",
-                    "frac_high_activity",
+        with st.container(border=True):
+            tile_title("Vizinhos no treino", "Identidade + cosine ESM-2")
+            neighbors = predictor.find_neighbors(sequence, k=5, target_id=target_id)
+            if neighbors:
+                ndf = pd.DataFrame(neighbors)[
+                    [
+                        "peptide_id",
+                        "name",
+                        "identity",
+                        "neighbor_score",
+                        "mic_median_uM",
+                        "frac_high_activity",
+                    ]
                 ]
-            ]
-            if "mic_on_target_uM" in neighbors[0]:
-                ndf["mic_alvo"] = [n.get("mic_on_target_uM") for n in neighbors]
-            show_table(ndf, max_text_len=28)
-            top = neighbors[0]
-            st.caption(
-                f"Mais próximo: **{top['peptide_id']}** ({top.get('name')}) · "
-                f"identidade {100 * top['identity']:.0f}% · "
-                f"MIC mediana {top['mic_median_uM']} µM · "
-                f"{100 * top['frac_high_activity']:.0f}% dos pares com alta atividade"
-            )
-        else:
-            st.caption("Sem índice MIC para vizinhos.")
+                if "mic_on_target_uM" in neighbors[0]:
+                    ndf["mic_alvo"] = [n.get("mic_on_target_uM") for n in neighbors]
+                show_table(ndf, max_text_len=28)
+                top = neighbors[0]
+                st.caption(
+                    f"Mais próximo: **{top['peptide_id']}** ({top.get('name')}) · "
+                    f"identidade {100 * top['identity']:.0f}% · "
+                    f"MIC mediana {top['mic_median_uM']} µM"
+                )
+            else:
+                st.caption("Sem índice MIC para vizinhos.")
 
         with st.expander("Detalhes da resposta"):
             st.code(res["sequence"], language=None)
             st.json({k: v for k, v in res.items() if k != "sequence"})
 
-        st.markdown("#### Explicação SHAP")
-        try:
-            expl = cached_explain(sequence, target_id, charge)
-            render_shap_block(expl, target_options[target_id])
-        except Exception as e:
-            st.warning(f"SHAP indisponível: {e}")
+        with st.container(border=True):
+            tile_title("Explicação SHAP", "Contribuições locais do RF")
+            try:
+                expl = cached_explain(sequence, target_id, charge)
+                render_shap_block(expl, target_options[target_id])
+            except Exception as e:
+                st.warning(f"SHAP indisponível: {e}")
 
-# --- aba Ranking: score por alvo com penalidade de toxicidade proxy ---
+# --- aba Ranking ---
 with tab_rank:
-    r1, r2 = st.columns([1.2, 1.0], gap="large")
+    r1, r2 = st.columns([1.2, 1.0], gap="medium")
     with r1:
-        seq_rank = st.text_input(
-            "Sequência para ranking",
-            value=st.session_state.get("seq_main", "FFSLIPKLVKGLISAFK"),
-            key="rank_seq",
-        )
-        type_filter = st.multiselect(
-            "Filtrar tipo de alvo",
-            options=sorted(targets["target_type"].dropna().unique().tolist()),
-            default=[],
-        )
-        selected = st.multiselect(
-            "Alvos específicos (vazio = todos / filtro)",
-            options=list(target_options.keys()),
-            format_func=lambda x: truncate_text(target_options[x], 40),
-        )
-        lam = st.slider("Penalização toxicidade (λ)", 0.0, 1.0, 0.5, 0.05)
-        run_rank = st.button("Gerar ranking", type="primary")
+        with st.container(border=True):
+            tile_title("Parâmetros do ranking", "Score = prob − λ·tox + bônus PMI_sel")
+            seq_rank = st.text_input(
+                "Sequência para ranking",
+                value=st.session_state.get("seq_main", "FFSLIPKLVKGLISAFK"),
+                key="rank_seq",
+            )
+            type_filter = st.multiselect(
+                "Filtrar tipo de alvo",
+                options=sorted(targets["target_type"].dropna().unique().tolist()),
+                default=[],
+            )
+            selected = st.multiselect(
+                "Alvos específicos (vazio = todos / filtro)",
+                options=list(target_options.keys()),
+                format_func=lambda x: truncate_text(target_options[x], 40),
+            )
+            lam = st.slider("Penalização toxicidade (λ)", 0.0, 1.0, 0.5, 0.05)
+            run_rank = st.button("Gerar ranking", type="primary")
 
     with r2:
-        st.info(
-            "O **final_score** combina probabilidade de atividade, "
-            "penalidade em célula normal (λ) e bônus de PMI_sel."
-        )
+        with st.container(border=True):
+            tile_title("Como ler o score", "Priorização para bancada")
+            st.markdown(
+                "O **final_score** combina probabilidade de atividade, "
+                "penalidade em célula normal (λ) e bônus de PMI_sel "
+                "(seletividade vs membrana mamífera)."
+            )
 
     if run_rank:
         tids = selected or None
@@ -590,36 +574,40 @@ with tab_rank:
             ]
         ].copy()
         show["pred_high_activity_prob"] = show["pred_high_activity_prob"].map(lambda x: f"{x:.1%}")
-        show_table(show, max_text_len=32)
+        with st.container(border=True):
+            tile_title("Matriz de ranking", "Ordenado por final_score")
+            show_table(show, max_text_len=32)
 
         chart = df.set_index("target_id")["final_score"].dropna().sort_values(ascending=False)
         chart.index = chart.index.map(lambda x: truncate_text(str(x), 28))
-        st.markdown("##### Score final por alvo")
-        st.bar_chart(chart, color="#8a6b2e")
+        with st.container(border=True):
+            tile_title("Score final por alvo", "Visual de barras")
+            st.bar_chart(chart, color=PM_VENOM)
 
     st.markdown("---")
-    st.subheader("Ranking pré-calculado do projeto")
-    ranking_path = ROOT / "data" / "processed" / "models" / "project_ranking_baseline.csv"
-    if ranking_path.exists():
-        pre = pd.read_csv(ranking_path)
-        filt = st.selectbox(
-            "Filtrar alvo",
-            ["Todos"] + sorted(pre["target_id"].unique().tolist()),
-            key="pre_filt",
-        )
-        view = pre if filt == "Todos" else pre[pre["target_id"] == filt]
-        show_table(
-            view.nlargest(15, "pred_high_activity_prob")[
-                ["peptide_id", "target_id", "pmi", "pmi_sel", "pred_high_activity_prob"]
-            ],
-            max_text_len=28,
-        )
+    with st.container(border=True):
+        tile_title("Ranking pré-calculado do projeto", "Baseline offline")
+        ranking_path = ROOT / "data" / "processed" / "models" / "project_ranking_baseline.csv"
+        if ranking_path.exists():
+            pre = pd.read_csv(ranking_path)
+            filt = st.selectbox(
+                "Filtrar alvo",
+                ["Todos"] + sorted(pre["target_id"].unique().tolist()),
+                key="pre_filt",
+            )
+            view = pre if filt == "Todos" else pre[pre["target_id"] == filt]
+            show_table(
+                view.nlargest(15, "pred_high_activity_prob")[
+                    ["peptide_id", "target_id", "pmi", "pmi_sel", "pred_high_activity_prob"]
+                ],
+                max_text_len=28,
+            )
 
-# --- aba XAI: beeswarm global + importância agregada ---
+# --- aba XAI ---
 with tab_xai:
-    st.markdown(
-        "SHAP explica *por que* o RF atribui probabilidade de **alta atividade** "
-        f"(MIC ≤ 3,4 µM). Treino atual: **{n_train}** pares MIC."
+    st.caption(
+        f"SHAP explica *por que* o RF atribui probabilidade de alta atividade "
+        f"(MIC ≤ 3,4 µM). Treino: **{n_train}** pares MIC."
     )
 
     global_report = predictor.global_shap_report()
@@ -630,79 +618,93 @@ with tab_xai:
 
     g1, g2 = st.columns(2)
     with g1:
-        if global_report:
-            st.markdown("**Global — multimodal**")
-            st.caption(f"{global_report.get('n_samples')} MICs")
-            st.pyplot(
-                plot_global_importance(global_report["global_importance"]),
-                clear_figure=True,
-                use_container_width=True,
-            )
+        with st.container(border=True):
+            tile_title("Importância global — multimodal", f"{(global_report or {}).get('n_samples', '—')} MICs")
+            if global_report:
+                st.pyplot(
+                    plot_global_importance(global_report["global_importance"]),
+                    clear_figure=True,
+                    use_container_width=True,
+                )
     with g2:
-        if baseline_report:
-            st.markdown("**Global — baseline**")
-            st.caption(f"{baseline_report.get('n_samples')} MICs")
-            st.pyplot(
-                plot_global_importance(
-                    baseline_report["global_importance"],
-                    title="Importância |SHAP| — baseline",
-                ),
-                clear_figure=True,
-                use_container_width=True,
-            )
+        with st.container(border=True):
+            tile_title("Importância global — baseline", f"{(baseline_report or {}).get('n_samples', '—')} MICs")
+            if baseline_report:
+                st.pyplot(
+                    plot_global_importance(
+                        baseline_report["global_importance"],
+                        title="Importância |SHAP| — baseline",
+                    ),
+                    clear_figure=True,
+                    use_container_width=True,
+                )
 
-    st.markdown("##### Beeswarm")
-    st.caption("Cada ponto = um par MIC do treino. Cor = valor do descritor.")
     b1, b2 = st.columns(2)
     with b1:
-        try:
-            st.image(cached_beeswarm(True, n_train), caption="Multimodal", use_container_width=True)
-        except Exception as e:
-            st.error(f"Beeswarm multimodal: {e}")
+        with st.container(border=True):
+            tile_title("Beeswarm multimodal", "Cada ponto = um par MIC")
+            try:
+                st.image(cached_beeswarm(True, n_train), use_container_width=True)
+            except Exception as e:
+                st.error(f"Beeswarm multimodal: {e}")
     with b2:
-        try:
-            st.image(cached_beeswarm(False, n_train), caption="Baseline", use_container_width=True)
-        except Exception as e:
-            st.error(f"Beeswarm baseline: {e}")
+        with st.container(border=True):
+            tile_title("Beeswarm baseline", "Descritores clássicos + PMI")
+            try:
+                st.image(cached_beeswarm(False, n_train), use_container_width=True)
+            except Exception as e:
+                st.error(f"Beeswarm baseline: {e}")
 
-    st.markdown("---")
-    st.subheader("Explicação local")
-    xai_seq = st.text_input("Sequência", value=st.session_state.get("seq_main", "FFSLIPSLVGGLISAFK"), key="xai_seq")
-    xc1, xc2 = st.columns(2)
-    with xc1:
-        xai_use_charge = st.checkbox("Informar carga", value=True, key="xai_use_charge")
-        xai_charge = st.number_input("Carga líquida", value=3.0, step=1.0, key="xai_charge")
-    with xc2:
-        xai_target = st.selectbox(
-            "Membrana-alvo",
-            options=list(target_options.keys()),
-            format_func=format_target_label,
-            key="xai_target",
-            index=list(target_options.keys()).index("S_aureus_ATCC29213")
-            if "S_aureus_ATCC29213" in target_options
-            else 0,
+    with st.container(border=True):
+        tile_title("Explicação local", "Instância peptídeo × membrana")
+        xai_seq = st.text_input(
+            "Sequência",
+            value=st.session_state.get("seq_main", "FFSLIPSLVGGLISAFK"),
+            key="xai_seq",
         )
-    charge_xai = float(xai_charge) if xai_use_charge else None
-    if st.button("Calcular SHAP local", type="primary", key="xai_btn"):
-        try:
-            expl = cached_explain(xai_seq, xai_target, charge_xai)
-            render_result_banner(float(expl["pred_high_activity_prob"]), lookup_sequence(xai_seq))
-            render_shap_block(expl, target_options[xai_target])
-        except Exception as e:
-            st.error(str(e))
+        xc1, xc2 = st.columns(2)
+        with xc1:
+            xai_use_charge = st.checkbox("Informar carga", value=True, key="xai_use_charge")
+            xai_charge = st.number_input("Carga líquida", value=3.0, step=1.0, key="xai_charge")
+        with xc2:
+            xai_target = st.selectbox(
+                "Membrana-alvo",
+                options=list(target_options.keys()),
+                format_func=format_target_label,
+                key="xai_target",
+                index=list(target_options.keys()).index("S_aureus_ATCC29213")
+                if "S_aureus_ATCC29213" in target_options
+                else 0,
+            )
+        charge_xai = float(xai_charge) if xai_use_charge else None
+        if st.button("Calcular SHAP local", type="primary", key="xai_btn"):
+            try:
+                expl = cached_explain(xai_seq, xai_target, charge_xai)
+                render_result_banner(float(expl["pred_high_activity_prob"]), lookup_sequence(xai_seq))
+                render_shap_block(expl, target_options[xai_target])
+            except Exception as e:
+                st.error(str(e))
 
-# --- aba Datasets: resumo dos artefatos processados ---
+# --- aba Datasets ---
 with tab_data:
     summary_path = ROOT / "data" / "processed" / "build_summary.json"
     bench_report = ROOT / "data" / "bench" / "import_report.json"
     pairs = pd.read_parquet(ROOT / "data" / "processed" / "pepmem_pairs.parquet")
     base = pd.read_parquet(ROOT / "data" / "processed" / "pepmem_base.parquet")
 
-    d1, d2, d3, d4 = st.columns(4)
-    d1.metric("Peptídeos (base)", f"{len(base):,}")
-    d2.metric("Projeto", len(project_df) if not project_df.empty else "—")
-    d3.metric("Pares", f"{len(pairs):,}")
-    d4.metric("MICs", int(pairs["mic_value"].notna().sum()))
+    kpi_row(
+        [
+            {"label": "Peptídeos (base)", "value": f"{len(base):,}", "tone": "membrane"},
+            {"label": "Projeto", "value": str(len(project_df) if not project_df.empty else "—")},
+            {"label": "Pares", "value": f"{len(pairs):,}"},
+            {
+                "label": "MICs",
+                "value": str(int(pairs["mic_value"].notna().sum())),
+                "tone": "ok",
+            },
+        ],
+        cols=4,
+    )
 
     if bench_report.exists():
         with st.expander("Relatório bancada"):
@@ -711,30 +713,36 @@ with tab_data:
         with st.expander("build_summary.json"):
             st.json(json.loads(summary_path.read_text(encoding="utf-8")))
 
-    st.subheader("Peptídeos do projeto")
-    st.caption("P01–P09 podem ter sequência placeholder (igual ao nativo) — preferir P10–P18 para testes.")
-    if not project_df.empty:
-        view = project_df[["peptide_id", "name", "sequence", "net_charge", "source"]].copy()
-        # flag duplicates of native sequences among analogs
-        native_seqs = set(
-            project_df.loc[project_df["peptide_id"].isin(["P05", "P10"]), "sequence"].astype(str)
+    with st.container(border=True):
+        tile_title("Peptídeos do projeto", "Stigmurin, StigA, TsAP-2 e análogos")
+        st.caption(
+            "P01–P09 podem ter sequência placeholder — preferir P10–P18 para testes."
         )
-        def flag(row):
-            pid = str(row["peptide_id"])
-            seq = str(row["sequence"])
-            if pid in {"P01", "P02", "P03", "P04", "P06", "P07", "P08", "P09"} and seq in native_seqs:
-                return "placeholder?"
-            if pid in {"P10", "P11", "P12", "P13", "P14", "P15", "P16", "P05", "P17", "P18"}:
-                return "no banco / MIC"
-            return ""
-        view["nota"] = view.apply(flag, axis=1)
-        show_table(view, max_text_len=40)
+        if not project_df.empty:
+            view = project_df[["peptide_id", "name", "sequence", "net_charge", "source"]].copy()
+            native_seqs = set(
+                project_df.loc[project_df["peptide_id"].isin(["P05", "P10"]), "sequence"].astype(str)
+            )
 
-# --- aba API: exemplo de chamada ao PepMemPredictor ---
+            def flag(row):
+                pid = str(row["peptide_id"])
+                seq = str(row["sequence"])
+                if pid in {"P01", "P02", "P03", "P04", "P06", "P07", "P08", "P09"} and seq in native_seqs:
+                    return "placeholder?"
+                if pid in {"P10", "P11", "P12", "P13", "P14", "P15", "P16", "P05", "P17", "P18"}:
+                    return "no banco / MIC"
+                return ""
+
+            view["nota"] = view.apply(flag, axis=1)
+            show_table(view, max_text_len=40)
+
+# --- aba API ---
 with tab_api:
-    st.markdown(
-        f"""
-Endpoints locais (`uvicorn api.main:app --port 8001`):
+    with st.container(border=True):
+        tile_title("API local (FastAPI)", "Integração via HTTP")
+        st.markdown(
+            """
+Endpoints (`uvicorn api.main:app --port 8001`):
 
 | Método | Rota | Uso |
 |--------|------|-----|
@@ -747,12 +755,14 @@ Endpoints locais (`uvicorn api.main:app --port 8001`):
 ```bash
 curl -X POST http://localhost:8001/predict \\
   -H "Content-Type: application/json" \\
-  -d '{{"sequence":"FFSLIPKLVAGLISAFK","target_id":"S_aureus_ATCC29213","net_charge":3}}'
+  -d '{"sequence":"FFSLIPKLVAGLISAFK","target_id":"S_aureus_ATCC29213","net_charge":3}'
 ```
 """
-    )
+        )
     if info:
-        st.markdown("**Modelo carregado**")
-        st.write(f"- Tipo: {info.get('model_type', '—')}")
-        st.write(f"- Amostras: {info.get('n_samples', '—')}")
-        st.write(f"- LOO AUC: {info.get('loo_auc', '—')}")
+        with st.container(border=True):
+            tile_title("Modelo carregado", "Metadados do relatório")
+            st.write(f"- Tipo: {info.get('model_type', '—')}")
+            st.write(f"- Amostras: {info.get('n_samples', '—')}")
+            st.write(f"- LOO AUC: {info.get('loo_auc', '—')}")
+            st.write(f"- Leave-peptide AUC: {info.get('leave_one_peptide_auc', '—')}")

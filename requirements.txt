@@ -1,16 +1,16 @@
-# Dependências para Streamlit Community Cloud / dashboard local (CPU)
-# PyTorch CPU — evita wheels CUDA pesados no build gratuito
+# Streamlit Community Cloud — pin CPU (evita CUDA e mismatch torch/vision)
+# Em Advanced settings do app: Python 3.11 ou 3.12 (não use 3.13+)
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch>=2.0,<2.5
-torchvision>=0.15,<0.20
-pandas>=2.0
-pyarrow>=14.0
-numpy>=1.24
-scikit-learn>=1.3
-joblib>=1.3
-transformers>=4.36
-streamlit>=1.31
-shap>=0.44
-matplotlib>=3.7
-tqdm>=4.66
-requests>=2.28
+torch==2.2.2+cpu
+numpy==1.26.4
+pandas==2.2.2
+pyarrow==16.1.0
+scikit-learn==1.5.1
+joblib==1.4.2
+transformers==4.44.2
+huggingface-hub==0.24.6
+streamlit==1.37.1
+shap==0.46.0
+matplotlib==3.9.2
+tqdm==4.66.5
+requests==2.32.3

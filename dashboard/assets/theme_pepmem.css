@@ -1,0 +1,389 @@
+/* PepMem-AI — relatório estilo Power BI
+   Paleta: carapaça (escorpião) · veneno âmbar · membrana teal · areia */
+
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;600;700&display=swap");
+
+:root {
+  --pm-carapace: #1c1410;
+  --pm-carapace-2: #2e2218;
+  --pm-venom: #d4a017;
+  --pm-venom-deep: #b8860b;
+  --pm-membrane: #1e5c5a;
+  --pm-membrane-soft: #2a7a76;
+  --pm-copper: #a67c52;
+  --pm-ink: #1a1510;
+  --pm-muted: #6b6258;
+  --pm-line: #ddd6cc;
+  --pm-canvas: #ebe6df;
+  --pm-white: #ffffff;
+  --pm-ok: #2d6a4f;
+  --pm-mid: #b8860b;
+  --pm-low: #8c3a2f;
+  --pm-tile-radius: 4px;
+  --pm-shadow: 0 1.6px 3.6px rgba(28, 20, 16, 0.08), 0 0.3px 0.9px rgba(28, 20, 16, 0.06);
+}
+
+html, body, [class*="css"] {
+  font-family: "DM Sans", "IBM Plex Sans", "Segoe UI", sans-serif !important;
+}
+
+.stApp {
+  background: var(--pm-canvas) !important;
+  /* textura leve de areia/deserto — sem faixas fortes */
+  background-image:
+    radial-gradient(ellipse at 12% 0%, rgba(212, 160, 23, 0.07) 0%, transparent 45%),
+    radial-gradient(ellipse at 88% 100%, rgba(30, 92, 90, 0.06) 0%, transparent 40%) !important;
+  background-attachment: fixed !important;
+  color: var(--pm-ink);
+}
+
+#MainMenu, footer { visibility: hidden; height: 0; }
+
+header[data-testid="stHeader"] {
+  background: transparent;
+}
+
+.block-container {
+  padding: 0.55rem 1.2rem 2rem !important;
+  max-width: 1480px !important;
+}
+
+/* ---- Barra de relatório ---- */
+.pbi-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: linear-gradient(105deg, var(--pm-carapace) 0%, var(--pm-carapace-2) 55%, #3d2e20 100%);
+  color: #fff;
+  padding: 0.7rem 1.05rem;
+  border-radius: var(--pm-tile-radius);
+  margin-bottom: 0.7rem;
+  box-shadow: var(--pm-shadow);
+  border-bottom: 3px solid var(--pm-venom);
+  animation: pbi-in 0.35s ease both;
+}
+
+.pbi-bar .brand {
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  color: var(--pm-venom);
+  text-transform: uppercase;
+}
+
+.pbi-bar .title {
+  font-size: 1.08rem;
+  font-weight: 700;
+  margin: 0.12rem 0 0;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.pbi-bar .meta {
+  font-size: 0.74rem;
+  color: rgba(255, 255, 255, 0.72);
+  text-align: right;
+  line-height: 1.45;
+}
+
+.pbi-bar .meta strong {
+  color: var(--pm-venom);
+  font-weight: 600;
+}
+
+/* ---- KPI cards ---- */
+.pbi-kpi-row {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0 0 0.7rem;
+}
+
+.pbi-kpi {
+  background: var(--pm-white);
+  border: 1px solid var(--pm-line);
+  border-radius: var(--pm-tile-radius);
+  box-shadow: var(--pm-shadow);
+  padding: 0.7rem 0.85rem 0.65rem;
+  min-height: 78px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  animation: pbi-in 0.4s ease both;
+  position: relative;
+}
+
+.pbi-kpi:hover {
+  box-shadow: 0 3px 10px rgba(28, 20, 16, 0.12);
+  transform: translateY(-1px);
+}
+
+.pbi-kpi::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--pm-venom);
+  opacity: 0.9;
+}
+
+.pbi-kpi.warn::after { background: var(--pm-low); }
+.pbi-kpi.ok::after { background: var(--pm-ok); }
+.pbi-kpi.membrane::after { background: var(--pm-membrane); }
+
+.pbi-kpi .label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--pm-muted);
+  margin-bottom: 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pbi-kpi .value {
+  font-size: 1.32rem;
+  font-weight: 700;
+  color: var(--pm-carapace);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+
+.pbi-kpi.warn .value { color: var(--pm-low); }
+.pbi-kpi.ok .value { color: var(--pm-ok); }
+.pbi-kpi.membrane .value { color: var(--pm-membrane); }
+
+.pbi-kpi .hint {
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  color: var(--pm-muted);
+}
+
+/* ---- Títulos de tile ---- */
+.pbi-tile-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--pm-ink);
+  margin: 0 0 0.12rem;
+  padding: 0.1rem 0;
+}
+
+.pbi-tile-sub {
+  font-size: 0.7rem;
+  color: var(--pm-muted);
+  margin: 0 0 0.4rem;
+}
+
+.pbi-filter-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--pm-muted);
+  margin: 0.7rem 0 0.3rem;
+}
+
+/* ---- Resultado / insight ---- */
+.pm-result {
+  border-radius: var(--pm-tile-radius);
+  padding: 0.85rem 1rem;
+  margin: 0.55rem 0 0.75rem;
+  border: 1px solid var(--pm-line);
+  background: var(--pm-white);
+  box-shadow: var(--pm-shadow);
+  animation: pbi-in 0.3s ease both;
+}
+
+.pm-result.high { border-left: 4px solid var(--pm-venom); }
+.pm-result.mid  { border-left: 4px solid var(--pm-mid); }
+.pm-result.low  { border-left: 4px solid var(--pm-low); }
+
+.pm-result h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.98rem;
+  color: var(--pm-ink);
+}
+
+.pm-result p {
+  margin: 0;
+  color: var(--pm-muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.pm-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.16rem 0.42rem;
+  border-radius: 3px;
+  margin-bottom: 0.35rem;
+}
+
+.pm-badge.in {
+  background: rgba(30, 92, 90, 0.12);
+  color: var(--pm-membrane);
+}
+
+.pm-badge.out {
+  background: rgba(212, 160, 23, 0.18);
+  color: var(--pm-venom-deep);
+}
+
+/* ---- Sidebar = painel de filtros ---- */
+section[data-testid="stSidebar"] {
+  background: var(--pm-white) !important;
+  border-right: 1px solid var(--pm-line);
+}
+
+section[data-testid="stSidebar"] > div {
+  background: var(--pm-white);
+}
+
+section[data-testid="stSidebar"] .block-container {
+  padding-top: 0.9rem !important;
+}
+
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] li,
+section[data-testid="stSidebar"] label {
+  color: var(--pm-ink) !important;
+}
+
+section[data-testid="stSidebar"] .stCaption,
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
+  color: var(--pm-muted) !important;
+}
+
+section[data-testid="stSidebar"] h3 {
+  font-size: 0.95rem !important;
+  color: var(--pm-carapace) !important;
+}
+
+section[data-testid="stSidebar"] .stButton > button {
+  background: #f7f3ec !important;
+  border: 1px solid var(--pm-line) !important;
+  color: var(--pm-carapace) !important;
+  border-radius: 2px !important;
+  font-weight: 600 !important;
+  font-size: 0.78rem !important;
+}
+
+section[data-testid="stSidebar"] .stButton > button:hover {
+  border-color: var(--pm-venom) !important;
+  background: rgba(212, 160, 23, 0.12) !important;
+}
+
+/* ---- Abas = páginas do relatório ---- */
+div[data-testid="stTabs"] [data-baseweb="tab-list"] {
+  background: var(--pm-white);
+  border: 1px solid var(--pm-line);
+  border-radius: var(--pm-tile-radius);
+  padding: 0.2rem;
+  gap: 0.12rem;
+  margin-bottom: 0.7rem;
+  box-shadow: var(--pm-shadow);
+}
+
+button[data-baseweb="tab"] {
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+  color: var(--pm-muted) !important;
+  border-radius: 3px !important;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+  color: var(--pm-carapace) !important;
+  background: rgba(212, 160, 23, 0.2) !important;
+}
+
+div[data-baseweb="tab-highlight"] {
+  background-color: transparent !important;
+}
+
+/* ---- Tiles com borda ---- */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+  background: var(--pm-white) !important;
+  border: 1px solid var(--pm-line) !important;
+  border-radius: var(--pm-tile-radius) !important;
+  box-shadow: var(--pm-shadow) !important;
+  padding: 0.4rem 0.55rem 0.6rem !important;
+  animation: pbi-in 0.4s ease both;
+}
+
+div[data-testid="stDataFrame"],
+div[data-testid="stTable"] {
+  border: 1px solid var(--pm-line);
+  border-radius: var(--pm-tile-radius);
+  background: #fff;
+  box-shadow: var(--pm-shadow);
+}
+
+[data-testid="stMetric"] {
+  background: var(--pm-white);
+  border: 1px solid var(--pm-line);
+  border-radius: var(--pm-tile-radius);
+  padding: 0.55rem 0.7rem;
+  box-shadow: var(--pm-shadow);
+}
+
+[data-testid="stImage"] img,
+[data-testid="stPyplot"] img {
+  border-radius: var(--pm-tile-radius);
+  border: 1px solid var(--pm-line);
+}
+
+/* ---- Botões ---- */
+.stButton > button {
+  background: var(--pm-carapace-2) !important;
+  color: #fff !important;
+  border: 1px solid var(--pm-carapace) !important;
+  border-radius: 2px !important;
+  font-weight: 600 !important;
+  font-size: 0.8rem !important;
+}
+
+.stButton > button:hover {
+  background: var(--pm-carapace) !important;
+  border-color: var(--pm-venom) !important;
+}
+
+.stButton > button[kind="primary"],
+button[data-testid="baseButton-primary"] {
+  background: var(--pm-venom-deep) !important;
+  border: 1px solid var(--pm-venom-deep) !important;
+  color: #1c1410 !important;
+  font-weight: 700 !important;
+}
+
+.stButton > button[kind="primary"]:hover,
+button[data-testid="baseButton-primary"]:hover {
+  background: var(--pm-venom) !important;
+  border-color: var(--pm-venom) !important;
+}
+
+.stMarkdown table { width: 100%; }
+
+@keyframes pbi-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+@media (max-width: 768px) {
+  .pbi-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .pbi-bar .meta { text-align: left; }
+  .block-container {
+    padding: 0.45rem 0.7rem 1.5rem !important;
+  }
+}

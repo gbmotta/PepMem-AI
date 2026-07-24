@@ -11,8 +11,8 @@ toolbarMode = "minimal"
 showSidebarNavigation = false
 
 [theme]
-primaryColor = "#8a6b2e"
-backgroundColor = "#f3f5f7"
-secondaryBackgroundColor = "#e8edf2"
-textColor = "#1e2733"
+primaryColor = "#d4a017"
+backgroundColor = "#ebe6df"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#1a1510"
 font = "sans serif"
