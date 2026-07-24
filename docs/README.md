@@ -5,6 +5,7 @@
 | Pasta / arquivo | Conteúdo |
 |-----------------|----------|
 | [DEPLOY.md](DEPLOY.md) | Guia de publicação (HF Spaces, Streamlit Cloud, Render) |
+| [INTERPRETACAO_RESULTADOS.md](INTERPRETACAO_RESULTADOS.md) | Como ler PMI, probabilidades, intervalo, ranking e SHAP |
 | [peptideos/](peptideos/) | Documento consolidado (físico-química + MICs + mapa de estudos) |
 | [legado/](legado/) | Originais Word antes do merge (backup) |
 | [pipeline/](pipeline/) | Entregáveis LaTeX / PDF do pipeline InovAI |
