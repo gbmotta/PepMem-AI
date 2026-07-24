@@ -29,8 +29,10 @@ from pepmem.paths import project_root
 # Garante ROOT consistente com o restante do pacote
 ROOT = project_root()
 
-# --- paleta (carapaça · veneno · membrana) ---
+# --- paleta (carapaça · veneno · verde · roxo) ---
 PM_VENOM = "#d4a017"
+PM_GREEN = "#2f7d4a"
+PM_PURPLE = "#5b3d8a"
 PM_MEMBRANE = "#1e5c5a"
 PM_CARAPACE = "#1c1410"
 
@@ -85,6 +87,8 @@ def kpi_row(items: list[dict], cols: int | None = None) -> None:
             cls += " ok"
         elif tone == "membrane":
             cls += " membrane"
+        elif tone == "purple":
+            cls += " purple"
         hint = (
             f'<div class="hint">{html.escape(it.get("hint", ""))}</div>'
             if it.get("hint")
@@ -367,6 +371,7 @@ kpi_row(
             "label": "Peptídeos projeto",
             "value": str(len(project_df) if not project_df.empty else "—"),
             "hint": "Stigmurin / StigA / TsAP",
+            "tone": "purple",
         },
         {
             "label": "Alvos membrana",
@@ -389,10 +394,23 @@ with tab_pred:
     with left:
         with st.container(border=True):
             tile_title("Par peptídeo × membrana", "Entrada do relatório de predição")
+            st.markdown(
+                '<div class="pm-hint-box">'
+                "<strong>Onde analisar um peptídeo novo?</strong><br/>"
+                "1) Cole a sequência abaixo (aba <em>Predição</em>) e clique em <strong>Predizer</strong> — "
+                "não precisa estar no banco.<br/>"
+                "2) Para entrar no treino com MIC real: edite "
+                "<code>data/bench/mic_bench.csv</code> (+ opcional "
+                "<code>peptides_bench.csv</code>) e rode "
+                "<code>python scripts/import_bench_mic.py --retrain</code>."
+                "</div>",
+                unsafe_allow_html=True,
+            )
             sequence = st.text_input(
                 "Sequência (letra única)",
                 key="seq_main",
-                help="Ex.: StigA6 FFSLIPKLVKGLISAFK — ou mutação fora do treino",
+                help="Cole aqui qualquer sequência AA — ex. FFSLIPKLVAGLISAFK",
+                placeholder="Ex.: FFSLIPKLVAGLISAFK",
             )
             hit = lookup_sequence(sequence or "")
             if hit is not None:
@@ -596,7 +614,7 @@ with tab_rank:
         chart.index = chart.index.map(lambda x: truncate_text(str(x), 28))
         with st.container(border=True):
             tile_title("Score final por alvo", "Visual de barras")
-            st.bar_chart(chart, color=PM_VENOM)
+            st.bar_chart(chart, color=PM_PURPLE)
 
     st.markdown("---")
     with st.container(border=True):
