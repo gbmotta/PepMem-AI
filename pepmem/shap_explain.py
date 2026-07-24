@@ -171,6 +171,11 @@ def _aggregate_matrix_for_display(
     return np.hstack([x_classic, x_esm]), np.hstack([sv_classic, sv_esm]), labels
 
 
+def _shap_values(explainer: Any, X: np.ndarray) -> Any:
+    """SHAP values com check de aditividade desligado (RF + probs costumam falhar o check)."""
+    return explainer.shap_values(X, check_additivity=False)
+
+
 def compute_training_shap(
     pipeline: Pipeline,
     use_embeddings: bool,
@@ -184,7 +189,7 @@ def compute_training_shap(
     import shap
 
     explainer = shap.TreeExplainer(clf, data=x_scaled)
-    shap_values = explainer.shap_values(x_scaled)
+    shap_values = _shap_values(explainer, x_scaled)
     sv = _all_positive_shap(shap_values)
     return *_aggregate_matrix_for_display(X, sv, names), meta
 
@@ -243,7 +248,7 @@ def explain_instance(
     x_scaled = scaler.transform(x.reshape(1, -1))
 
     explainer = shap.TreeExplainer(clf, data=bg)
-    shap_values = explainer.shap_values(x_scaled)
+    shap_values = _shap_values(explainer, x_scaled)
     shap_row = _positive_class_shap(shap_values, 0)
     base_value = explainer.expected_value
     if isinstance(base_value, (list, np.ndarray)):
@@ -274,7 +279,7 @@ def global_importance(
     clf = pipeline.named_steps["clf"]
     X_scaled = scaler.transform(X)
     explainer = shap.TreeExplainer(clf, data=X_scaled)
-    shap_values = explainer.shap_values(X_scaled)
+    shap_values = _shap_values(explainer, X_scaled)
 
     if isinstance(shap_values, list):
         sv = np.asarray(shap_values[1])
