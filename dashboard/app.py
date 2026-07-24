@@ -17,13 +17,17 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from pepmem.paths import project_root
-
-ROOT = project_root()
-sys.path.insert(0, str(ROOT))
+# Streamlit Cloud adiciona só ``dashboard/`` ao path — a raiz do repo precisa entrar antes
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from pepmem.predictor import PepMemPredictor, torch_available
 from pepmem.shap_explain import plot_beeswarm, plot_contributions, plot_global_importance
+from pepmem.paths import project_root
+
+# Garante ROOT consistente com o restante do pacote
+ROOT = project_root()
 
 # --- paleta (carapaça · veneno · membrana) ---
 PM_VENOM = "#d4a017"
