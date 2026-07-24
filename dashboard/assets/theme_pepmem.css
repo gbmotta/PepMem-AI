@@ -1,5 +1,5 @@
 /* PepMem-AI — relatório estilo Power BI
-   Paleta: carapaça (escorpião) · veneno âmbar · membrana teal · areia */
+   Paleta: carapaça · veneno âmbar · membrana teal · clorofila verde · peçonha roxa */
 
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;600;700&display=swap");
 
@@ -10,13 +10,19 @@
   --pm-venom-deep: #b8860b;
   --pm-membrane: #1e5c5a;
   --pm-membrane-soft: #2a7a76;
+  --pm-green: #2f7d4a;
+  --pm-green-soft: #3d9a5c;
+  --pm-green-mist: rgba(47, 125, 74, 0.12);
+  --pm-purple: #5b3d8a;
+  --pm-purple-soft: #7a56b0;
+  --pm-purple-mist: rgba(91, 61, 138, 0.12);
   --pm-copper: #a67c52;
   --pm-ink: #1a1510;
   --pm-muted: #6b6258;
   --pm-line: #ddd6cc;
   --pm-canvas: #ebe6df;
   --pm-white: #ffffff;
-  --pm-ok: #2d6a4f;
+  --pm-ok: #2f7d4a;
   --pm-mid: #b8860b;
   --pm-low: #8c3a2f;
   --pm-tile-radius: 4px;
@@ -29,10 +35,10 @@ html, body, [class*="css"] {
 
 .stApp {
   background: var(--pm-canvas) !important;
-  /* textura leve de areia/deserto — sem faixas fortes */
   background-image:
-    radial-gradient(ellipse at 12% 0%, rgba(212, 160, 23, 0.07) 0%, transparent 45%),
-    radial-gradient(ellipse at 88% 100%, rgba(30, 92, 90, 0.06) 0%, transparent 40%) !important;
+    radial-gradient(ellipse at 8% 0%, rgba(212, 160, 23, 0.08) 0%, transparent 42%),
+    radial-gradient(ellipse at 92% 8%, rgba(91, 61, 138, 0.07) 0%, transparent 40%),
+    radial-gradient(ellipse at 70% 100%, rgba(47, 125, 74, 0.08) 0%, transparent 45%) !important;
   background-attachment: fixed !important;
   color: var(--pm-ink);
 }
@@ -48,19 +54,24 @@ header[data-testid="stHeader"] {
   max-width: 1480px !important;
 }
 
-/* ---- Barra de relatório ---- */
 .pbi-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  background: linear-gradient(105deg, var(--pm-carapace) 0%, var(--pm-carapace-2) 55%, #3d2e20 100%);
+  background: linear-gradient(
+    105deg,
+    var(--pm-carapace) 0%,
+    var(--pm-carapace-2) 42%,
+    #3a2448 72%,
+    #1e3d2e 100%
+  );
   color: #fff;
   padding: 0.7rem 1.05rem;
   border-radius: var(--pm-tile-radius);
   margin-bottom: 0.7rem;
   box-shadow: var(--pm-shadow);
-  border-bottom: 3px solid var(--pm-venom);
+  border-bottom: 3px solid var(--pm-purple-soft);
   animation: pbi-in 0.35s ease both;
 }
 
@@ -88,11 +99,10 @@ header[data-testid="stHeader"] {
 }
 
 .pbi-bar .meta strong {
-  color: var(--pm-venom);
+  color: #c4a8ef;
   font-weight: 600;
 }
 
-/* ---- KPI cards ---- */
 .pbi-kpi-row {
   display: grid;
   gap: 0.55rem;
@@ -128,8 +138,9 @@ header[data-testid="stHeader"] {
 }
 
 .pbi-kpi.warn::after { background: var(--pm-low); }
-.pbi-kpi.ok::after { background: var(--pm-ok); }
+.pbi-kpi.ok::after { background: var(--pm-green); }
 .pbi-kpi.membrane::after { background: var(--pm-membrane); }
+.pbi-kpi.purple::after { background: var(--pm-purple); }
 
 .pbi-kpi .label {
   font-size: 0.7rem;
@@ -149,8 +160,9 @@ header[data-testid="stHeader"] {
 }
 
 .pbi-kpi.warn .value { color: var(--pm-low); }
-.pbi-kpi.ok .value { color: var(--pm-ok); }
+.pbi-kpi.ok .value { color: var(--pm-green); }
 .pbi-kpi.membrane .value { color: var(--pm-membrane); }
+.pbi-kpi.purple .value { color: var(--pm-purple); }
 
 .pbi-kpi .hint {
   margin-top: 0.2rem;
@@ -158,19 +170,21 @@ header[data-testid="stHeader"] {
   color: var(--pm-muted);
 }
 
-/* ---- Títulos de tile ---- */
 .pbi-tile-title {
   font-size: 0.84rem;
   font-weight: 700;
   color: var(--pm-ink);
   margin: 0 0 0.12rem;
   padding: 0.1rem 0;
+  border-left: 3px solid var(--pm-purple);
+  padding-left: 0.45rem;
 }
 
 .pbi-tile-sub {
   font-size: 0.7rem;
   color: var(--pm-muted);
   margin: 0 0 0.4rem;
+  padding-left: 0.55rem;
 }
 
 .pbi-filter-label {
@@ -182,7 +196,20 @@ header[data-testid="stHeader"] {
   margin: 0.7rem 0 0.3rem;
 }
 
-/* ---- Resultado / insight ---- */
+.pm-hint-box {
+  background: linear-gradient(90deg, var(--pm-green-mist), var(--pm-purple-mist));
+  border: 1px solid #cfc4db;
+  border-left: 4px solid var(--pm-green);
+  border-radius: var(--pm-tile-radius);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.82rem;
+  color: var(--pm-ink);
+  margin: 0.35rem 0 0.7rem;
+  line-height: 1.45;
+}
+
+.pm-hint-box strong { color: var(--pm-purple); }
+
 .pm-result {
   border-radius: var(--pm-tile-radius);
   padding: 0.85rem 1rem;
@@ -193,7 +220,7 @@ header[data-testid="stHeader"] {
   animation: pbi-in 0.3s ease both;
 }
 
-.pm-result.high { border-left: 4px solid var(--pm-venom); }
+.pm-result.high { border-left: 4px solid var(--pm-green); }
 .pm-result.mid  { border-left: 4px solid var(--pm-mid); }
 .pm-result.low  { border-left: 4px solid var(--pm-low); }
 
@@ -222,16 +249,15 @@ header[data-testid="stHeader"] {
 }
 
 .pm-badge.in {
-  background: rgba(30, 92, 90, 0.12);
-  color: var(--pm-membrane);
+  background: var(--pm-green-mist);
+  color: var(--pm-green);
 }
 
 .pm-badge.out {
-  background: rgba(212, 160, 23, 0.18);
-  color: var(--pm-venom-deep);
+  background: var(--pm-purple-mist);
+  color: var(--pm-purple);
 }
 
-/* ---- Sidebar = painel de filtros ---- */
 section[data-testid="stSidebar"] {
   background: var(--pm-white) !important;
   border-right: 1px solid var(--pm-line);
@@ -261,7 +287,7 @@ section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
 
 section[data-testid="stSidebar"] h3 {
   font-size: 0.95rem !important;
-  color: var(--pm-carapace) !important;
+  color: var(--pm-purple) !important;
 }
 
 section[data-testid="stSidebar"] .stButton > button {
@@ -274,11 +300,10 @@ section[data-testid="stSidebar"] .stButton > button {
 }
 
 section[data-testid="stSidebar"] .stButton > button:hover {
-  border-color: var(--pm-venom) !important;
-  background: rgba(212, 160, 23, 0.12) !important;
+  border-color: var(--pm-purple) !important;
+  background: var(--pm-purple-mist) !important;
 }
 
-/* ---- Abas = páginas do relatório ---- */
 div[data-testid="stTabs"] [data-baseweb="tab-list"] {
   background: var(--pm-white);
   border: 1px solid var(--pm-line);
@@ -297,15 +322,14 @@ button[data-baseweb="tab"] {
 }
 
 button[data-baseweb="tab"][aria-selected="true"] {
-  color: var(--pm-carapace) !important;
-  background: rgba(212, 160, 23, 0.2) !important;
+  color: var(--pm-purple) !important;
+  background: linear-gradient(90deg, var(--pm-purple-mist), var(--pm-green-mist)) !important;
 }
 
 div[data-baseweb="tab-highlight"] {
   background-color: transparent !important;
 }
 
-/* ---- Tiles com borda ---- */
 div[data-testid="stVerticalBlockBorderWrapper"] {
   background: var(--pm-white) !important;
   border: 1px solid var(--pm-line) !important;
@@ -337,7 +361,6 @@ div[data-testid="stTable"] {
   border: 1px solid var(--pm-line);
 }
 
-/* ---- Botões ---- */
 .stButton > button {
   background: var(--pm-carapace-2) !important;
   color: #fff !important;
@@ -348,22 +371,22 @@ div[data-testid="stTable"] {
 }
 
 .stButton > button:hover {
-  background: var(--pm-carapace) !important;
-  border-color: var(--pm-venom) !important;
+  background: var(--pm-purple) !important;
+  border-color: var(--pm-green) !important;
 }
 
 .stButton > button[kind="primary"],
 button[data-testid="baseButton-primary"] {
-  background: var(--pm-venom-deep) !important;
-  border: 1px solid var(--pm-venom-deep) !important;
-  color: #1c1410 !important;
+  background: linear-gradient(90deg, var(--pm-green) 0%, var(--pm-purple) 100%) !important;
+  border: 1px solid var(--pm-purple) !important;
+  color: #fff !important;
   font-weight: 700 !important;
 }
 
 .stButton > button[kind="primary"]:hover,
 button[data-testid="baseButton-primary"]:hover {
-  background: var(--pm-venom) !important;
-  border-color: var(--pm-venom) !important;
+  background: linear-gradient(90deg, var(--pm-green-soft) 0%, var(--pm-purple-soft) 100%) !important;
+  border-color: var(--pm-green-soft) !important;
 }
 
 .stMarkdown table { width: 100%; }
