@@ -129,17 +129,13 @@ def info_box(title: str, body_html: str) -> None:
 
 
 # --- presets ---
-PRESETS_KNOWN = [
-    ("StigA6 (P11)", "FFSLIPKLVKGLISAFK", 3.0),
-    ("Stigmurin (P10)", "FFSLIPSLVGGLISAFK", 3.0),
-    ("StigA16 (P12)", "FFKLIPKLVKGLISAFK", 4.0),
-    ("TsAP-2-A16 (P17)", "FLRMIPGLIRGLIRAFR", 5.0),
-    ("StigA31 (P16)", "FFKLIPKLVKKLIKAFK", 7.0),
-]
-PRESETS_NOVEL = [
-    ("Mutante S→A (fora do treino)", "FFSLIPKLVAGLISAFK", 3.0),
-    ("+carga estilo A16", "FFKLIPKLVAGLISAFK", 4.0),
-    ("Variante hidrofóbica", "FFALIPKLVKGLISAFK", 3.0),
+# --- exemplos opcionais (um só lugar no formulário) ---
+PRESETS = [
+    ("— digitar / colar / FASTA —", "", None),
+    ("StigA6 (conhecido do projeto)", "FFSLIPKLVKGLISAFK", 3.0),
+    ("Stigmurin (conhecido do projeto)", "FFSLIPSLVGGLISAFK", 3.0),
+    ("StigA16 (conhecido do projeto)", "FFKLIPKLVKGLISAFK", 4.0),
+    ("Mutante S→A (sequência nova)", "FFSLIPKLVAGLISAFK", 3.0),
 ]
 
 
@@ -339,36 +335,13 @@ if "use_charge_main" not in st.session_state:
 
 # --- sidebar = painel de filtros ---
 with st.sidebar:
-    st.markdown("### Filtros do relatório")
-    st.caption("Peptídeos de peçonha · membrana · modelo")
-    filter_label("Modelo")
-    st.write(info.get("model_type", "Random Forest + ESM-2"))
+    st.markdown("### Modelo")
+    st.caption("InovAI Lab · UFRN")
+    st.write(info.get("model_type", "Random Forest + PMI"))
     st.write(f"Treino: **{n_train}** MICs")
-    if loo_auc is not None:
-        st.write(f"LOO amostra: **{float(loo_auc):.3f}**")
     if lope is not None:
-        st.write(f"Leave-peptide: **{float(lope):.3f}**")
-        st.caption("Leave-peptide = métrica honesta (sem vazar análogos ~90% idênticos)")
-    st.caption("Rótulo: MIC ≤ 3,4 µM · probs calibradas")
-
-    filter_label("Atalhos — no banco")
-    for label, seq, ch in PRESETS_KNOWN:
-        st.button(
-            label,
-            key=f"sb_k_{label}",
-            use_container_width=True,
-            on_click=apply_preset,
-            args=(seq, ch),
-        )
-    filter_label("Atalhos — fora do banco")
-    for label, seq, ch in PRESETS_NOVEL:
-        st.button(
-            label,
-            key=f"sb_n_{label}",
-            use_container_width=True,
-            on_click=apply_preset,
-            args=(seq, ch),
-        )
+        st.write(f"AUC (peptídeo deixado de fora): **{float(lope):.3f}**")
+    st.caption("Alta atividade = MIC ≤ 3,4 µM")
 
 # --- barra de relatório + KPIs globais ---
 mode_label = (
@@ -436,135 +409,119 @@ with tab_pred:
         "Confirme sempre na bancada.",
     )
 
-    left, right = st.columns([1.35, 1.0], gap="medium")
+    with st.container(border=True):
+        tile_title("Par peptídeo × membrana", "Cole a sequência, envie FASTA ou escolha um exemplo")
+        st.caption(
+            "Exemplos **conhecidos do projeto** já têm MIC no treino. "
+            "Exemplos **novos** servem só para testar a predição (não estão no modelo)."
+        )
 
-    with left:
-        with st.container(border=True):
-            tile_title("Par peptídeo × membrana", "Entrada do relatório de predição")
-            st.markdown(
-                '<div class="pm-hint-box">'
-                "<strong>Onde analisar um peptídeo novo?</strong><br/>"
-                "1) Cole a sequência abaixo <strong>ou envie um arquivo FASTA</strong> "
-                "e clique em <strong>Predizer</strong>.<br/>"
-                "2) Para entrar no treino com MIC real: edite "
-                "<code>data/bench/mic_bench.csv</code> e rode "
-                "<code>python scripts/import_bench_mic.py --retrain</code>."
-                "</div>",
-                unsafe_allow_html=True,
-            )
+        preset_labels = [p[0] for p in PRESETS]
+        chosen = st.selectbox("Carregar exemplo (opcional)", options=preset_labels, key="preset_select")
+        if chosen != preset_labels[0]:
+            _, pseq, pch = next(p for p in PRESETS if p[0] == chosen)
+            if st.button("Aplicar exemplo", use_container_width=True):
+                apply_preset(pseq, float(pch))
+                st.rerun()
 
-            fasta_file = st.file_uploader(
-                "Arquivo FASTA (opcional)",
-                type=["fasta", "fa", "faa", "fna", "txt"],
-                help="Um ou vários peptídeos no formato >header + sequência",
-                key="fasta_upload",
-            )
-            run_fasta_batch = False
-            if fasta_file is not None:
-                try:
-                    fasta_recs = load_fasta_records(fasta_file)
-                except Exception as e:
-                    st.error(f"FASTA inválido: {e}")
-                    fasta_recs = []
-                if not fasta_recs:
-                    st.warning("Nenhuma sequência válida encontrada no FASTA.")
-                else:
-                    st.caption(f"**{len(fasta_recs)}** sequência(s) no arquivo.")
-                    labels = [
-                        f"{(r.get('header') or f'seq_{i+1}')[:48]} · {r['sequence'][:12]}…"
-                        if len(r["sequence"]) > 12
-                        else f"{(r.get('header') or f'seq_{i+1}')[:48]} · {r['sequence']}"
-                        for i, r in enumerate(fasta_recs)
-                    ]
-                    pick = st.selectbox(
-                        "Escolher sequência do FASTA",
-                        options=list(range(len(fasta_recs))),
-                        format_func=lambda i: labels[i],
-                        key="fasta_pick",
-                    )
-                    c_fa1, c_fa2 = st.columns(2)
-                    with c_fa1:
-                        st.button(
-                            "Usar esta sequência",
-                            use_container_width=True,
-                            on_click=apply_fasta_sequence,
-                            args=(
-                                fasta_recs[pick]["sequence"],
-                                fasta_recs[pick].get("header") or "",
-                            ),
-                        )
-                    with c_fa2:
-                        run_fasta_batch = st.button(
-                            "Predizer todas do FASTA",
-                            use_container_width=True,
-                            key="fasta_batch_btn",
-                        )
-                    st.session_state["fasta_records"] = fasta_recs
-            elif "fasta_records" in st.session_state:
-                del st.session_state["fasta_records"]
+        st.markdown(
+            '<div class="pm-hint-box">'
+            "<strong>Peptídeo novo com MIC da bancada?</strong> "
+            "Edite <code>data/bench/mic_bench.csv</code> e rode "
+            "<code>python scripts/import_bench_mic.py --retrain</code>."
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
-            sequence = st.text_input(
-                "Sequência (letra única)",
-                key="seq_main",
-                help="Cole aqui qualquer sequência AA — ou carregue um FASTA acima",
-                placeholder="Ex.: FFSLIPKLVAGLISAFK",
-            )
-            if st.session_state.get("fasta_header"):
-                st.caption(f"FASTA: **{st.session_state['fasta_header']}**")
-            hit = lookup_sequence(sequence or "")
-            if hit is not None:
-                st.caption(
-                    f"Correspondência: **{hit.get('peptide_id')} · {hit.get('name')}** (já no projeto)"
-                )
+        fasta_file = st.file_uploader(
+            "Arquivo FASTA (opcional)",
+            type=["fasta", "fa", "faa", "fna", "txt"],
+            help="Um ou vários peptídeos no formato >header + sequência",
+            key="fasta_upload",
+        )
+        run_fasta_batch = False
+        if fasta_file is not None:
+            try:
+                fasta_recs = load_fasta_records(fasta_file)
+            except Exception as e:
+                st.error(f"FASTA inválido: {e}")
+                fasta_recs = []
+            if not fasta_recs:
+                st.warning("Nenhuma sequência válida encontrada no FASTA.")
             else:
-                st.caption("Sequência **não** encontrada no banco — predição generalizada.")
-
-            c1, c2 = st.columns(2)
-            with c1:
-                use_charge = st.checkbox("Informar carga manualmente", key="use_charge_main")
-            with c2:
-                net_charge = st.number_input(
-                    "Carga líquida",
-                    step=1.0,
-                    format="%.1f",
-                    key="charge_main",
-                    disabled=not use_charge,
+                st.caption(f"**{len(fasta_recs)}** sequência(s) no arquivo.")
+                labels = [
+                    f"{(r.get('header') or f'seq_{i+1}')[:48]} · {r['sequence'][:12]}…"
+                    if len(r["sequence"]) > 12
+                    else f"{(r.get('header') or f'seq_{i+1}')[:48]} · {r['sequence']}"
+                    for i, r in enumerate(fasta_recs)
+                ]
+                pick = st.selectbox(
+                    "Escolher sequência do FASTA",
+                    options=list(range(len(fasta_recs))),
+                    format_func=lambda i: labels[i],
+                    key="fasta_pick",
                 )
-            charge = float(net_charge) if use_charge else None
+                c_fa1, c_fa2 = st.columns(2)
+                with c_fa1:
+                    st.button(
+                        "Usar esta sequência",
+                        use_container_width=True,
+                        on_click=apply_fasta_sequence,
+                        args=(
+                            fasta_recs[pick]["sequence"],
+                            fasta_recs[pick].get("header") or "",
+                        ),
+                    )
+                with c_fa2:
+                    run_fasta_batch = st.button(
+                        "Predizer todas do FASTA",
+                        use_container_width=True,
+                        key="fasta_batch_btn",
+                    )
+                st.session_state["fasta_records"] = fasta_recs
+        elif "fasta_records" in st.session_state:
+            del st.session_state["fasta_records"]
 
-            preferred = "S_aureus_ATCC29213"
-            keys = list(target_options.keys())
-            idx = keys.index(preferred) if preferred in keys else 0
-            target_id = st.selectbox(
-                "Membrana-alvo",
-                options=keys,
-                index=idx,
-                format_func=format_target_label,
+        sequence = st.text_input(
+            "Sequência (letra única)",
+            key="seq_main",
+            help="Cole a sequência de aminoácidos",
+            placeholder="Ex.: FFSLIPKLVAGLISAFK",
+        )
+        if st.session_state.get("fasta_header"):
+            st.caption(f"FASTA: **{st.session_state['fasta_header']}**")
+        hit = lookup_sequence(sequence or "")
+        if hit is not None:
+            st.caption(
+                f"Este peptídeo já está no projeto: **{hit.get('peptide_id')} · {hit.get('name')}**"
             )
-            run_pred = st.button("Predizer", type="primary", use_container_width=True)
+        else:
+            st.caption("Sequência nova para o modelo (predição generalizada).")
 
-    with right:
-        with st.container(border=True):
-            tile_title("Exemplos rápidos", "Veneno / análogos / mutantes")
-            st.caption("Já no banco")
-            cols = st.columns(2)
-            for i, (label, seq, ch) in enumerate(PRESETS_KNOWN[:4]):
-                cols[i % 2].button(
-                    label,
-                    key=f"qk_{i}",
-                    use_container_width=True,
-                    on_click=apply_preset,
-                    args=(seq, ch),
-                )
-            st.caption("Fora do banco")
-            for i, (label, seq, ch) in enumerate(PRESETS_NOVEL):
-                st.button(
-                    label,
-                    key=f"qn_{i}",
-                    use_container_width=True,
-                    on_click=apply_preset,
-                    args=(seq, ch),
-                )
+        c1, c2 = st.columns(2)
+        with c1:
+            use_charge = st.checkbox("Informar carga manualmente", key="use_charge_main")
+        with c2:
+            net_charge = st.number_input(
+                "Carga líquida",
+                step=1.0,
+                format="%.1f",
+                key="charge_main",
+                disabled=not use_charge,
+            )
+        charge = float(net_charge) if use_charge else None
+
+        preferred = "S_aureus_ATCC29213"
+        keys = list(target_options.keys())
+        idx = keys.index(preferred) if preferred in keys else 0
+        target_id = st.selectbox(
+            "Membrana-alvo",
+            options=keys,
+            index=idx,
+            format_func=format_target_label,
+        )
+        run_pred = st.button("Predizer", type="primary", use_container_width=True)
 
     if run_fasta_batch:
         batch_recs = st.session_state.get("fasta_records") or []
