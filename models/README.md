@@ -1,10 +1,16 @@
 # Modelos locais (opcional)
 
-Coloque GGUF de narrativa em `models/llm/` (pasta ignorada pelo git), por exemplo:
+## Qwen GGUF (narrativa)
 
-- `qwen2.5-0.5b-instruct-q4_k_m.gguf`  
-  (`Qwen/Qwen2.5-0.5B-Instruct-GGUF`)
+A explicação em português do dashboard usa **template** por padrão. Para Qwen local (sem API):
 
-Ou defina `PEPMEM_GGUF_PATH`. Para baixar no primeiro uso no Space: `PEPMEM_LLM_AUTO_DOWNLOAD=1`.
+1. `pip install llama-cpp-python==0.3.4`
+2. Coloque um GGUF em `models/llm/` (ex.: `qwen2.5-0.5b-instruct-q4_k_m.gguf` de `Qwen/Qwen2.5-0.5B-Instruct-GGUF`)
+   **ou** defina `PEPMEM_GGUF_PATH` / `PEPMEM_LLM_AUTO_DOWNLOAD=1`
 
-Sem GGUF / sem `llama-cpp-python`, o botão **Explicar** usa só o **template** — as predições do RF não mudam.
+A narrativa **não altera** PMI nem probabilidade do RF.
+
+## Embeddings ESM-2
+
+Gerados por `scripts/generate_embeddings.py` → `data/processed/embeddings/esm2_all.npz`  
+Modelo: `facebook/esm2_t6_8M_UR50D` (ver `docs/TREINO.md` e a aba XAI do dashboard).

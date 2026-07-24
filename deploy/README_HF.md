@@ -10,22 +10,16 @@ license: mit
 
 # PepMem-AI
 
-Predição **peptídeo–membrana** (InovAI Lab / UFRN).
+Predição **peptídeo–membrana** (InovAI Lab / UFRN · *Tityus stigmurus*).
 
-- **Predição** — PMI + probabilidade de alta atividade (MIC)
-- **Ranking** — multi-alvo com score de priorização
-- **XAI (SHAP)** — beeswarm + explicações locais
-- **Narrativa** — “Explicar em português” (template; Qwen GGUF opcional, sem API)
-- Atalhos: peptídeos **no banco** e **fora do treino**
+| Aba | Função |
+|-----|--------|
+| Predição | PMI + prob. calibrada · lote FASTA · relatório MD/DOCX/PDF |
+| Ranking | Multi-alvo + explicação + relatório |
+| XAI (SHAP) | Global, beeswarm, local · texto sobre SHAP/ESM-2 |
+| Datasets | Peptídeos do projeto |
 
-**Exemplos:** StigA6 `FFSLIPKLVKGLISAFK` · mutante novo `FFSLIPKLVAGLISAFK`
+**Exemplos:** StigA6 `FFSLIPKLVKGLISAFK` · mutante `FFSLIPKLVAGLISAFK`
 
-> Treino atual: ~90 MICs (literatura + bancada). Use PMI_sel junto com a probabilidade do RF.
-
-### Qwen GGUF (opcional, local)
-
-A narrativa **não altera** PMI/probabilidade. Sem modelo, usa template.
-
-1. Instale `llama-cpp-python` (opcional: `pip install llama-cpp-python==0.3.4`).
-2. Coloque um GGUF em `models/llm/` (ex.: `qwen2.5-0.5b-instruct-q4_k_m.gguf`) **ou**
-3. Defina `PEPMEM_GGUF_PATH` / `PEPMEM_LLM_AUTO_DOWNLOAD=1` nos Secrets do Space.
+> Treino ~90 MICs (literatura + bancada). Cloud = baseline; Space = multimodal (ESM-2).  
+> Código e docs: [github.com/gbmotta/PepMem-AI](https://github.com/gbmotta/PepMem-AI) · guia: `docs/DEPLOY.md`

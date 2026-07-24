@@ -21,9 +21,11 @@ O sistema combina dados públicos (OPM, APD), descritores físico-químicos, emb
 - [Modelos de IA](#modelos-de-ia)
 - [Explicabilidade (SHAP)](#explicabilidade-shap)
 - [API REST (PoC)](#api-rest-poc)
-- [Dashboard Streamlit (PoC)](#dashboard-streamlit-poc)
+- [Dashboard Streamlit](#dashboard-streamlit-poc)
+- [Documentação](#documentação)
 - [Peptídeos do projeto](#peptídeos-do-projeto)
 - [Estrutura de diretórios](#estrutura-de-diretórios)
+- [Deploy](#deploy-gratuito-colaboradores)
 - [Limitações e próximos passos](#limitações-e-próximos-passos)
 - [Referências](#referências)
 - [Créditos](#créditos)
@@ -174,17 +176,22 @@ Arquivos principais em `data/processed/`:
 ## Instalação
 
 ```bash
-git clone <url-do-repositorio>
+git clone https://github.com/gbmotta/PepMem-AI.git
 cd PepMem-AI
 
 python3 -m venv .venv
 source .venv/bin/activate   # Linux/macOS
 # .venv\Scripts\activate   # Windows
-
-pip install -r requirements.txt
 ```
 
-> Na primeira inferência, o modelo ESM-2 (~30 MB) é baixado automaticamente do Hugging Face.
+| Perfil | Comando | Uso |
+|--------|---------|-----|
+| **Cloud / dashboard leve** | `pip install -r requirements.txt` | Streamlit Cloud, Render (sem PyTorch) |
+| **Space / multimodal** | `pip install -r requirements-space.txt` | ESM-2 + torch CPU (`-r requirements.txt` + extras) |
+| **Dev + API** | `pip install -r requirements-dev.txt` | Space + FastAPI |
+
+> Na primeira inferência **multimodal**, o ESM-2 (`facebook/esm2_t6_8M_UR50D`) baixa do Hugging Face.  
+> No Cloud leve o app usa só o **baseline** (clássicas + PMI).
 
 ---
 
@@ -295,18 +302,20 @@ print(explanation["shap_contributions"][:3])
 
 ### Baseline (`baseline_mic_rf.joblib`)
 
-- **Features:** 11 descritores clássicos + PMI
-- **Treino:** **90** pares MIC (literatura Parente + bancada do grupo)
-- **Rótulo:** alta atividade se MIC ≤ 3,4 µM (~44% positivos)
-- **Validação:** Leave-One-Out (LOO) AUC ≈ **0,88** · acurácia ≈ **83%**
+- **Features:** 11 descritores clássicos + PMI  
+- **Treino:** ~90 pares MIC (literatura + bancada)  
+- **Rótulo:** alta atividade se MIC ≤ 3,4 µM  
+- **Validação principal:** leave-one-**peptide**-out (LOPO) — AUC tipicamente ~0,87–0,88  
+- **Deploy Cloud:** este é o modelo ativo (sem PyTorch)
 
 ### Multimodal (`multimodal_mic_rf.joblib`)
 
-- **Features:** 11 clássicas + **320 dimensões ESM-2**
-- **Modelo:** Random Forest (300 árvores, `max_depth=6`)
-- **LOO AUC ≈ 0,85** (mesmas 90 amostras)
+- **Features:** clássicas + **embedding ESM-2** (~320 dims, mean-pool)  
+- **Modelo de linguagem:** `facebook/esm2_t6_8M_UR50D` (variante leve)  
+- **Por quê ESM-2:** representação de sequência sem estrutura 3D; complementa PMI; cabe em CPU/Space  
+- **Deploy:** Hugging Face Space / local com `requirements-space.txt`
 
-> **Atenção:** o conjunto rotulado cresceu (12 → 90 MICs), mas ainda é limitado para calibração fina. Use **PMI_sel** e **final_score** junto com a probabilidade do RF.
+> Use **PMI_sel**, intervalo entre árvores e vizinhos junto com a probabilidade calibrada.
 
 ### PMI (Peptide–Membrane Interaction Index)
 
@@ -320,25 +329,15 @@ Pesos padrão: α=1,0 · β=0,5 · γ=0,3 · δ=0,4 (ajustáveis empiricamente).
 
 ## Explicabilidade (SHAP)
 
-O projeto usa **SHAP TreeExplainer** sobre o Random Forest para explicar *por que* o modelo atribui uma probabilidade de alta atividade a um par peptídeo–membrana.
+**SHAP TreeExplainer** atribui a cada descritor uma contribuição para a classe “alta atividade”.
 
 | Onde | Como |
 |------|------|
-| **Dashboard** | Aba **XAI (SHAP)** ou expander na aba Predição |
-| **API** | `POST /explain` (local) · `GET /explain/global` |
-| **Script** | `python scripts/compute_shap.py` (importância global) |
+| **Dashboard** | Aba **XAI** (texto didático + global/beeswarm/local) e bloco SHAP na Predição |
+| **API** | `POST /explain` · `GET /explain/global` |
+| **Script** | `python scripts/compute_shap.py` |
 
-**Features interpretáveis:** carga do peptídeo, hidrofobicidade, PMI, descritores da membrana (LPS, peptidoglicano, colesterol…). No modelo multimodal, as 320 dimensões ESM-2 são **agregadas** em um único termo “ESM-2 (embedding agregado)” no gráfico.
-
-```bash
-# Após treino
-python scripts/compute_shap.py
-
-# Explicação via API
-curl -X POST http://localhost:8001/explain \
-  -H "Content-Type: application/json" \
-  -d '{"sequence":"FFSLIPSLVGGLISAFK","target_id":"E_coli_ATCC25922","net_charge":3}'
-```
+No multimodal, as dims ESM-2 aparecem agregadas como **“ESM-2 (embedding agregado)”**. Guia de leitura: [`docs/INTERPRETACAO_RESULTADOS.md`](docs/INTERPRETACAO_RESULTADOS.md).
 
 Arquivos gerados: `data/processed/models/shap_global_baseline.json`, `shap_global_multimodal.json`, `shap_beeswarm_baseline.png`, `shap_beeswarm_multimodal.png`.
 
@@ -404,33 +403,43 @@ final_score = pred_atividade − λ·pred_tox_célula_normal + bônus_PMI_sel
 ## Dashboard Streamlit (PoC)
 
 ```bash
-pip install -r requirements.txt
+# Leve (Cloud) ou space (multimodal)
+pip install -r requirements.txt          # ou requirements-space.txt
 PYTHONPATH=. streamlit run dashboard/app.py
 ```
 
-Abas:
-
 | Aba | Função |
 |-----|--------|
-| **Predição** | Um par peptídeo × membrana com PMI e probabilidade |
-| **Ranking** | Ordenação por alvo + gráfico de scores |
-| **XAI (SHAP)** | Explicação local + beeswarm global |
-| **Datasets** | Estatísticas e tabela dos peptídeos do projeto |
-| **API** | Documentação e exemplos curl |
+| **Predição** | Par único ou **lote** (multi-FASTA / vários arquivos) · PMI · prob. calibrada · vizinhos · SHAP local · explicação em português · relatório **MD / DOCX / PDF** |
+| **Ranking** | Mesmo peptídeo × vários alvos · score com λ · explicação · relatório |
+| **XAI (SHAP)** | Importância global, beeswarm, SHAP local · textos sobre SHAP e **ESM-2** · relatório |
+| **Datasets** | KPIs e peptídeos do projeto |
+| **API** | Endpoints FastAPI (uso local) |
+
+Sidebar: guia de faixas (≥70% / intermediário / baixa), atalho de exemplo, última predição.
 
 ### Deploy (Streamlit Community Cloud)
 
-Igual ao fluxo Gertec:
-
-1. Repo no GitHub: [gbmotta/PepMem-AI](https://github.com/gbmotta/PepMem-AI)
+1. Repo: [gbmotta/PepMem-AI](https://github.com/gbmotta/PepMem-AI)
 2. [share.streamlit.io](https://share.streamlit.io) → **New app**
-3. Configuração:
-   - **Main file path:** `dashboard/app.py`
-   - **Branch:** `main`
-   - **Python:** 3.11
-4. Deploy → `https://<nome>.streamlit.app`
+3. **Main file:** `dashboard/app.py` · **Branch:** `main` · **Python:** 3.11
+4. Usa `requirements.txt` (leve). Multimodal completo: [Space HF](https://huggingface.co/spaces/gbmotta/pepmem-ai)
 
-Detalhes e alternativas (HF Spaces, Render): [`docs/DEPLOY.md`](docs/DEPLOY.md).
+Guia completo: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
+---
+
+## Documentação
+
+| Doc | Conteúdo |
+|-----|----------|
+| [`docs/DEPLOY.md`](docs/DEPLOY.md) | Publicar (HF Spaces, Streamlit Cloud, Render) |
+| [`docs/TREINO.md`](docs/TREINO.md) | Dados, LOPO, calibração, artefatos |
+| [`docs/INTERPRETACAO_RESULTADOS.md`](docs/INTERPRETACAO_RESULTADOS.md) | Como ler PMI, prob., ranking, SHAP |
+| [`docs/README.md`](docs/README.md) | Índice da pasta `docs/` |
+| [`data/bench/README.md`](data/bench/README.md) | Planilha de MICs da bancada |
+| [`deploy/README_HF.md`](deploy/README_HF.md) | Card do Space (YAML); copiado pelo `deploy_hf_space.py` — **não** é guia longo |
+| [`models/README.md`](models/README.md) | Qwen GGUF opcional (narrativa local) |
 
 ---
 
@@ -448,7 +457,7 @@ Detalhes e alternativas (HF Spaces, Render): [`docs/DEPLOY.md`](docs/DEPLOY.md).
 | P05 | TsAP-2 nativo | `FLGMIPGLIGGLISAFK` | Daniele-Silva 2016 |
 | P17 | TsAP-2-A16 | `FLRMIPGLIRGLIRAFR` | Da Costa 2025 |
 | P18 | TsAP-2-A41 | `FLKMIPRLIKRLISAFK` | Da Costa 2025 |
-| P01–P09 | Análogos CNPq / patentes | ver `pepmem_base_project.csv` | CNPq / INPI |
+| P01–P09 | Análogos CNPq / patentes | ver `pepmem_base_project.parquet` | CNPq / INPI |
 
 Documento consolidado (físico-química + MICs + mapa de estudos): [`docs/peptideos/`](docs/peptideos/).
 
@@ -469,34 +478,29 @@ Documento consolidado (físico-química + MICs + mapa de estudos): [`docs/peptid
 ```
 PepMem-AI/
 ├── README.md
-├── docs/                         # DEPLOY, TREINO, interpretação, etc.
 ├── requirements.txt              # Cloud / Render (leve, sem PyTorch)
-├── requirements-space.txt        # HF Spaces / ESM-2 (`-r requirements.txt` + torch)
-├── requirements-dev.txt          # Space + FastAPI (dev local)
+├── requirements-space.txt        # HF Spaces (`-r` + torch CPU)
+├── requirements-dev.txt          # Space + FastAPI
 ├── Dockerfile / render.yaml
 │
-├── pepmem/                       # Biblioteca de inferência
+├── pepmem/                       # Inferência (predictor, PMI, SHAP, narrative)
+├── dashboard/                    # Streamlit (app, report_export, assets)
 ├── api/                          # FastAPI
-├── dashboard/                    # Streamlit
-├── scripts/                      # Pipeline (download → treino → deploy)
-├── deploy/                       # README do Space (HF)
+├── scripts/                      # Pipeline + deploy
+├── deploy/README_HF.md           # Card do Space (frontmatter YAML)
+├── models/README.md              # GGUF opcional
 │
 ├── data/
 │   ├── raw/                      # OPM / APD (gitignore)
-│   ├── processed/                # datasets, embeddings, models
-│   └── bench/                    # MICs da bancada (editável)
+│   ├── processed/                # parquet, embeddings, models
+│   └── bench/                    # MICs da bancada
 │
-└── docs/                         # Documentação e materiais do grupo
-    ├── DEPLOY.md
-    ├── peptideos/                # Doc consolidado T. stigmurus
-    ├── legado/                   # Word originais (backup)
-    ├── pipeline/                 # LaTeX / PDF InovAI
-    ├── proposta/                 # PDF CNPq
-    ├── referencias/              # Papers / tese de apoio
-    └── fontes/                   # Links de bases públicas
+└── docs/
+    ├── DEPLOY.md · TREINO.md · INTERPRETACAO_RESULTADOS.md
+    ├── peptideos/ · pipeline/ · proposta/ · referencias/
 ```
 
-Índice completo: [`docs/README.md`](docs/README.md).
+Índice: [`docs/README.md`](docs/README.md).
 
 ---
 

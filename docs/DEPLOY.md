@@ -44,7 +44,7 @@ python scripts/deploy_hf_space.py SEU_USUARIO_HF --space pepmem-ai
 
 URL final: `https://huggingface.co/spaces/SEU_USUARIO_HF/pepmem-ai`
 
-O script monta `.deploy_hf/` (~8 MB), usa PyTorch **CPU** (`requirements-space.txt`) e o README com frontmatter do Space.
+O script monta `.deploy_hf/` (~8 MB), usa PyTorch **CPU** (`requirements-space.txt`) e copia `deploy/README_HF.md` como card do Space (frontmatter YAML — **não** substituir por `docs/DEPLOY.md`).
 
 Para só testar o pacote localmente sem upload:
 

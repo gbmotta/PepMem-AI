@@ -4,13 +4,13 @@
 
 | Pasta / arquivo | Conteúdo |
 |-----------------|----------|
-| [DEPLOY.md](DEPLOY.md) | Guia de publicação (HF Spaces, Streamlit Cloud, Render) |
-| [INTERPRETACAO_RESULTADOS.md](INTERPRETACAO_RESULTADOS.md) | Como ler PMI, probabilidades, intervalo, ranking e SHAP |
-| [TREINO.md](TREINO.md) | Como os modelos foram treinados (dados, LOPO, calibração) |
-| [peptideos/](peptideos/) | Documento consolidado (físico-química + MICs + mapa de estudos) |
+| [DEPLOY.md](DEPLOY.md) | Publicação (HF Spaces, Streamlit Cloud, Render) |
+| [INTERPRETACAO_RESULTADOS.md](INTERPRETACAO_RESULTADOS.md) | Como ler PMI, probabilidades, ranking e SHAP |
+| [TREINO.md](TREINO.md) | Dados, LOPO, calibração e artefatos |
+| [peptideos/](peptideos/) | Documento consolidado (físico-química + MICs) |
 | [pipeline/](pipeline/) | Entregáveis LaTeX / PDF do pipeline InovAI |
 | [proposta/](proposta/) | Proposta CNPq (PDF) |
-| [referencias/](referencias/) | Artigos e teses de apoio (ex.: Parente 2022) |
+| [referencias/](referencias/) | Artigos e teses de apoio |
 
 ## Dependências
 
@@ -20,6 +20,6 @@
 | `requirements-space.txt` | HF Spaces / multimodal (`-r requirements.txt` + torch CPU) |
 | `requirements-dev.txt` | Local completo (space + FastAPI) |
 
-Qwen GGUF opcional: `pip install llama-cpp-python==0.3.4` (ver `deploy/README_HF.md`).
+## Deploy HF — `deploy/README_HF.md`
 
-Scripts de staging Hugging Face: `deploy/README_HF.md` (usado por `scripts/deploy_hf_space.py`).
+**Não é guia redundante:** o script `scripts/deploy_hf_space.py` copia esse arquivo como `README.md` do Space. Ele precisa do **frontmatter YAML** (título, emoji, `sdk: docker`). O conteúdo longo de deploy fica em [`DEPLOY.md`](DEPLOY.md); GGUF opcional em [`../models/README.md`](../models/README.md).
