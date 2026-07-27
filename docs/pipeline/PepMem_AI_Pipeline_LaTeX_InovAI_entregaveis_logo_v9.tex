@@ -1,0 +1,1420 @@
+\documentclass[aspectratio=169,10pt]{beamer}
+
+% -------------------------------------------------
+% Pacotes basicos
+% -------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tikz}
+\usepackage{graphicx}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc,backgrounds}
+\usepackage{multicol}
+\usepackage{ragged2e}
+
+% -------------------------------------------------
+% Estilo visual inspirado no modelo enviado
+% -------------------------------------------------
+\definecolor{InovGreen}{RGB}{68,40,155}
+\definecolor{InovLightGreen}{RGB}{242,239,253}
+\definecolor{InovDark}{RGB}{40,36,55}
+\definecolor{InovGray}{RGB}{248,247,252}
+\definecolor{InovOrange}{RGB}{122,113,245}
+\definecolor{InovBlue}{RGB}{92,116,255}
+\definecolor{InovPurple}{RGB}{68,40,155}
+\definecolor{InovLilac}{RGB}{242,239,253}
+
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize item}{\color{InovGreen}$\blacktriangleright$}
+\setbeamertemplate{itemize subitem}{\color{InovOrange}$\bullet$}
+\setbeamertemplate{enumerate item}{\color{InovGreen}\insertenumlabel.}
+\setbeamercolor{title}{fg=InovGreen}
+\setbeamercolor{frametitle}{fg=InovGreen,bg=white}
+\setbeamercolor{block title}{fg=white,bg=InovGreen}
+\setbeamercolor{block body}{fg=InovDark,bg=InovLightGreen}
+\setbeamercolor{alerted text}{fg=InovOrange}
+
+\setbeamertemplate{frametitle}{%
+  \vspace{-0.05cm}
+  \insertframetitle
+  \par\vspace{-0.1cm}
+  {\color{InovGreen}\rule{\linewidth}{0.5pt}}
+}
+
+\setbeamertemplate{footline}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=south east, xshift=-0.35cm, yshift=0.18cm] at (current page.south east)
+      {\color{InovDark}\scriptsize \insertframenumber/\inserttotalframenumber};
+  \end{tikzpicture}%
+}
+
+% -------------------------------------------------
+% Macros para diagramas
+% -------------------------------------------------
+\tikzset{
+  box/.style={rectangle, rounded corners=3pt, draw=InovGreen, very thick, align=center, fill=InovLightGreen, minimum height=0.75cm, text width=2.6cm},
+  smallbox/.style={rectangle, rounded corners=3pt, draw=InovGreen, thick, align=center, fill=InovGray, minimum height=0.65cm, text width=2.2cm},
+  orangebox/.style={rectangle, rounded corners=3pt, draw=InovOrange, very thick, align=center, fill=orange!12, minimum height=0.75cm, text width=2.6cm},
+  bluebox/.style={rectangle, rounded corners=3pt, draw=InovBlue, very thick, align=center, fill=blue!8, minimum height=0.75cm, text width=2.6cm},
+  arrow/.style={-{Latex[length=2.5mm]}, very thick, draw=InovDark},
+  dashedarrow/.style={-{Latex[length=2.5mm]}, thick, dashed, draw=InovOrange}
+}
+
+\title[Pipeline PepMem-AI]{Pipeline de IA para Predição de Interação Peptídeo--Membrana}
+\subtitle{Bioprospecção de peptídeos escorpiônicos com embeddings, modelos multimodais e validação experimental}
+\author{Prof. Marcelo A. C. Fernandes \; | \; InovAI Lab}
+\institute{UFRN \; | \; IMD \; | \; LANCE/InovAI Lab}
+\date{2026}
+
+% Fundo do InovAI Lab utilizado em todos os slides
+\newcommand{\inovaibackground}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=south west, inner sep=0pt] at (current page.south west) {%
+      \includegraphics[width=\paperwidth,height=\paperheight]{/mnt/data/inovai_lab_background.png}%
+    };
+    % logo pequeno no canto superior direito com fundo branco semitransparente
+    \node[anchor=north east, xshift=-0.16cm, yshift=-0.14cm,
+      rounded corners=2pt, fill=white, fill opacity=0.72, text opacity=1,
+      inner sep=1.5pt] at (current page.north east) {%
+      \includegraphics[width=0.78cm]{/mnt/data/tech_meets_biology_logo_design.png}%
+    };
+  \end{tikzpicture}%
+}
+\usebackgroundtemplate{\inovaibackground}
+
+% Variante do fundo sem logo no canto (para o slide de abertura)
+\newcommand{\inovaibackgroundnocorner}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=south west, inner sep=0pt] at (current page.south west) {%
+      \includegraphics[width=\paperwidth,height=\paperheight]{/mnt/data/inovai_lab_background.png}%
+    };
+  \end{tikzpicture}%
+}
+
+\begin{document}
+
+% -------------------------------------------------
+{\usebackgroundtemplate{\inovaibackgroundnocorner}
+\begin{frame}[plain]
+  \vspace{0.15cm}
+  \begin{center}
+  \begin{tikzpicture}
+    \node[rounded corners=10pt, fill=white, fill opacity=0.90, text opacity=1,
+          draw=InovPurple, line width=0.9pt, inner sep=0.40cm,
+          text width=0.80\paperwidth, align=center] {
+      {\Large\bfseries\color{InovPurple} Pipeline de IA para Predição de Interação Peptídeo--Membrana}\\[0.22cm]
+      {\large\color{InovDark} Bioprospecção de peptídeos escorpiônicos com validação experimental}\\[0.18cm]
+      \includegraphics[width=0.17\paperwidth]{/mnt/data/tech_meets_biology_logo_design.png}\\[0.12cm]
+      {\normalsize Prof. Marcelo A. C. Fernandes}\\[0.05cm]
+      {\normalsize InovAI Lab \; | \; IMD/UFRN}
+    };
+  \end{tikzpicture}
+  \end{center}
+\end{frame}
+}
+
+% -------------------------------------------------
+\begin{frame}{Contexto do projeto}
+\begin{block}{Projeto de bioprospecção}
+O projeto busca identificar peptídeos escorpiônicos com potencial terapêutico, combinando triagem computacional, inteligência artificial e validação experimental in vitro.
+\end{block}
+
+\vspace{0.15cm}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\textbf{Candidatos principais}
+\begin{itemize}
+  \item Peptídeos derivados de venenos de escorpiões.
+  \item Análogos de Stigmurina e TsAP-2.
+  \item Moléculas com carga, hidrofobicidade e anfipaticidade favoráveis.
+\end{itemize}
+
+\column{0.48\textwidth}
+\textbf{Atividades de interesse}
+\begin{itemize}
+  \item Antibacteriana e antifúngica.
+  \item Antiparasitária.
+  \item Antiviral.
+  \item Antitumoral e baixa citotoxicidade.
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Por que usar IA no projeto?}
+\begin{block}{Desafio experimental}
+Testar todos os peptídeos contra todos os alvos biológicos pode ser caro, lento e pouco escalável.
+\end{block}
+
+\vspace{0.25cm}
+\begin{center}
+\resizebox{0.90\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.8cm]
+  \node[box] (pep) {Peptídeos\ candidatos};
+  \node[box,right=of pep] (targets) {Múltiplas\ membranas-alvo};
+  \node[orangebox,right=of targets] (ai) {Triagem\ por IA};
+  \node[bluebox,right=of ai] (rank) {Ranking\ para bancada};
+  \node[box,right=of rank] (lab) {Validação\ in vitro};
+  \draw[arrow] (pep) -- (targets);
+  \draw[arrow] (targets) -- (ai);
+  \draw[arrow] (ai) -- (rank);
+  \draw[arrow] (rank) -- (lab);
+\end{tikzpicture}}
+\end{center}
+
+\vspace{0.2cm}
+\begin{itemize}
+  \item A IA prioriza os candidatos com maior chance de atividade e seletividade.
+  \item A bancada confirma as predições e gera novos dados para melhorar o modelo.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Como chegar ao problema peptídeo--membrana}
+\begin{center}
+\resizebox{0.95\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.8cm]
+  \node[box,text width=2.8cm] (bio) {Peptídeos\ bioativos};
+  \node[box,text width=3.0cm,right=of bio] (prop) {Propriedades\ físico-químicas};
+  \node[orangebox,text width=3.0cm,right=of prop] (mem) {Interação com\ membranas};
+  \node[bluebox,text width=3.0cm,right=of mem] (effect) {Efeito\ biológico};
+  \draw[arrow] (bio) -- (prop);
+  \draw[arrow] (prop) -- (mem);
+  \draw[arrow] (mem) -- (effect);
+\end{tikzpicture}}
+\end{center}
+
+\vspace{0.25cm}
+\begin{block}{Reinterpretação computacional}
+Do ponto de vista de IA, a pergunta central não é apenas se o peptídeo é ativo. A pergunta é: \textbf{como um peptídeo interage com uma membrana específica e qual efeito essa interação produz?}
+\end{block}
+
+\vspace{0.15cm}
+\begin{itemize}
+  \item Membranas bacterianas, fúngicas, parasitárias, virais, normais e tumorais são diferentes.
+  \item O mesmo peptídeo pode ser ativo em uma membrana e tóxico ou inativo em outra.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Objetivo}
+\begin{block}{Pergunta central}
+Construir um pipeline computacional para predizer se um peptídeo escorpiônico interage, permeabiliza ou desestabiliza uma membrana biológica específica.
+\end{block}
+
+\vspace{0.2cm}
+\begin{itemize}
+  \item Formular o problema como \alert{interação peptídeo--membrana}.
+  \item Representar peptídeos por descritores físico-químicos e embeddings.
+  \item Representar membranas-alvo por carga, composição, estrutura e propriedades físicas.
+  \item Construir modelos de IA para predição, ranqueamento e seleção experimental.
+  \item Fechar o ciclo com validação in vitro e realimentação do modelo.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Motivação biológica}
+\begin{columns}[T]
+\column{0.53\textwidth}
+\begin{itemize}
+  \item Peptídeos de venenos de escorpiões podem apresentar atividades antimicrobiana, antifúngica, antiviral, antiparasitária e antitumoral.
+  \item Muitas dessas atividades dependem da interação com membranas biológicas.
+  \item Características importantes dos peptídeos:
+    \begin{itemize}
+      \item carga positiva;
+      \item hidrofobicidade;
+      \item anfipaticidade;
+      \item tendência helicoidal;
+      \item momento hidrofóbico.
+    \end{itemize}
+\end{itemize}
+
+\column{0.47\textwidth}
+\begin{center}
+\begin{tikzpicture}[node distance=0.5cm]
+  \node[box,text width=2.4cm] (p) {Peptídeo\ catiônico};
+  \node[box,text width=2.4cm,below=of p] (m) {Membrana\ negativa};
+  \node[orangebox,text width=2.8cm,below=of m] (i) {Interação\ eletrostática};
+  \node[bluebox,text width=2.8cm,below=of i] (e) {Inserção, poro\ ou ruptura};
+  \draw[arrow] (p) -- (m);
+  \draw[arrow] (m) -- (i);
+  \draw[arrow] (i) -- (e);
+\end{tikzpicture}
+\end{center}
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Formulação do problema}
+\vspace{-0.35cm}
+\begin{block}{Entrada e saída do modelo}
+Dado um par \textbf{peptídeo--membrana}, predizer a probabilidade ou intensidade de interação funcional.
+\end{block}
+
+\vspace{-0.05cm}
+\begin{center}
+\resizebox{0.84\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.65cm]
+  \node[box,text width=2.3cm] (pep) {Peptídeo\ $p_i$};
+  \node[box,text width=2.5cm,right=of pep] (mem) {Membrana\ $m_j$};
+  \node[orangebox,text width=2.4cm,right=of mem] (model) {Modelo\ de IA};
+  \node[bluebox,text width=2.7cm,right=of model] (out) {Score de\ interação};
+  \draw[arrow] (pep) -- (mem);
+  \draw[arrow] (mem) -- (model);
+  \draw[arrow] (model) -- (out);
+\end{tikzpicture}}
+\end{center}
+
+\vspace{-0.20cm}
+\begin{equation*}
+  f(p_i,m_j) \rightarrow y_{ij}
+\end{equation*}
+\vspace{-0.25cm}
+\begin{itemize}
+  \item $p_i$: representação do peptídeo.
+  \item $m_j$: representação da membrana-alvo.
+  \item $y_{ij}$: atividade, permeabilização, toxicidade ou seletividade.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Visão geral do pipeline}
+\begin{center}
+\resizebox{0.98\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.95cm]
+  \node[box] (data) {Coleta\ de dados};
+  \node[box,right=of data] (cur) {Curadoria\ e padronização};
+  \node[box,right=of cur] (rep) {Representação\ peptídeo/membrana};
+  \node[orangebox,right=of rep] (model) {Modelagem\ de IA};
+  \node[bluebox,right=of model] (rank) {Ranking\ de peptídeos};
+  \node[box,right=of rank] (lab) {Validação\ in vitro};
+  \node[box,below=1.1cm of model] (feed) {Realimentação\ da base};
+  \draw[arrow] (data) -- (cur);
+  \draw[arrow] (cur) -- (rep);
+  \draw[arrow] (rep) -- (model);
+  \draw[arrow] (model) -- (rank);
+  \draw[arrow] (rank) -- (lab);
+  \draw[dashedarrow] (lab) |- (feed);
+  \draw[dashedarrow] (feed) -| (cur);
+\end{tikzpicture}}
+\end{center}
+
+\vspace{0.3cm}
+\begin{block}{Ideia principal}
+A IA não substitui a bancada. Ela prioriza os candidatos mais promissores para reduzir custo, tempo e número de ensaios.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Etapa 1 - Construção da base de dados}
+\begin{columns}[T]
+\column{0.50\textwidth}
+\textbf{Fontes de peptídeos}
+\begin{itemize}
+  \item Peptídeos escorpiônicos do projeto.
+  \item Peptídeos antimicrobianos de bancos públicos.
+  \item Peptídeos penetrantes celulares.
+  \item Artigos com MIC, IC50, CC50, EC50 ou atividade antiviral.
+\end{itemize}
+
+\column{0.50\textwidth}
+\textbf{Fontes de membranas e alvos}
+\begin{itemize}
+  \item Bactérias Gram+ e Gram-.
+  \item Fungos e leveduras.
+  \item Parasitas.
+  \item Vírus envelopados.
+  \item Células normais e tumorais.
+\end{itemize}
+\end{columns}
+
+\vspace{0.3cm}
+\begin{block}{Unidade da base}
+Cada linha deve representar um par: \textbf{peptídeo + alvo + desfecho experimental}.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Endpoints experimentais: o que significam?}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.12}
+
+\begin{columns}[T,onlytextwidth]
+\column{0.49\textwidth}
+\begin{tabular}{>{\raggedright\arraybackslash}p{1.15cm}>{\raggedright\arraybackslash}p{1.95cm}>{\raggedright\arraybackslash}p{3.45cm}}
+\toprule
+\textbf{End.} & \textbf{Significado} & \textbf{Leitura no projeto} \\
+\midrule
+MIC & Conc. Inibitória Mínima & Menor concentração que inibe crescimento microbiano visível. Menor MIC indica maior atividade. \\
+\shortstack[l]{MBC/\\CBM} & Conc. Bactericida Mínima & Menor concentração capaz de matar bactérias. Diferencia ação bactericida de bacteriostática. \\
+\shortstack[l]{MFC/\\CFM} & Conc. Fungicida Mínima & Menor concentração capaz de matar fungos ou leveduras. \\
+\bottomrule
+\end{tabular}
+
+\column{0.49\textwidth}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.95cm}>{\raggedright\arraybackslash}p{2.10cm}>{\raggedright\arraybackslash}p{3.50cm}}
+\toprule
+\textbf{End.} & \textbf{Significado} & \textbf{Leitura no projeto} \\
+\midrule
+IC50 & Conc. Inibitória 50\% & Concentração que reduz proliferação ou atividade celular em 50\%. Útil para células tumorais e parasitas. \\
+CC50 & Conc. Citotóxica 50\% & Concentração que reduz viabilidade de células normais em 50\%. Maior CC50 indica menor toxicidade. \\
+EC50 & Conc. Efetiva 50\% & Concentração que produz 50\% do efeito máximo, comum em ensaios antivirais. \\
+SI & Índice de Seletividade & Razão entre toxicidade e atividade, por exemplo $SI=CC50/IC50$ ou $CC50/MIC$. Maior SI é melhor. \\
+\bottomrule
+\end{tabular}
+\end{columns}
+
+\vspace{0.15cm}
+\begin{block}{Ideia central para a IA}
+Os endpoints são transformados em rótulos ou valores-alvo para treinar o modelo de interação peptídeo--membrana.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Estrutura recomendada do dataset}
+\scriptsize
+\begin{center}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{p{1.35cm}p{3.5cm}p{2.6cm}p{2.8cm}p{1.9cm}p{1.5cm}}
+\toprule
+\textbf{peptide\_id} & \textbf{sequence} & \textbf{target} & \textbf{target\_type} & \textbf{endpoint} & \textbf{value} \\
+\midrule
+P01 & \ttfamily FFSLIPSLVGGLISAFK & \textit{S. aureus} & Gram+ & MIC & 8 $\mu$M \\
+P01 & \ttfamily FFSLIPSLVGGLISAFK & célula normal & mamífero normal & CC50 & 100 $\mu$M \\
+P02 & \ttfamily FLGMIPGLIGGLISAFK & \textit{Candida} spp. & fungo & MIC & 16 $\mu$M \\
+P03 & \ttfamily ... & Zika & vírus envelopado & redução viral & 70\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.10cm}
+\begin{itemize}
+  \item Cada linha representa um par \textbf{peptídeo + membrana-alvo + desfecho}.
+  \item O mesmo peptídeo pode aparecer em várias linhas, uma para cada membrana-alvo.
+  \item Isso permite aprender \alert{seletividade}: ativo contra alvo patológico e pouco tóxico contra célula normal.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Etapa 2 - Curadoria dos dados}
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{itemize}
+  \item Padronizar sequências de aminoácidos.
+  \item Remover duplicatas e registros inconsistentes.
+  \item Converter unidades: $\mu$M, $\mu$g/mL, nM.
+  \item Tratar modificações: amidado, acetilado, substituições.
+  \item Padronizar nomes de organismos e linhagens.
+  \item Definir classes: alta, média ou baixa atividade.
+\end{itemize}
+
+\column{0.48\textwidth}
+\begin{block}{Exemplo de regra}
+Para MIC, valores menores indicam maior atividade. Uma regra inicial pode ser:
+\begin{itemize}
+  \item MIC $\leq$ 10 $\mu$M: alta atividade.
+  \item 10 $<$ MIC $\leq$ 50 $\mu$M: atividade moderada.
+  \item MIC $>$ 50 $\mu$M: baixa atividade.
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Etapa 3 - Representação do peptídeo}
+\begin{center}
+\begin{tikzpicture}[node distance=1.0cm]
+  \node[box] (seq) {Sequência\ de aminoácidos};
+  \node[smallbox,below left=0.8cm and 0.15cm of seq] (desc) {Descritores\ físico-químicos};
+  \node[smallbox,below right=0.8cm and 0.15cm of seq] (emb) {Embedding\ ProtBERT/ESM-2};
+  \node[orangebox,below=2.1cm of seq] (vec) {Vetor final\ do peptídeo $p_i$};
+  \draw[arrow] (seq) -- (desc);
+  \draw[arrow] (seq) -- (emb);
+  \draw[arrow] (desc) -- (vec);
+  \draw[arrow] (emb) -- (vec);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.15cm}
+\begin{block}{Representação final}
+\begin{equation*}
+  p_i = [\text{descritores clássicos},\; \text{embedding da sequência}]
+\end{equation*}
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Descritores físico-químicos do peptídeo}
+\small
+\begin{center}
+\begin{tabular}{p{3.5cm}p{8.0cm}}
+\toprule
+\textbf{Descritor} & \textbf{Interpretação biológica} \\
+\midrule
+Carga líquida & Interação eletrostática com membranas negativas. \\
+Hidrofobicidade & Capacidade de inserção na bicamada lipídica. \\
+Momento hidrofóbico & Organização anfipática, comum em peptídeos helicoidais. \\
+Ponto isoelétrico & Comportamento de carga em função do pH. \\
+Massa molecular & Tamanho e difusão do peptídeo. \\
+Comprimento & Relacionado a estabilidade, poro e permeação. \\
+Fração catiônica & Presença de Lys, Arg e His. \\
+Fração hidrofóbica & Presença de Leu, Ile, Val, Phe, Trp etc. \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Embeddings de peptídeos}
+\begin{block}{Ideia}
+Modelos pré-treinados em grandes bases de proteínas transformam sequências em vetores densos que capturam padrões evolutivos, estruturais e funcionais.
+\end{block}
+
+\vspace{0.2cm}
+\begin{center}
+\begin{tikzpicture}[node distance=0.9cm]
+  \node[box,text width=3.0cm] (seq) {FFSLIPSLVGGLISAFK};
+  \node[orangebox,right=of seq,text width=2.8cm] (bert) {ProtBERT\ ou ESM-2};
+  \node[bluebox,right=of bert,text width=3.2cm] (vec) {$[0.12,-0.04,\ldots,0.88]$};
+  \draw[arrow] (seq) -- (bert);
+  \draw[arrow] (bert) -- (vec);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+\begin{itemize}
+  \item O embedding pode ser usado sozinho ou combinado com descritores clássicos.
+  \item Para poucos dados, recomenda-se congelar o encoder e treinar apenas o classificador/regressor.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Etapa 4 - Representação da membrana-alvo}
+\begin{block}{Ponto-chave}
+A membrana não deve ser apenas uma classe como ``bactéria'' ou ``célula tumoral''. Ela deve ser descrita por propriedades físico-químicas e estruturais.
+\end{block}
+
+\vspace{0.2cm}
+\begin{equation*}
+  m_j = [T_j, C_j, A_j, L_j, S_j, R_j]
+\end{equation*}
+
+\begin{itemize}
+  \item $T_j$: tipo de membrana.
+  \item $C_j$: carga superficial.
+  \item $A_j$: fração aniônica.
+  \item $L_j$: composição lipídica.
+  \item $S_j$: componentes estruturais.
+  \item $R_j$: rigidez, fluidez e espessura.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Tipos de membrana-alvo}
+\small
+\begin{center}
+\begin{tabular}{p{3.0cm}p{4.2cm}p{5.0cm}}
+\toprule
+\textbf{Classe} & \textbf{Exemplos} & \textbf{Uso no projeto} \\
+\midrule
+Gram-positiva & S. aureus, S. epidermidis & Atividade antibacteriana. \\
+Gram-negativa & E. coli, P. aeruginosa & Atividade antibacteriana e barreira externa. \\
+Fungo/levedura & Candida spp. & Atividade antifúngica. \\
+Parasita & Trypanosoma cruzi & Atividade antiparasitária. \\
+Vírus envelopado & Zika, HSV & Desestabilização de envelope viral. \\
+Célula normal & linhagens não neoplásicas & Toxicidade indesejada. \\
+Célula tumoral & linhagens cancerígenas & Atividade antiproliferativa. \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Descritores da membrana-alvo}
+\small
+\begin{center}
+\begin{tabular}{p{3.7cm}p{8.2cm}}
+\toprule
+\textbf{Descritor} & \textbf{Importância} \\
+\midrule
+Carga superficial & Atrai ou repele peptídeos catiônicos. \\
+Fração de lipídios aniônicos & Relacionada à seletividade para bactérias e células tumorais. \\
+LPS & Característico de Gram-negativas; camada externa e carga negativa. \\
+Peptidoglicano & Barreira estrutural em bactérias. \\
+Ácido teicoico & Relevante em Gram-positivas. \\
+Colesterol & Estabiliza membranas de mamíferos e pode reduzir permeabilização. \\
+Ergosterol & Marcador importante de membranas fúngicas. \\
+Envelope viral & Indica alvo lipídico em vírus envelopados. \\
+Fluidez/rigidez & Controla deformação, inserção e formação de poros. \\
+Espessura da bicamada & Afeta profundidade de inserção do peptídeo. \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Exemplo de codificação da membrana}
+\small
+\begin{center}
+\begin{tabular}{p{2.4cm}rrrrrrr}
+\toprule
+\textbf{Alvo} & \textbf{Carga} & \textbf{Aniônica} & \textbf{LPS} & \textbf{PGN} & \textbf{Col.} & \textbf{Erg.} & \textbf{Env.} \\
+\midrule
+S. aureus & -0.80 & 0.60 & 0 & 1 & 0 & 0 & 0 \\
+E. coli & -0.90 & 0.65 & 1 & 1 & 0 & 0 & 0 \\
+Candida spp. & -0.40 & 0.25 & 0 & 0 & 0 & 1 & 0 \\
+Zika & -0.30 & 0.20 & 0 & 0 & 1 & 0 & 1 \\
+Célula normal & -0.10 & 0.10 & 0 & 0 & 1 & 0 & 0 \\
+Célula tumoral & -0.40 & 0.25 & 0 & 0 & 1 & 0 & 0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.15cm}
+\begin{itemize}
+  \item Os valores iniciais podem ser aproximados da literatura.
+  \item Depois, podem ser refinados com dados experimentais, lipossomos ou dinâmica molecular.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Níveis de representação da membrana}
+\begin{columns}[T]
+\column{0.33\textwidth}
+\begin{block}{Nível 1\ simples}
+\small
+Tipo, carga, LPS, colesterol, ergosterol e fração aniônica.
+\end{block}
+
+\column{0.33\textwidth}
+\begin{block}{Nível 2\ intermediário}
+\small
+Composição lipídica aproximada, fluidez, rigidez e espessura.
+\end{block}
+
+\column{0.33\textwidth}
+\begin{block}{Nível 3\ avançado}
+\small
+Descritores de dinâmica molecular, lipossomos, potencial zeta e energia de inserção.
+\end{block}
+\end{columns}
+
+\vspace{0.5cm}
+\begin{center}
+\begin{tikzpicture}[node distance=1.0cm]
+  \node[smallbox] (n1) {rápido\ e robusto};
+  \node[smallbox,right=of n1] (n2) {melhor\ biologia};
+  \node[smallbox,right=of n2] (n3) {maior\ mecanismo};
+  \draw[arrow] (n1) -- (n2);
+  \draw[arrow] (n2) -- (n3);
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Etapa 5 - Construção dos pares peptídeo--membrana}
+\begin{block}{Entrada final do modelo}
+\begin{equation*}
+  x_{ij} = [p_i, m_j, g(p_i,m_j)]
+\end{equation*}
+\end{block}
+
+\begin{itemize}
+  \item $p_i$: descritores e embedding do peptídeo.
+  \item $m_j$: descritores da membrana.
+  \item $g(p_i,m_j)$: atributos cruzados de interação.
+\end{itemize}
+
+\vspace{0.2cm}
+\begin{center}
+\begin{tikzpicture}[node distance=0.9cm]
+  \node[box] (p) {Vetor\ peptídeo};
+  \node[box,right=of p] (m) {Vetor\ membrana};
+  \node[orangebox,right=of m] (g) {Atributos\ cruzados};
+  \node[bluebox,right=of g] (x) {Entrada\ $x_{ij}$};
+  \draw[arrow] (p) -- (m);
+  \draw[arrow] (m) -- (g);
+  \draw[arrow] (g) -- (x);
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Atributos cruzados peptídeo--membrana}
+\begin{columns}[T]
+\column{0.54\textwidth}
+\begin{itemize}
+  \item Compatibilidade eletrostática.
+  \item Compatibilidade hidrofóbica.
+  \item Penalização por colesterol.
+  \item Afinidade por membranas aniônicas.
+  \item Potencial de seletividade.
+\end{itemize}
+
+\column{0.46\textwidth}
+\begin{block}{Ideia}
+\small
+Além de representar peptídeo e membrana separadamente, podemos criar descritores que expressem \textbf{como os dois combinam entre si}.
+\end{block}
+\end{columns}
+
+\vspace{0.25cm}
+\begin{center}
+\begin{tikzpicture}[node distance=0.85cm]
+  \node[box] (p) {Features\ do peptídeo};
+  \node[box,right=of p] (m) {Features\ da membrana};
+  \node[orangebox,right=of m] (g) {Features\ de interação};
+  \draw[arrow] (p) -- (m);
+  \draw[arrow] (m) -- (g);
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{PMI: Peptide--Membrane Interaction Index}
+\begin{block}{Objetivo do PMI}
+Construir um índice simples e interpretável para resumir a compatibilidade entre um peptídeo e uma membrana-alvo antes ou junto do modelo de IA.
+\end{block}
+
+\vspace{0.2cm}
+\begin{equation*}
+PMI = \alpha Q_p|Q_m| + \beta H_pH_m + \gamma \mu H_p - \delta Chol_m
+\end{equation*}
+
+\vspace{0.1cm}
+\begin{itemize}
+  \item Valores maiores sugerem maior potencial de interação, inserção ou perturbação da membrana.
+  \item O PMI pode ser usado como feature adicional ou como baseline interpretável.
+  \item Os pesos $\alpha$, $\beta$, $\gamma$ e $\delta$ podem ser definidos empiricamente ou aprendidos pelo modelo.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{PMI: interpretação dos termos}
+\small
+\begin{center}
+\begin{tabular}{p{2.4cm}p{4.0cm}p{5.7cm}}
+\toprule
+\textbf{Termo} & \textbf{Representa} & \textbf{Intuição biológica} \\
+\midrule
+$Q_p|Q_m|$ & compatibilidade eletrostática & Peptídeos catiônicos tendem a interagir com membranas mais negativas. \\
+$H_pH_m$ & compatibilidade hidrofóbica & Peptídeos hidrofóbicos podem se inserir melhor em ambientes lipídicos. \\
+$\mu H_p$ & momento hidrofóbico & Captura anfipaticidade, importante para hélices que interagem com bicamadas. \\
+$Chol_m$ & fração de colesterol & Pode estabilizar membranas de mamíferos e reduzir permeabilização por alguns peptídeos. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.15cm}
+\begin{block}{Leitura prática}
+Um peptídeo bom deve ter PMI alto para a membrana patológica e PMI baixo para a célula normal.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{PMI e seletividade}
+\begin{block}{Problema biológico}
+Não basta interagir fortemente com membranas. É necessário interagir preferencialmente com o alvo patológico e pouco com células normais.
+\end{block}
+
+\vspace{0.2cm}
+\begin{equation*}
+PMI_{sel} = PMI_{alvo\ patológico} - PMI_{célula\ normal}
+\end{equation*}
+
+\vspace{0.1cm}
+\begin{center}
+\resizebox{0.88\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.85cm]
+  \node[box] (pep) {Peptídeo};
+  \node[orangebox,right=of pep] (target) {$PMI$\ alvo patológico};
+  \node[box,below=0.8cm of target] (normal) {$PMI$\ célula normal};
+  \node[bluebox,right=1.1cm of target] (sel) {$PMI_{sel}$\ seletividade};
+  \draw[arrow] (pep) -- (target);
+  \draw[arrow] (pep) |- (normal);
+  \draw[arrow] (target) -- (sel);
+  \draw[arrow] (normal) -| (sel);
+\end{tikzpicture}}
+\end{center}
+
+\vspace{0.1cm}
+\begin{itemize}
+  \item $PMI_{sel} > 0$: favorece alvo patológico.
+  \item $PMI_{sel} \approx 0$: baixa seletividade prevista.
+  \item $PMI_{sel} < 0$: risco de maior interação com célula normal.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{PMI: como usar no pipeline}
+\small
+\begin{columns}[T]
+\column{0.50\textwidth}
+\textbf{Uso como baseline}
+\begin{itemize}
+  \item Calcular o PMI para todos os pares peptídeo--membrana.
+  \item Ordenar os candidatos por $PMI_{sel}$.
+  \item Comparar com resultados experimentais.
+\end{itemize}
+
+\column{0.50\textwidth}
+\textbf{Uso como feature}
+\begin{itemize}
+  \item Adicionar PMI ao vetor $x_{ij}$.
+  \item Permitir que RF, XGBoost ou MLP aprendam pesos melhores.
+  \item Usar SHAP para verificar a importância do PMI.
+\end{itemize}
+\end{columns}
+
+\vspace{0.25cm}
+\begin{block}{Cuidado}
+O PMI é uma simplificação. Ele não substitui embeddings, composição lipídica detalhada, dinâmica molecular ou validação experimental.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Etapa 6 - Modelos de IA}
+\begin{center}
+\begin{tikzpicture}[node distance=1.0cm]
+  \node[box,text width=3.0cm] (l1) {Nível 1\ Baselines clássicos};
+  \node[orangebox,text width=3.2cm,right=of l1] (l2) {Nível 2\ Embeddings + MLP};
+  \node[bluebox,text width=3.4cm,right=of l2] (l3) {Nível 3\ Modelo multimodal};
+  \draw[arrow] (l1) -- (l2);
+  \draw[arrow] (l2) -- (l3);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.3cm}
+\begin{itemize}
+  \item \textbf{Nível 1}: Random Forest, XGBoost, SVM e regressão logística.
+  \item \textbf{Nível 2}: embeddings ProtBERT/ESM-2 combinados com descritores.
+  \item \textbf{Nível 3}: encoder de peptídeo + encoder de membrana + fusão multimodal.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Por que o modelo deve ser multimodal?}
+\begin{block}{Motivação}
+O problema peptídeo--membrana combina diferentes tipos de informação: sequência, descritores físico-químicos, propriedades da membrana e endpoints experimentais.
+\end{block}
+
+\vspace{0.25cm}
+\begin{center}
+\resizebox{0.92\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.85cm]
+  \node[box] (seq) {Sequência\ do peptídeo};
+  \node[box,right=of seq] (desc) {Descritores\ do peptídeo};
+  \node[box,right=of desc] (mem) {Descritores\ da membrana};
+  \node[orangebox,right=of mem] (fusion) {Fusão\ multimodal};
+  \node[bluebox,right=of fusion] (pred) {Predições};
+  \draw[arrow] (seq) -- (desc);
+  \draw[arrow] (desc) -- (mem);
+  \draw[arrow] (mem) -- (fusion);
+  \draw[arrow] (fusion) -- (pred);
+\end{tikzpicture}}
+\end{center}
+
+\vspace{0.15cm}
+\begin{itemize}
+  \item A sequência captura padrões de resíduos e motivos funcionais.
+  \item Os descritores clássicos capturam propriedades conhecidas e interpretáveis.
+  \item A membrana define o contexto biológico da interação.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Arquitetura multimodal proposta}
+\begin{center}
+\resizebox{0.94\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.75cm]
+  \node[box] (seq) {Sequência\ peptídica};
+  \node[box,below=of seq] (desc) {Descritores\ do peptídeo};
+  \node[box,below=of desc] (mem) {Descritores\ da membrana};
+
+  \node[orangebox,right=1.1cm of seq] (enc1) {Encoder\ ProtBERT/ESM-2};
+  \node[orangebox,right=1.1cm of desc] (enc2) {MLP\ peptídeo};
+  \node[orangebox,right=1.1cm of mem] (enc3) {MLP\ membrana};
+
+  \node[bluebox,right=1.2cm of enc2] (fusion) {Fusão\ multimodal};
+  \node[orangebox,right=1.0cm of fusion] (head) {Cabeças\ preditivas};
+  \node[bluebox,right=1.0cm of head] (out) {Atividade\ Toxicidade\ Seletividade};
+
+  \draw[arrow] (seq) -- (enc1);
+  \draw[arrow] (desc) -- (enc2);
+  \draw[arrow] (mem) -- (enc3);
+  \draw[arrow] (enc1) -- (fusion);
+  \draw[arrow] (enc2) -- (fusion);
+  \draw[arrow] (enc3) -- (fusion);
+  \draw[arrow] (fusion) -- (head);
+  \draw[arrow] (head) -- (out);
+\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Fusão multimodal: opções práticas}
+\small
+\begin{center}
+\begin{tabular}{p{3.2cm}p{4.1cm}p{4.8cm}}
+\toprule
+\textbf{Estratégia} & \textbf{Como funciona} & \textbf{Quando usar} \\
+\midrule
+Concatenação & Junta os vetores em uma única entrada & Primeira versão, simples e robusta. \\
+Fusão com MLP & Cada modalidade passa por uma MLP antes da fusão & Quando descritores têm escalas diferentes. \\
+Atenção cruzada & O vetor da membrana modula quais partes do peptídeo importam & Quando houver dados suficientes. \\
+Fusão multitarefa & Um tronco comum alimenta várias saídas & Para prever atividade, toxicidade e seletividade juntas. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.15cm}
+\begin{block}{Recomendação inicial}
+Começar com concatenação + MLP, usando embeddings congelados, e evoluir para atenção cruzada quando a base crescer.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Cabeças preditivas do modelo multimodal}
+\begin{center}
+\resizebox{0.82\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.9cm]
+  \node[orangebox,text width=3.2cm] (z) {Representação\ fusionada $z_{ij}$};
+  \node[box,right=1.1cm of z,yshift=1.0cm] (h1) {Cabeça 1\ atividade};
+  \node[box,right=1.1cm of z] (h2) {Cabeça 2\ toxicidade};
+  \node[box,right=1.1cm of z,yshift=-1.0cm] (h3) {Cabeça 3\ seletividade};
+  \node[bluebox,right=1.0cm of h1] (o1) {MIC, IC50\ ou classe};
+  \node[bluebox,right=1.0cm of h2] (o2) {CC50\ ou toxicidade};
+  \node[bluebox,right=1.0cm of h3] (o3) {$SI$ ou\ ranking};
+  \draw[arrow] (z) -- (h1);
+  \draw[arrow] (z) -- (h2);
+  \draw[arrow] (z) -- (h3);
+  \draw[arrow] (h1) -- (o1);
+  \draw[arrow] (h2) -- (o2);
+  \draw[arrow] (h3) -- (o3);
+\end{tikzpicture}}
+\end{center}
+
+\vspace{0.1cm}
+\begin{itemize}
+  \item A saída multitarefa força o modelo a aprender atividade e segurança simultaneamente.
+  \item O ranking final pode combinar as três cabeças preditivas.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Tipos de saída do modelo}
+\small
+\begin{center}
+\begin{tabular}{p{3.0cm}p{4.5cm}p{4.5cm}}
+\toprule
+\textbf{Tarefa} & \textbf{Saída} & \textbf{Exemplo} \\
+\midrule
+Classificação binária & Interage ou não interage & membrana-ativo / não ativo \\
+Classificação ordinal & Baixa, média ou alta interação & classe de atividade \\
+Regressão & Valor contínuo & MIC, IC50, CC50, EC50 \\
+Ranqueamento & Ordem dos candidatos & Top-5 peptídeos para bancada \\
+Multitarefa & Várias saídas simultâneas & atividade, toxicidade, seletividade \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+\begin{block}{Recomendação}
+Começar com classificação/ranking e evoluir para regressão e multitarefa quando houver mais dados.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Etapa 7 - Treinamento e validação}
+\begin{columns}[T]
+\column{0.50\textwidth}
+\textbf{Divisão dos dados}
+\begin{itemize}
+  \item Treino.
+  \item Validação.
+  \item Teste interno.
+  \item Teste externo com literatura.
+  \item Teste prospectivo com bancada.
+\end{itemize}
+
+\column{0.50\textwidth}
+\textbf{Métricas}
+\begin{itemize}
+  \item Classificação: acurácia, precisão, recall, F1, ROC-AUC.
+  \item Regressão: MAE, RMSE, $R^2$.
+  \item Ranking: top-k accuracy, enrichment factor.
+  \item Seletividade: correlação com índice experimental.
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Cuidado metodológico: vazamento de informação}
+\begin{block}{Problema comum}
+Se peptídeos muito parecidos aparecem simultaneamente no treino e no teste, o desempenho pode ficar artificialmente alto.
+\end{block}
+
+\vspace{0.2cm}
+\begin{itemize}
+  \item Fazer split por cluster de similaridade, não apenas split aleatório.
+  \item Separar peptídeos análogos próximos.
+  \item Usar teste externo com dados não usados na curadoria.
+  \item Reportar desempenho por tipo de alvo: Gram+, Gram-, fungo, célula normal etc.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Etapa 8 - Ranqueamento dos peptídeos}
+\begin{block}{Critério recomendado}
+O melhor peptídeo não é necessariamente o mais ativo. É o que combina atividade alta contra o alvo e baixa toxicidade em célula normal.
+\end{block}
+
+\vspace{0.2cm}
+\begin{equation*}
+  Score_{final} = Score_{alvo} - \lambda \cdot Score_{tox} + \eta \cdot Score_{seletividade}
+\end{equation*}
+
+\begin{itemize}
+  \item $Score_{alvo}$: interação prevista com bactéria, fungo, parasita, vírus ou célula tumoral.
+  \item $Score_{tox}$: interação prevista com célula normal.
+  \item $Score_{seletividade}$: diferença entre alvo patológico e célula normal.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Exemplo de ranking para bancada}
+\small
+\begin{center}
+\begin{tabular}{p{2.0cm}rrrrp{2.6cm}}
+\toprule
+\textbf{Peptídeo} & \textbf{Alvo} & \textbf{Tox.} & \textbf{Sel.} & \textbf{Score} & \textbf{Decisão} \\
+\midrule
+P04 & 0.91 & 0.18 & 0.73 & 0.88 & Testar primeiro \\
+P07 & 0.86 & 0.22 & 0.64 & 0.80 & Testar \\
+P02 & 0.78 & 0.55 & 0.23 & 0.52 & Cuidado \\
+P09 & 0.65 & 0.12 & 0.53 & 0.70 & Alternativa \\
+P03 & 0.93 & 0.89 & 0.04 & 0.30 & Evitar por toxicidade \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+\begin{itemize}
+  \item Este ranking é um exemplo didático.
+  \item Os valores reais viriam do modelo treinado e da validação experimental.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Etapa 9 - Validação experimental}
+\begin{center}
+\resizebox{0.96\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.8cm]
+  \node[box] (rank) {Peptídeos\ priorizados};
+  \node[box,right=of rank] (anti) {MIC/MBC\ bactérias};
+  \node[box,right=of anti] (fung) {MIC/MFC\ fungos};
+  \node[box,right=of fung] (para) {T. cruzi\ inibição};
+  \node[box,right=of para] (viral) {Zika/HSV\ redução viral};
+  \node[box,right=of viral] (tox) {CC50/IC50\ células};
+  \node[orangebox,below=1.0cm of para] (mev) {MEV\ evidência morfológica};
+  \draw[arrow] (rank) -- (anti);
+  \draw[arrow] (anti) -- (fung);
+  \draw[arrow] (fung) -- (para);
+  \draw[arrow] (para) -- (viral);
+  \draw[arrow] (viral) -- (tox);
+  \draw[dashedarrow] (anti) |- (mev);
+  \draw[dashedarrow] (fung) |- (mev);
+  \draw[dashedarrow] (para) -- (mev);
+  \draw[dashedarrow] (viral) |- (mev);
+\end{tikzpicture}}
+\end{center}
+
+\vspace{0.2cm}
+\begin{block}{Resultado esperado}
+Confirmar se o modelo preditivo realmente seleciona peptídeos com atividade e seletividade.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Etapa 10 - Ciclo de active learning}
+\begin{center}
+\begin{tikzpicture}[node distance=1.0cm]
+  \node[box] (base) {Base\ inicial};
+  \node[box,right=of base] (model) {Modelo\ preditivo};
+  \node[orangebox,right=of model] (rank) {Ranking\ dos candidatos};
+  \node[box,below=1.0cm of rank] (lab) {Ensaios\ in vitro};
+  \node[bluebox,left=of lab] (new) {Novos\ dados};
+  \node[box,left=of new] (ret) {Re-treinamento};
+  \draw[arrow] (base) -- (model);
+  \draw[arrow] (model) -- (rank);
+  \draw[arrow] (rank) -- (lab);
+  \draw[arrow] (lab) -- (new);
+  \draw[arrow] (new) -- (ret);
+  \draw[arrow] (ret) -- (base);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+\begin{block}{Aprendizado ativo}
+A cada rodada experimental, o modelo aprende melhor quais propriedades aumentam atividade, seletividade e segurança.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Explicabilidade do modelo}
+\begin{columns}[T]
+\column{0.50\textwidth}
+\textbf{Ferramentas}
+\begin{itemize}
+  \item SHAP.
+  \item Permutation importance.
+  \item Atenção em Transformers.
+  \item Análise de resíduos importantes.
+\end{itemize}
+
+\column{0.50\textwidth}
+\textbf{Perguntas biológicas}
+\begin{itemize}
+  \item A carga positiva aumenta interação?
+  \item Hidrofobicidade excessiva aumenta toxicidade?
+  \item Quais resíduos favorecem seletividade?
+  \item O modelo distingue célula normal de tumor?
+\end{itemize}
+\end{columns}
+
+\vspace{0.3cm}
+\begin{block}{Objetivo da XAI}
+Transformar predição em conhecimento de relação estrutura--atividade.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Entregáveis computacionais}
+\begin{itemize}
+  \item Base de dados curada de peptídeos, membranas e desfechos experimentais.
+  \item Scripts de extração de descritores físico-químicos.
+  \item Geração de embeddings por ProtBERT, ESM-2 ou ProtT5.
+  \item Tabela de representação de membranas-alvo.
+  \item Modelos baseline e multimodais treinados.
+  \item Ranking dos peptídeos do projeto.
+  \item Relatório com métricas, análise de erro e explicabilidade.
+  \item Pipeline reprodutível em Python, preferencialmente com notebooks e scripts versionados.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Plano de execução sugerido}
+\small
+\begin{center}
+\begin{tabular}{p{1.2cm}p{5.5cm}p{5.5cm}}
+\toprule
+\textbf{Fase} & \textbf{Atividade} & \textbf{Produto} \\
+\midrule
+1 & Revisão de bases e coleta inicial & planilha padronizada \\
+2 & Cálculo de descritores dos peptídeos & tabela de features \\
+3 & Construção da tabela de membranas & vetor $m_j$ para cada alvo \\
+4 & Geração de embeddings & matriz de embeddings \\
+5 & Baseline RF/XGBoost/SVM & métricas iniciais \\
+6 & Modelo multimodal & predição peptídeo--membrana \\
+7 & Ranking dos candidatos & lista priorizada para bancada \\
+8 & XAI e relatório & interpretação biológica \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Stack computacional sugerido}
+\begin{columns}[T]
+\column{0.50\textwidth}
+\textbf{Python e dados}
+\begin{itemize}
+  \item pandas, numpy, scipy.
+  \item scikit-learn.
+  \item xgboost.
+  \item pyarrow/parquet.
+\end{itemize}
+
+\column{0.50\textwidth}
+\textbf{Deep learning e bioinformática}
+\begin{itemize}
+  \item PyTorch.
+  \item Hugging Face Transformers.
+  \item ESM / ProtBERT / ProtT5.
+  \item Biopython.
+  \item SHAP.
+\end{itemize}
+\end{columns}
+
+\vspace{0.3cm}
+\begin{block}{Organização}
+Separar o projeto em módulos: dados, features, embeddings, modelos, avaliação, explicabilidade e ranking.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+% -------------------------------------------------
+\begin{frame}{Possíveis entregáveis do projeto}
+\begin{center}
+\begin{tikzpicture}[node distance=0.9cm]
+  \node[box, text width=3.2cm] (artigos) {\textbf{Artigos}\\modelagem, validação e aplicação};
+  \node[box, text width=3.2cm, right=1.1cm of artigos] (datasets) {\textbf{Datasets}\\dados curados e reprodutíveis};
+  \node[box, text width=3.2cm, right=1.1cm of datasets] (plataforma) {\textbf{Plataforma Web}\\predição, ranking e visualização};
+  \node[smallbox, text width=3.2cm, below=0.8cm of artigos] (a1) {metodologia PepMem-AI};
+  \node[smallbox, text width=3.2cm, below=0.8cm of datasets] (d1) {peptídeos + membranas + endpoints};
+  \node[smallbox, text width=3.2cm, below=0.8cm of plataforma] (p1) {interface para alunos e pesquisadores};
+  \draw[arrow] (artigos) -- (a1);
+  \draw[arrow] (datasets) -- (d1);
+  \draw[arrow] (plataforma) -- (p1);
+\end{tikzpicture}
+\end{center}
+\vspace{0.2cm}
+\begin{block}{Visão estratégica}
+Cada entregável deve reforçar os demais: os dados alimentam os modelos, os modelos geram artigos, e a plataforma torna o pipeline utilizável e demonstrável.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Sugestões de artigos: linha 1}
+\begin{block}{Artigo metodológico}
+\textbf{PepMem-AI: um pipeline multimodal para predição de interação peptídeo--membrana}
+\end{block}
+\begin{columns}[T]
+\column{0.48\textwidth}
+\textbf{Ideia central}
+\begin{itemize}
+  \item Formalizar o problema como pares peptídeo--membrana.
+  \item Comparar descritores clássicos, embeddings e modelos multimodais.
+  \item Avaliar classificação, regressão e ranking.
+\end{itemize}
+\column{0.52\textwidth}
+\textbf{Resultados esperados}
+\begin{itemize}
+  \item Baselines: RF, SVM, XGBoost e MLP.
+  \item Modelos com ProtBERT/ESM-2.
+  \item Métricas: ROC-AUC, F1, RMSE, R$^2$ e top-k.
+  \item Análise XAI dos descritores relevantes.
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Sugestões de artigos: linhas 2 e 3}
+\begin{columns}[T]
+\column{0.50\textwidth}
+\begin{block}{Artigo experimental-computacional}
+\textbf{Validação in vitro de peptídeos priorizados por IA}
+\end{block}
+\begin{itemize}
+  \item Usar o ranking do modelo para selecionar candidatos.
+  \item Validar MIC, MBC/CBM, IC50, CC50 e atividade antiviral.
+  \item Comparar predição versus bancada.
+  \item Discutir seletividade contra células normais.
+\end{itemize}
+\column{0.50\textwidth}
+\begin{block}{Artigo de interpretabilidade}
+\textbf{Determinantes físico-químicos da interação peptídeo--membrana}
+\end{block}
+\begin{itemize}
+  \item Usar SHAP e análise de importância.
+  \item Explorar carga, hidrofobicidade e momento hidrofóbico.
+  \item Relacionar PMI com endpoints experimentais.
+  \item Gerar hipóteses para novos análogos.
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Datasets possíveis}
+\begin{columns}[T]
+\column{0.50\textwidth}
+\textbf{Dataset 1: PepMem-Base}
+\begin{itemize}
+  \item Sequências de peptídeos escorpiônicos.
+  \item Descritores físico-químicos.
+  \item Embeddings ProtBERT/ESM-2.
+  \item Origem: APD3, CAMP, UniProt e literatura.
+\end{itemize}
+\vspace{0.1cm}
+\textbf{Dataset 2: Membrane-Targets}
+\begin{itemize}
+  \item Representações de membranas-alvo.
+  \item Tipo, carga, fração aniônica, colesterol, ergosterol, LPS e peptidoglicano.
+\end{itemize}
+\column{0.50\textwidth}
+\textbf{Dataset 3: PepMem-Endpoints}
+\begin{itemize}
+  \item Pares peptídeo--membrana.
+  \item Endpoints: MIC, MBC/CBM, IC50, CC50, EC50 e SI.
+  \item Dados da literatura e da bancada.
+\end{itemize}
+\vspace{0.2cm}
+\begin{block}{Formato recomendado}
+CSV/Parquet + dicionário de dados + scripts de reprodução + licença + DOI em Mendeley Data, Zenodo ou Figshare.
+\end{block}
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Estrutura mínima do dataset}
+\scriptsize
+\begin{tabular}{p{0.20\textwidth} p{0.29\textwidth} p{0.43\textwidth}}
+\toprule
+\textbf{Grupo} & \textbf{Campos} & \textbf{Finalidade} \\
+\midrule
+Identificação & peptide\_id, sequence, target, target\_type & rastrear o par peptídeo--membrana \\
+Descritores do peptídeo & net\_charge, hydrophobicity, hydrophobic\_moment, pI, length & representar propriedades físico-químicas \\
+Embeddings & esm2\_vector, protbert\_vector & representar a sequência em espaço vetorial \\
+Membrana & surface\_charge, anionic\_fraction, cholesterol, ergosterol, LPS, PG, PE, CL & representar a membrana-alvo \\
+Endpoint & endpoint, value, unit, assay, reference & registrar o desfecho experimental \\
+Controle de qualidade & source, duplicate\_flag, confidence, split & permitir curadoria, reprodutibilidade e treino/teste \\
+\bottomrule
+\end{tabular}
+\vspace{0.3cm}
+\begin{block}{Entregável de dados}
+Uma versão inicial pode conter apenas dados de literatura. A versão final deve incorporar os resultados experimentais gerados no projeto.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Plataforma web: visão geral}
+\begin{center}
+\begin{tikzpicture}[node distance=0.65cm]
+  \node[box, text width=2.4cm] (input) {Entrada\\sequência + alvo};
+  \node[box, text width=2.6cm, right=0.8cm of input] (features) {Features\\descritores + embeddings};
+  \node[box, text width=2.5cm, right=0.8cm of features] (model) {Modelo\\multimodal};
+  \node[box, text width=2.5cm, right=0.8cm of model] (output) {Saída\\ranking + relatório};
+  \draw[arrow] (input) -- (features);
+  \draw[arrow] (features) -- (model);
+  \draw[arrow] (model) -- (output);
+  \node[smallbox, text width=2.7cm, below=0.8cm of features] (db) {Banco de dados\\peptídeos, membranas e endpoints};
+  \node[smallbox, text width=2.7cm, below=0.8cm of model] (xai) {XAI\\SHAP, importância e PMI};
+  \draw[dashedarrow] (db) -- (features);
+  \draw[dashedarrow] (model) -- (xai);
+  \draw[dashedarrow] (xai) -- (output);
+\end{tikzpicture}
+\end{center}
+\vspace{0.2cm}
+\begin{block}{Objetivo da plataforma}
+Permitir que o usuário submeta uma sequência peptídica, escolha uma membrana-alvo e receba predições de atividade, toxicidade, seletividade e explicabilidade.
+\end{block}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Plataforma web: módulos principais}
+\begin{columns}[T]
+\column{0.48\textwidth}
+\textbf{Módulos do usuário}
+\begin{itemize}
+  \item Cadastro ou upload de peptídeos.
+  \item Escolha da membrana-alvo.
+  \item Visualização do ranking.
+  \item Relatório com justificativa da predição.
+\end{itemize}
+\vspace{0.2cm}
+\textbf{Módulos científicos}
+\begin{itemize}
+  \item Cálculo de descritores.
+  \item Geração de embeddings.
+  \item Predição multimodal.
+  \item XAI e PMI.
+\end{itemize}
+\column{0.52\textwidth}
+\textbf{Saídas da plataforma}
+\begin{itemize}
+  \item Score de interação peptídeo--membrana.
+  \item Score de toxicidade prevista.
+  \item Índice de seletividade previsto.
+  \item Top-k peptídeos para validação in vitro.
+  \item Download do relatório em PDF/CSV.
+\end{itemize}
+\begin{block}{Diferencial}
+A plataforma transforma o pipeline em uma ferramenta prática para triagem, ensino, colaboração e geração de novos experimentos.
+\end{block}
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Roadmap de entregáveis}
+\begin{center}
+\begin{tikzpicture}[node distance=0.65cm]
+  \node[box, text width=2.1cm] (m1) {M1--M3\\base inicial};
+  \node[box, text width=2.1cm, right=0.65cm of m1] (m2) {M4--M6\\baselines};
+  \node[box, text width=2.1cm, right=0.65cm of m2] (m3) {M7--M9\\multimodal};
+  \node[box, text width=2.1cm, right=0.65cm of m3] (m4) {M10--M12\\validação};
+  \node[box, text width=2.1cm, right=0.65cm of m4] (m5) {Final\\artigos + web};
+  \draw[arrow] (m1) -- (m2);
+  \draw[arrow] (m2) -- (m3);
+  \draw[arrow] (m3) -- (m4);
+  \draw[arrow] (m4) -- (m5);
+\end{tikzpicture}
+\end{center}
+\vspace{0.3cm}
+\begin{itemize}
+  \item \textbf{Curto prazo:} dataset curado, baselines e primeira versão do ranking.
+  \item \textbf{Médio prazo:} modelo multimodal, PMI, XAI e validação com literatura.
+  \item \textbf{Final:} validação experimental, artigos, dataset público e protótipo web.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Resumo final}
+\begin{enumerate}
+  \item O problema central é \alert{predição de interação peptídeo--membrana}.
+  \item A entrada é um par: peptídeo + membrana-alvo.
+  \item O peptídeo deve ser representado por descritores clássicos e embeddings.
+  \item A membrana deve ser representada por carga, composição, componentes estruturais e propriedades físicas.
+  \item O modelo deve prever atividade, toxicidade e seletividade.
+  \item A saída mais útil é um ranking para validação experimental.
+  \item Os dados da bancada devem realimentar o modelo em um ciclo de active learning.
+\end{enumerate}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Mensagem final}
+\begin{block}{Ideia principal}
+O objetivo não é apenas treinar um modelo para dizer se um peptídeo é ativo. O objetivo é aprender \textbf{por que}, \textbf{contra qual membrana} e \textbf{com que seletividade} ele pode funcionar.
+\end{block}
+
+\vspace{0.3cm}
+\begin{center}
+\Large\bfseries\color{InovGreen}
+Peptídeo + Membrana + IA + Bancada = Bioprospecção orientada por dados
+\end{center}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}{Referências de apoio}
+\small
+\begin{itemize}
+  \item Lee et al. Mapping membrane activity in undiscovered peptide sequence space using machine learning. \textit{PNAS}, 2016.
+  \item Damiati et al. Novel machine learning application for prediction of membrane insertion potential of cell-penetrating peptides. \textit{International Journal of Pharmaceutics}, 2019.
+  \item de Oliveira et al. Predicting cell-penetrating peptides using machine learning algorithms and navigating in their chemical space. \textit{Scientific Reports}, 2021.
+  \item Tran et al. Using molecular dynamics simulations to prioritize and understand AI-generated cell penetrating peptides. \textit{Scientific Reports}, 2021.
+  \item Cao et al. Multi\_CycGT: A Deep Learning-Based Multimodal Model for Predicting the Membrane Permeability of Cyclic Peptides. \textit{Journal of Medicinal Chemistry}, 2024.
+\end{itemize}
+\end{frame}
+
+% -------------------------------------------------
+\begin{frame}[plain]
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=east] at ([xshift=-0.40cm]current page.east) {\includegraphics[width=0.31\paperwidth]{/mnt/data/inovai_instagram_card_narrow.png}};
+  \end{tikzpicture}
+  \begin{center}
+    \vspace{-0.20cm}
+    {\Huge\bfseries\color{InovGreen} Obrigado!}\par
+    \vspace{0.25cm}
+    \includegraphics[width=0.14\paperwidth]{/mnt/data/tech_meets_biology_logo_design.png}\\[0.15cm]
+    {\Large PepMem-AI}\par
+    \vspace{0.12cm}
+    {\large Pipeline de IA para interação peptídeo--membrana}\par
+    \vspace{0.18cm}
+    {\large InovAI Lab \; | \; IMD/UFRN}\par
+  \end{center}
+\end{frame}
+
+\end{document}

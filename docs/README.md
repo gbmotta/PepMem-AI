@@ -8,7 +8,7 @@
 | [INTERPRETACAO_RESULTADOS.md](INTERPRETACAO_RESULTADOS.md) | Como ler PMI, probabilidades, ranking e SHAP |
 | [TREINO.md](TREINO.md) | Dados, LOPO, calibração e artefatos |
 | [peptideos/](peptideos/) | Documento consolidado (físico-química + MICs) |
-| [pipeline/](pipeline/) | Entregáveis LaTeX / PDF do pipeline InovAI |
+| [pipeline/](pipeline/) | Entregáveis LaTeX / PDF (pipeline InovAI + slides de modelagem) |
 | [proposta/](proposta/) | Proposta CNPq (PDF) |
 | [referencias/](referencias/) | Artigos e teses de apoio |
 

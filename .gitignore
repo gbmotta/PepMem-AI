@@ -26,6 +26,8 @@ data/raw/
 # Documentos internos pesados / exports regeneráveis
 *.pdf
 *.tex
+!docs/pipeline/*.tex
+!docs/pipeline/*.pdf
 docs/exports/
 docs/legado/
 
