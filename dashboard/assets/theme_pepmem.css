@@ -562,13 +562,6 @@ button[data-testid="baseButton-primary"]:hover {
   color: var(--pm-muted);
   line-height: 1.45;
 }
-.pepmem-login-foot {
-  margin-top: 1.1rem;
-  font-size: 0.8rem;
-  color: var(--pm-muted);
-  line-height: 1.4;
-  text-align: center;
-}
 /* Destaque visual dos campos no formulário de login */
 div[data-testid="stForm"] {
   background: var(--pm-white);

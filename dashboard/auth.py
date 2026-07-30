@@ -175,16 +175,6 @@ def _render_login_form(error: str | None = None) -> None:
         else:
             st.error("Usuário ou senha inválidos. Verifique e tente de novo.")
 
-    st.markdown(
-        """
-        <div class="pepmem-login-foot">
-          Problemas de acesso? Contate o InovAI Lab / responsável pelo projeto.
-          Este login apenas restringe o PoC — não é autenticação institucional completa.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
 
 def require_login() -> None:
     """Bloqueia o restante do app até autenticação bem-sucedida."""
