@@ -506,32 +506,80 @@ button[data-testid="baseButton-primary"]:hover {
 }
 
 /* --- Login --- */
-.pepmem-login-wrap {
-  max-width: 420px;
-  margin: 1.5rem auto 0.5rem auto;
-  text-align: center;
+.pepmem-login-hero {
+  background: linear-gradient(
+    105deg,
+    var(--pm-carapace) 0%,
+    var(--pm-carapace-2) 40%,
+    #3a2448 72%,
+    #1e3d2e 100%
+  );
+  color: #fff;
+  border-radius: 8px;
+  padding: 1.35rem 1.4rem 1.25rem;
+  margin: 0 0 1.1rem 0;
+  box-shadow: var(--pm-shadow);
+  border-bottom: 3px solid var(--pm-purple-soft);
+  text-align: left;
 }
-.pepmem-login-card {
-  padding: 0.5rem 0.75rem 0.25rem;
-}
-.pepmem-login-brand {
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+.pepmem-login-hero-brand {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--pm-muted);
-  margin-bottom: 0.35rem;
+  color: rgba(255, 255, 255, 0.72);
+  margin-bottom: 0.45rem;
 }
-.pepmem-login-title {
-  font-size: 2rem;
+.pepmem-login-hero-title {
+  font-size: 2.05rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: 0.4rem;
+  color: #fff;
+}
+.pepmem-login-hero-sub {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.4;
+  max-width: 36rem;
+}
+.pepmem-login-panel {
+  background: var(--pm-white);
+  border: 1px solid var(--pm-line);
+  border-radius: 8px;
+  padding: 1rem 1.15rem 0.85rem;
+  margin-bottom: 0.85rem;
+  box-shadow: var(--pm-shadow);
+}
+.pepmem-login-panel-title {
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--pm-purple);
-  line-height: 1.15;
   margin-bottom: 0.35rem;
 }
-.pepmem-login-sub {
-  font-size: 0.95rem;
+.pepmem-login-panel-hint {
+  font-size: 0.92rem;
   color: var(--pm-muted);
-  margin-bottom: 0.25rem;
+  line-height: 1.45;
+}
+.pepmem-login-foot {
+  margin-top: 1.1rem;
+  font-size: 0.8rem;
+  color: var(--pm-muted);
+  line-height: 1.4;
+  text-align: center;
+}
+/* Destaque visual dos campos no formulário de login */
+div[data-testid="stForm"] {
+  background: var(--pm-white);
+  border: 1px solid var(--pm-line);
+  border-radius: 8px;
+  padding: 1rem 1.1rem 1.15rem;
+  box-shadow: var(--pm-shadow);
+}
+div[data-testid="stForm"] h5 {
+  margin: 0.15rem 0 0.25rem 0 !important;
+  color: var(--pm-ink) !important;
+  font-size: 0.95rem !important;
 }
 

@@ -99,39 +99,91 @@ def logout() -> None:
 
 
 def _render_login_form(error: str | None = None) -> None:
-    """Tela centrada de login (visual PepMem)."""
+    """Tela de login com cabeçalho PepMem e formulário bem sinalizado."""
+    # Esconde a sidebar nesta tela (só faz sentido depois de autenticar)
     st.markdown(
         """
-        <div class="pepmem-login-wrap">
-          <div class="pepmem-login-card">
-            <div class="pepmem-login-brand">InovAI Lab · UFRN</div>
-            <div class="pepmem-login-title">PepMem-AI</div>
-            <div class="pepmem-login-sub">Acesso restrito ao dashboard de priorização</div>
+        <style>
+          [data-testid="stSidebar"],
+          [data-testid="stSidebarCollapsedControl"],
+          section[data-testid="stSidebar"] { display: none !important; }
+          .block-container { max-width: 560px !important; padding-top: 1.2rem !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="pepmem-login-hero">
+          <div class="pepmem-login-hero-brand">INOVAI LAB · UFRN · TITYUS STIGMURUS</div>
+          <div class="pepmem-login-hero-title">PepMem-AI</div>
+          <div class="pepmem-login-hero-sub">
+            Predição de interação peptídeo–membrana · acesso restrito a colaboradores
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    _, col, _ = st.columns([1, 1.2, 1])
-    with col:
-        with st.form("pepmem_login_form", clear_on_submit=False):
-            user = st.text_input("Usuário", autocomplete="username")
-            password = st.text_input("Senha", type="password", autocomplete="current-password")
-            submitted = st.form_submit_button("Entrar", use_container_width=True, type="primary")
-        if error:
-            st.error(error)
-        if submitted:
-            if not load_users():
-                st.error(
-                    "Nenhuma credencial configurada. Defina "
-                    "`st.secrets['auth']['users']` ou AUTH_USER/AUTH_PASSWORD, "
-                    "ou use PEPMEM_AUTH_DISABLED=1 só em desenvolvimento local."
-                )
-            elif login(user, password):
-                st.rerun()
-            else:
-                st.error("Usuário ou senha inválidos.")
+    st.markdown(
+        """
+        <div class="pepmem-login-panel">
+          <div class="pepmem-login-panel-title">Entrar no dashboard</div>
+          <div class="pepmem-login-panel-hint">
+            Use o usuário e a senha fornecidos pelo laboratório.
+            Digite nos campos abaixo e clique em <strong>Entrar</strong>.
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.form("pepmem_login_form", clear_on_submit=False):
+        st.markdown("##### 1. Usuário")
+        user = st.text_input(
+            "Usuário",
+            placeholder="Ex.: admin",
+            autocomplete="username",
+            label_visibility="collapsed",
+            help="Identificador combinado com a equipe (ex.: admin, colaborador).",
+        )
+        st.markdown("##### 2. Senha")
+        password = st.text_input(
+            "Senha",
+            type="password",
+            placeholder="Digite sua senha",
+            autocomplete="current-password",
+            label_visibility="collapsed",
+            help="Senha definida nos secrets do app (não compartilhe em canais públicos).",
+        )
+        st.caption("Os campos acima são obrigatórios. Sem usuário/senha válidos o dashboard não abre.")
+        submitted = st.form_submit_button("Entrar no PepMem-AI", use_container_width=True, type="primary")
+
+    if error:
+        st.error(error)
+    if submitted:
+        if not (user or "").strip() or not password:
+            st.warning("Preencha **usuário** e **senha** antes de entrar.")
+        elif not load_users():
+            st.error(
+                "Nenhuma credencial configurada no servidor. "
+                "Peça ao administrador para definir `auth.users` nos secrets."
+            )
+        elif login(user, password):
+            st.rerun()
+        else:
+            st.error("Usuário ou senha inválidos. Verifique e tente de novo.")
+
+    st.markdown(
+        """
+        <div class="pepmem-login-foot">
+          Problemas de acesso? Contate o InovAI Lab / responsável pelo projeto.
+          Este login apenas restringe o PoC — não é autenticação institucional completa.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def require_login() -> None:
@@ -143,13 +195,25 @@ def require_login() -> None:
 
     users = load_users()
     if not users:
-        st.markdown("### PepMem-AI · Login")
+        st.markdown(
+            """
+            <style>
+              [data-testid="stSidebar"],
+              section[data-testid="stSidebar"] { display: none !important; }
+            </style>
+            <div class="pepmem-login-hero">
+              <div class="pepmem-login-hero-brand">INOVAI LAB · UFRN</div>
+              <div class="pepmem-login-hero-title">PepMem-AI</div>
+              <div class="pepmem-login-hero-sub">Login necessário, mas ainda sem credenciais no servidor</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         st.warning(
             "Autenticação ativa, mas **nenhuma credencial** foi configurada.\n\n"
-            "Configure `.streamlit/secrets.toml` com `[auth.users]` "
-            "ou as variáveis `AUTH_USER` / `AUTH_PASSWORD`.\n\n"
-            "Para desenvolvimento local sem senha: "
-            "`export PEPMEM_AUTH_DISABLED=1`."
+            "Configure `.streamlit/secrets.toml` ou os Secrets do Cloud com:\n\n"
+            "```toml\n[auth.users]\nadmin = \"sua-senha\"\n```\n\n"
+            "Desenvolvimento local sem senha: `export PEPMEM_AUTH_DISABLED=1`."
         )
         st.stop()
 

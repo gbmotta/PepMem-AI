@@ -1630,119 +1630,181 @@ Treino atual: **{n_train}** pares MIC · rótulo: MIC ≤ 3,4 µM = alta ativida
 elif page == "Fórmulas":
     info_box(
         "O que esta seção explica",
-        "Descritores do <strong>peptídeo</strong> (carga, hidrofobicidade, momento), "
-        "descritores da <strong>membrana</strong>, o índice <strong>PMI</strong> e o "
-        "rótulo de alta atividade. Tudo calculado <em>in silico</em> a partir da "
-        "sequência e da tipificação do alvo — <strong>não</strong> são ensaios de bancada. "
-        "O MIC experimental entra só como rótulo do modelo.",
+        "Aqui mostramos, em linguagem simples, <strong>como o app transforma a sequência "
+        "do peptídeo e o tipo de membrana em números</strong> que o modelo usa. "
+        "Esses números (carga, hidrofobicidade, PMI…) são calculados no computador — "
+        "<strong>não</strong> vêm de um ensaio de laboratório. "
+        "O que vem da bancada é o <strong>MIC</strong>, usado para treinar e avaliar o modelo.",
     )
 
     with st.container(border=True):
-        tile_title("1. Carga líquida do peptídeo (q)", "pH ~7 · pepmem/peptide_utils.py")
+        tile_title("1. Carga líquida do peptídeo (q)", "Em palavras: o peptídeo é mais “positivo” ou “negativo”?")
         st.markdown(
             """
-Soma dos resíduos ionizáveis na sequência:
+Peptídeos antimicrobianos costumam ter carga **positiva**. Membranas bacterianas
+costumam ser **negativas**. Cargas opostas se atraem — por isso a carga entra no cálculo.
 
-| Aminoácido | Contribuição |
-|------------|--------------|
-| K, R | **+1** |
-| H | **+0,1** |
-| D, E | **−1** |
-| demais | 0 |
+Como estimamos a carga a pH próximo de 7 (condição biológica típica):
 
-Se existir carga anotada (`net_charge`), ela **prevalece** sobre a soma automática.
+| Letra na sequência | Efeito na carga | Em português |
+|--------------------|-----------------|--------------|
+| **K** ou **R** | +1 | aminoácidos bem positivos |
+| **H** | +0,1 | levemente positivo |
+| **D** ou **E** | −1 | aminoácidos negativos |
+| outras letras | 0 | não entram na soma |
+
+Somamos esses valores ao longo da sequência. Se o usuário informar uma carga
+medida/anotada, **usamos essa** em vez da soma automática.
             """
         )
 
     with st.container(border=True):
-        tile_title("2. Hidrofobicidade (h)", "Escala Kyte–Doolittle")
+        tile_title("2. Hidrofobicidade (h)", "Em palavras: o peptídeo “gosta” mais de água ou de gordura?")
         st.latex(r"h_p = \frac{1}{L}\sum_{i=1}^{L} H(\mathrm{AA}_i)")
         st.markdown(
-            r"""
-Média da escala **Kyte–Doolittle** por resíduo (comprimento $L$).
+            """
+Cada aminoácido tem um “escore de gordura/água” na escala **Kyte–Doolittle**
+(padrão clássico em bioquímica). Valores **altos** = mais hidrofóbicos (preferem
+ambiente lipídico, como o interior da membrana). Valores **baixos/negativos** =
+mais hidrofílicos (preferem água).
 
-Exemplos: I = 4,5 · L = 3,8 · K = −3,9 · R = −4,5.
+A fórmula acima só faz a **média** desses escores em toda a sequência
+(L = número de letras / comprimento do peptídeo).
+
+Exemplos de escores individuais:
+- **I** (isoleucina) ≈ 4,5 → bem hidrofóbica  
+- **L** (leucina) ≈ 3,8 → hidrofóbica  
+- **K** (lisina) ≈ −3,9 → bem hidrofílica / carregada  
+- **R** (arginina) ≈ −4,5 → bem hidrofílica / carregada  
+
+**Como ler:** um *h* médio mais alto sugere peptídeo com face mais “gordurosa”,
+o que pode ajudar a entrar na membrana — mas sozinho não decide a atividade.
             """
         )
 
     with st.container(border=True):
-        tile_title("3. Momento hidrofóbico (μH)", "Eisenberg · hélice α · 100°")
+        tile_title("3. Momento hidrofóbico (μH)", "Em palavras: o peptídeo tem “dois lados” (água × gordura)?")
         st.latex(
             r"\mu H_p = \frac{1}{L}\sqrt{"
             r"\Big(\sum_i H_i\cos(i\theta)\Big)^2 + "
             r"\Big(\sum_i H_i\sin(i\theta)\Big)^2}"
         )
         st.markdown(
-            r"""
-Ângulo $\theta = 100^\circ$ (hélice α). Mede **anfifilicidade**:
-quão bem a sequência separa faces hidrofóbica e hidrofílica na hélice.
+            """
+Muitos AMPs, em contato com a membrana, se organizam como uma **hélice**
+(espiral). Nessa geometria, aminoácidos hidrofóbicos podem ficar de um lado
+e os hidrofílicos/carregados do outro — isso se chama **anfifilicidade**
+(“dois gostos”: água e gordura).
+
+O **momento hidrofóbico** (método de Eisenberg) mede o quanto essa separação
+de faces é forte. Usamos o ângulo típico de hélice α (**100°** entre resíduos
+vizinhos na espiral).
+
+**Como ler:**
+- **μH alto** → faces bem separadas (um lado “gordo”, outro “aquoso/carregado”)  
+- **μH baixo** → distribuição mais misturada  
+
+Isso ajuda a explicar por que alguns peptídeos “encostam” melhor na membrana.
             """
         )
 
     with st.container(border=True):
-        tile_title("4. Descritores da membrana", "Tabela de alvos (OPM + projeto)")
+        tile_title("4. Descritores da membrana", "Em palavras: o que muda entre bactéria, fungo e célula humana?")
         st.markdown(
-            r"""
-Vêm de `membrane_targets` / pares processados — **não** da sequência do peptídeo:
+            """
+Aqui o número **não** sai da sequência do peptídeo. Ele vem do **alvo** que você
+escolheu (ex.: *S. aureus*, *E. coli*, fungo, célula normal).
 
-- **qₘ** — carga superficial  
-- Fração aniônica  
-- LPS (Gram−), peptidoglicano (Gram+), teichoic acid  
-- Colesterol, ergosterol (fungo), envelope viral  
+Cada tipo de membrana tem um “perfil” cadastrado, por exemplo:
 
-Na inferência, a hidrofobicidade da membrana $h_m$ usa um **proxy fixo 0,5**.
+- **Carga superficial (qₘ)** — em geral negativa em bactérias  
+- **Fração aniônica** — quanto a superfície é negativa  
+- **LPS** — típico de Gram-negativas  
+- **Peptidoglicano** — típico de Gram-positivas  
+- **Colesterol** — mais comum em células de mamíferos  
+- **Ergosterol** — típico de fungos  
+- **Envelope viral** — quando o alvo é vírus envelopado  
+
+Na prática do app, a “hidrofobicidade da membrana” (hₘ) usa um valor **fixo de
+referência (0,5)** — um proxy simples, não uma medida experimental daquele alvo.
+
+**Como ler:** o mesmo peptídeo pode ter PMI e probabilidade diferentes
+conforme a membrana, porque o perfil do alvo muda.
             """
         )
 
     with st.container(border=True):
-        tile_title("5. PMI — Peptide–Membrane Interaction Index", "Índice interpretável · pepmem/pmi.py")
+        tile_title("5. PMI — índice de interação peptídeo–membrana", "Em palavras: um “score químico” do par")
         st.latex(
             r"\mathrm{PMI} = \alpha\, q_p |q_m| + \beta\, h_p h_m "
             r"+ \gamma\, \mu H_p - \delta\, \mathrm{col}_m"
         )
         st.markdown(
             r"""
-| Peso | Valor | Papel |
-|------|-------|--------|
-| α | **1,0** | Atração eletrostática (peptídeo × |carga da membrana|) |
-| β | **0,5** | Compatibilidade hidrofóbica |
-| γ | **0,3** | Anfifilicidade (μH) |
-| δ | **0,4** | Penaliza colesterol (membranas mais “mamíferas”) |
+O **PMI** junta, numa conta só, as ideias acima:
 
-Os pesos são **fixos de projeto** (não aprendidos no Random Forest).  
-**PMI alto** sugere interação favorável, mas **não garante** MIC baixo — o RF pode discordar.
+| Peça da fórmula | O que favorece | Em português |
+|-----------------|----------------|--------------|
+| α · q_peptídeo × módulo(q_membrana), peso 1,0 | peptídeo positivo e membrana negativa | atração elétrica |
+| β · h_peptídeo × h_membrana, peso 0,5 | hidrofobicidades compatíveis | “encaixe” na bicamada |
+| γ · μH do peptídeo, peso 0,3 | anfifilicidade | faces água/gordura bem definidas |
+| menos δ · colesterol, peso 0,4 | muito colesterol | penaliza alvos mais mamíferos / rígidos |
+
+Esses pesos (α, β, γ, δ) foram **definidos no projeto** — não são treinados pelo
+Random Forest. O RF **usa** o PMI como uma das entradas.
+
+**Como ler:**
+- **PMI mais alto** → o índice *sugere* interação mais favorável com aquele alvo  
+- **PMI alto ≠ garantia de MIC baixo** — o modelo pode discordar; use também a
+  probabilidade calibrada e a validação na bancada
             """
         )
 
     with st.container(border=True):
-        tile_title("6. PMI_sel (seletividade)", "Usado no ranking, não como feature do RF")
+        tile_title("6. PMI_sel (seletividade)", "Em palavras: prefere o patógeno ou a célula humana?")
         st.latex(r"\mathrm{PMI_{sel}} = \mathrm{PMI_{alvo}} - \mathrm{PMI_{célula\ normal}}")
         st.markdown(
             """
-Valor **positivo** sugere preferência pelo alvo patológico em relação à membrana
-mamífera de referência (`cell_normal`). Entra como **bônus leve** no score de ranking.
+Comparamos o PMI no **alvo de interesse** (bactéria, fungo…) com o PMI na
+**célula normal** de referência.
+
+- **PMI_sel positivo** → o índice “gosta” mais do alvo do que da célula humana  
+- **PMI_sel negativo ou perto de zero** → pouca vantagem (ou preferência pela célula normal)
+
+Isso entra no **ranking** como um bônus leve. **Não** é uma feature do Random Forest
+na classificação de alta atividade.
             """
         )
 
     with st.container(border=True):
-        tile_title("7. Rótulo de alta atividade (o que o modelo prevê)", "Empírico · bancada / literatura")
+        tile_title("7. O que o modelo realmente prevê", "Em palavras: chance de “alta atividade” (MIC baixo)")
         st.latex(
             r"y = \begin{cases} 1 & \text{se MIC} \le 3{,}4\,\mu\mathrm{M} \\ "
             r"0 & \text{caso contrário} \end{cases}"
         )
         st.markdown(
             """
-O limiar **3,4 µM** é a regra operacional do projeto (valores ativos em Parente 2022).  
-**Bancada / literatura** fornecem o MIC; **PMI e descritores** são calculados no computador.
+No laboratório, a **atividade** costuma ser medida pelo **MIC** (menor concentração
+que inibe o microrganismo). Quanto **menor** o MIC, em geral **mais potente** o peptídeo.
 
-No **baseline** (Cloud), o RF usa 11 features clássicas **incluindo PMI**.  
-No **multimodal** (Space HF / local com PyTorch), entram também ~320 dims do ESM-2.
+Neste projeto, chamamos de **alta atividade** quando o MIC é **≤ 3,4 µM**
+(limiar operacional baseado em valores ativos reportados, ex. Parente 2022).
+
+Resumo da divisão de papéis:
+- **Bancada / literatura** → medem (ou publicam) o MIC  
+- **App** → calcula descritores + PMI e estima a **probabilidade** de o par cair
+  na classe “alta atividade”
+
+No **Cloud** (esta versão), o modelo é o **baseline**: Random Forest com 11
+descritores clássicos, incluindo PMI.  
+Em ambiente com PyTorch (Space HF / local), pode entrar também o embedding **ESM-2**
+(leitura da sequência por rede neural de proteínas).
             """
         )
 
     st.caption(
-        "Detalhes: `docs/INTERPRETACAO_RESULTADOS.md` · `docs/TREINO.md` · "
-        "`pepmem/pmi.py` · `pepmem/peptide_utils.py` · `pepmem/features.py`"
+        "Referências no repositório: docs/INTERPRETACAO_RESULTADOS.md · docs/TREINO.md · "
+        "código em pepmem/pmi.py, pepmem/peptide_utils.py e pepmem/features.py"
     )
 
 # ---------------------------------------------------------------------------
