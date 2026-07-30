@@ -28,10 +28,24 @@ data/raw/
 *.tex
 !docs/pipeline/*.tex
 !docs/pipeline/*.pdf
-docs/exports/
+!docs/pipeline/template_assets/
+!docs/pipeline/template_assets/**
+!docs/exports/
+!docs/exports/*.pdf
+!docs/exports/*.docx
 docs/legado/
 
 # Artefatos locais grandes opcionais
 *.log
 models/llm/
 *.gguf
+
+# Experimentos locais pesados
+docs/pipeline/experiments_svm_xgboost/
+docs/pipeline/assets_vectorizados/
+
+# Figuras vetoriais intermediárias (PDF/banner usam PNG)
+docs/pipeline/figures/eps/
+docs/pipeline/figures/svg/
+docs/pipeline/figures/vector_original/
+docs/pipeline/figures/vector_rebuilt/

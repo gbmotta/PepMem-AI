@@ -7,8 +7,9 @@
 | [DEPLOY.md](DEPLOY.md) | Publicação (HF Spaces, Streamlit Cloud, Render) |
 | [INTERPRETACAO_RESULTADOS.md](INTERPRETACAO_RESULTADOS.md) | Como ler PMI, probabilidades, ranking e SHAP |
 | [TREINO.md](TREINO.md) | Dados, LOPO, calibração e artefatos |
+| [exports/](exports/) | Mesmos guias em **PDF** e **DOCX** (`python scripts/export_docs.py`) |
 | [peptideos/](peptideos/) | Documento consolidado (físico-química + MICs) |
-| [pipeline/](pipeline/) | Entregáveis LaTeX / PDF (pipeline InovAI + slides de modelagem) |
+| [pipeline/](pipeline/) | Slides Beamer + **banner A0** de congresso (modelagem/dados/resultados) |
 | [proposta/](proposta/) | Proposta CNPq (PDF) |
 | [referencias/](referencias/) | Artigos e teses de apoio |
 

@@ -8,56 +8,98 @@
 \usepackage{array}
 \usepackage{tikz}
 \usepackage{graphicx}
-\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc,backgrounds}
 \usepackage{ragged2e}
 
-% Paleta alinhada ao pipeline InovAI / PepMem
-\definecolor{InovGreen}{RGB}{68,40,155}
-\definecolor{InovLightGreen}{RGB}{242,239,253}
-\definecolor{InovDark}{RGB}{40,36,55}
-\definecolor{InovGray}{RGB}{248,247,252}
-\definecolor{InovOrange}{RGB}{122,113,245}
-\definecolor{InovBlue}{RGB}{92,116,255}
-\definecolor{PmGreen}{RGB}{47,125,74}
-\definecolor{PmMembrane}{RGB}{30,92,90}
+% Paleta do MODELO DE SLIDE (InovAI Lab / theme2)
+\definecolor{PmPurple}{HTML}{3C23A3}
+\definecolor{PmPurpleSoft}{HTML}{858DFD}
+\definecolor{PmLilac}{HTML}{A69FFD}
+\definecolor{PmBlue}{HTML}{4285F4}
+\definecolor{PmCyan}{HTML}{0097A7}
+\definecolor{PmOrange}{HTML}{FFAB40}
+\definecolor{PmCanvas}{HTML}{FFFFFF}
+\definecolor{PmInk}{HTML}{212121}
+\definecolor{PmMuted}{HTML}{78909C}
+\definecolor{PmLine}{HTML}{EEEEEE}
+\definecolor{PmWhite}{RGB}{255,255,255}
+% aliases usados no corpo dos slides
+\colorlet{PmCarapace}{PmPurple}
+\colorlet{PmCarapace2}{PmPurple}
+\colorlet{PmVenom}{PmPurpleSoft}
+\colorlet{PmVenomDeep}{PmOrange}
+\colorlet{PmMembrane}{PmBlue}
+\colorlet{PmGreen}{PmCyan}
+
+\graphicspath{{template_assets/}{figures/}}
 
 \setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{itemize item}{\color{InovGreen}$\blacktriangleright$}
-\setbeamertemplate{itemize subitem}{\color{InovOrange}$\bullet$}
-\setbeamertemplate{enumerate item}{\color{InovGreen}\insertenumlabel.}
-\setbeamercolor{title}{fg=InovGreen}
-\setbeamercolor{frametitle}{fg=InovGreen,bg=white}
-\setbeamercolor{block title}{fg=white,bg=InovGreen}
-\setbeamercolor{block body}{fg=InovDark,bg=InovLightGreen}
-\setbeamercolor{alerted text}{fg=InovOrange}
+\setbeamertemplate{itemize item}{\color{PmPurple}$\blacktriangleright$}
+\setbeamertemplate{itemize subitem}{\color{PmPurpleSoft}$\bullet$}
+\setbeamertemplate{enumerate item}{\color{PmPurple}\insertenumlabel.}
+\setbeamercolor{normal text}{fg=PmInk,bg=PmCanvas}
+\setbeamercolor{structure}{fg=PmPurple}
+\setbeamercolor{title}{fg=PmWhite}
+\setbeamercolor{frametitle}{fg=PmPurple,bg=}
+\setbeamercolor{block title}{fg=PmWhite,bg=PmPurple}
+\setbeamercolor{block body}{fg=PmInk,bg=PmLine}
+\setbeamercolor{alerted text}{fg=PmBlue}
+\setbeamercolor{footnote}{fg=PmMuted}
+
+\setbeamerfont{frametitle}{series=\bfseries,size=\large}
+\setbeamerfont{block title}{series=\bfseries,size=\small}
+
+\newcommand{\pepmembackground}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=south west, inner sep=0pt] at (current page.south west) {%
+      \includegraphics[width=\paperwidth,height=\paperheight]{bg_content_white.png}%
+    };
+    % faixa inferior clara para legibilidade do rodapé
+    \fill[white, opacity=0.82]
+      (current page.south west) rectangle ([yshift=1.05cm]current page.south east);
+  \end{tikzpicture}%
+}
+\usebackgroundtemplate{\pepmembackground}
 
 \setbeamertemplate{frametitle}{%
-  \vspace{-0.05cm}
-  \insertframetitle
-  \par\vspace{-0.1cm}
-  {\color{InovGreen}\rule{\linewidth}{0.5pt}}
+  \vspace{0.08cm}
+  {\color{PmMuted}\scriptsize\bfseries INOVAI LAB \;·\; UFRN \;·\; TITYUS STIGMURUS}\\[0.10cm]
+  {\color{PmPurple}\insertframetitle}
+  \par\vspace{0.06cm}
+  {\color{PmPurple}\rule{2.4cm}{2.2pt}\color{PmPurpleSoft}\rule{0.7cm}{2.2pt}\color{PmBlue}\rule{0.45cm}{2.2pt}}
+  \vspace{0.12cm}
 }
 
 \setbeamertemplate{footline}{%
-  \hfill{\color{InovDark}\scriptsize
-  PepMem-AI \;·\; \insertframenumber/\inserttotalframenumber\hspace{0.4cm}}
-  \vspace{0.15cm}
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=south west, xshift=0.35cm, yshift=0.18cm] at (current page.south west)
+      {\includegraphics[height=0.55cm]{logo_inovai.png}};
+    \node[anchor=south, yshift=0.28cm] at (current page.south)
+      {\color{PmPurple}\scriptsize\bfseries PepMem-AI};
+    \node[anchor=south east, xshift=-0.35cm, yshift=0.18cm] at (current page.south east) {%
+      \includegraphics[height=0.50cm]{logo_ufrn.png}%
+      \hspace{0.25cm}%
+      {\color{PmMuted}\scriptsize \insertframenumber\,/\,\inserttotalframenumber}%
+    };
+  \end{tikzpicture}%
 }
 
 \tikzset{
-  box/.style={rectangle, rounded corners=3pt, draw=InovGreen, very thick,
-    align=center, fill=InovLightGreen, minimum height=0.7cm, text width=2.4cm, font=\scriptsize},
-  orangebox/.style={rectangle, rounded corners=3pt, draw=InovOrange, very thick,
-    align=center, fill=orange!10, minimum height=0.7cm, text width=2.4cm, font=\scriptsize},
-  bluebox/.style={rectangle, rounded corners=3pt, draw=InovBlue, very thick,
-    align=center, fill=blue!8, minimum height=0.7cm, text width=2.4cm, font=\scriptsize},
-  grebox/.style={rectangle, rounded corners=3pt, draw=PmGreen, very thick,
-    align=center, fill=green!8, minimum height=0.7cm, text width=2.4cm, font=\scriptsize},
-  arrow/.style={-{Latex[length=2.2mm]}, very thick, draw=InovDark}
+  box/.style={rectangle, rounded corners=2pt, draw=PmPurple, very thick,
+    align=center, fill=PmWhite, minimum height=0.72cm, text width=2.45cm, font=\scriptsize},
+  orangebox/.style={rectangle, rounded corners=2pt, draw=PmOrange, very thick,
+    align=center, fill=PmWhite, minimum height=0.72cm, text width=2.45cm, font=\scriptsize},
+  bluebox/.style={rectangle, rounded corners=2pt, draw=PmBlue, very thick,
+    align=center, fill=PmWhite, minimum height=0.72cm, text width=2.45cm, font=\scriptsize},
+  grebox/.style={rectangle, rounded corners=2pt, draw=PmCyan, very thick,
+    align=center, fill=PmWhite, minimum height=0.72cm, text width=2.45cm, font=\scriptsize},
+  arrow/.style={-{Latex[length=2.2mm]}, very thick, draw=PmPurple},
+  metric/.style={rectangle, rounded corners=2pt, fill=PmWhite, draw=PmLine, very thick,
+    align=center, minimum height=1.55cm, text width=3.3cm, inner sep=6pt}
 }
 
 \title[Modelagem PepMem-AI]{PepMem-AI: dados, modelagem e resultados}
-\subtitle{Predição de alta atividade antimicrobiana (peptídeo $\times$ membrana)}
+\subtitle{Predição de alta atividade antimicrobiana (peptídeo × membrana)}
 \author{InovAI Lab \;·\; UFRN}
 \institute{PoC computacional --- baseline RF + multimodal RF/ESM-2}
 \date{2026}
@@ -66,14 +108,22 @@
 
 % ----------------------------------------------------------------
 \begin{frame}[plain]
-  \vspace{1.2cm}
-  {\color{InovGreen}\Large\bfseries PepMem-AI}\\[0.35cm]
-  {\large Dados, modelagem e resultados}\\[0.6cm]
-  {\color{InovDark}
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=south west, inner sep=0pt] at (current page.south west) {%
+      \includegraphics[width=\paperwidth,height=\paperheight]{bg_dark_purple.png}%
+    };
+  \end{tikzpicture}
+  \vspace{1.1cm}
+  {\color{PmLilac}\scriptsize\bfseries INOVAI LAB \;·\; LANCE \;·\; IMD/UFRN}\\[0.45cm]
+  {\color{PmWhite}\Huge\bfseries PepMem-AI}\\[0.35cm]
+  {\color{PmWhite}\Large Dados, modelagem e resultados}\\[0.55cm]
+  {\color{PmPurpleSoft}\rule{2.8cm}{2.5pt}}\\[0.45cm]
+  {\color{white!90}
   Priorização in silico de peptídeos escorpiônicos\\
-  antes da validação experimental in vitro}\\[1.0cm]
-  {\small InovAI Lab / LANCE --- IMD/UFRN}\\[0.2cm]
-  {\scriptsize Métricas dos artefatos em \texttt{data/processed/models/} (treino commitado)}
+  antes da validação experimental in vitro}\\[0.9cm]
+  {\color{white!75}\small PoC computacional --- baseline RF + multimodal RF/ESM-2}\\[0.15cm]
+  {\color{white!60}\scriptsize Métricas dos artefatos em \texttt{data/processed/models/}}\\[1.0cm]
+  \includegraphics[height=0.78cm]{logo_inovai_on_purple.png}
 \end{frame}
 
 % ----------------------------------------------------------------
@@ -81,7 +131,9 @@
 \begin{enumerate}
   \item Problema e pergunta do modelo
   \item Dados: fontes, volume e rótulo
-  \item Features: clássicas, PMI e ESM-2
+  \item Descritores: carga, hidrofobicidade e $\mu H$
+  \item PMI: fórmula e origem (in silico)
+  \item Features: baseline e multimodal (ESM-2)
   \item Modelagem: RF, LOPO e calibração
   \item Resultados (baseline e multimodal)
   \item Uso: dashboard, API e deploy
@@ -198,44 +250,116 @@ y = \begin{cases}
 \end{frame}
 
 % ----------------------------------------------------------------
-\begin{frame}{Features --- baseline (11)}
+\begin{frame}{Descritores do peptídeo --- da sequência}
 \begin{columns}[T]
-\begin{column}{0.55\textwidth}
-\begin{itemize}
-  \item Peptídeo: $q$, $h$, $\mu H$
-  \item Membrana: carga superficial, fração aniônica, colesterol, LPS, peptidoglicano, ergosterol, envelope viral
-  \item \textbf{PMI} (índice interpretável)
-\end{itemize}
-\vspace{0.25cm}
-{\scriptsize
+\begin{column}{0.48\textwidth}
+\begin{block}{Carga líquida $q_p$ (pH\,$\sim$7)}
+Soma dos resíduos ionizáveis:\\[0.1cm]
+K, R $= +1$;\quad H $= +0{,}1$;\\
+D, E $= -1$;\quad demais $= 0$.\\[0.15cm]
+{\scriptsize Se houver carga anotada (\texttt{net\_charge}), ela prevalece.}
+\end{block}
+\vspace{0.2cm}
+\begin{block}{Hidrofobicidade $h_p$}
+Média Kyte--Doolittle por resíduo:
 \[
-\text{PMI} = \alpha\,q_p|q_m| + \beta\,h_p h_m + \gamma\,\mu H_p - \delta\,\text{col}_m
+h_p = \tfrac{1}{L}\sum_i H(\mathrm{AA}_i)
 \]
-$\alpha{=}1{,}0$, $\beta{=}0{,}5$, $\gamma{=}0{,}3$, $\delta{=}0{,}4$}
+{\scriptsize Ex.: I\,$=$\,4,5;\, L\,$=$\,3,8;\, K\,$=$\,$-$3,9.}
+\end{block}
 \end{column}
-\begin{column}{0.42\textwidth}
-\begin{block}{Carga se não informada}
-Soma simplificada a pH\,$\sim$7:\\
-K,R $= +1$; H $= +0{,}1$;\\
-D,E $= -1$.
+\begin{column}{0.48\textwidth}
+\begin{block}{Momento hidrofóbico $\mu H_p$}
+Eisenberg (hélice $\alpha$, ângulo $100^\circ$):
+\[
+\mu H = \tfrac{1}{L}\sqrt{
+\big(\!\sum H_i\cos i\theta\big)^2
+\!+\!
+\big(\!\sum H_i\sin i\theta\big)^2}
+\]
+{\scriptsize Anfifilicidade: faces hidro\-fóbica / hidrofílica.}
+\end{block}
+\vspace{0.2cm}
+\begin{block}{Importante}
+Tudo é \textbf{in silico} a partir da sequência.\\
+\textbf{Não} é medido na bancada.\\
+{\scriptsize Código: \texttt{pepmem/peptide\_utils.py}, \texttt{pepmem/pmi.py}}
 \end{block}
 \end{column}
 \end{columns}
 \end{frame}
 
 % ----------------------------------------------------------------
-\begin{frame}{Features --- multimodal (+ ESM-2)}
+\begin{frame}{Membrana e PMI --- como se obtém}
+\begin{columns}[T]
+\begin{column}{0.50\textwidth}
+\begin{block}{Descritores da membrana}
+Tabela de alvos (\texttt{membrane\_targets}):
 \begin{itemize}
-  \item Embedding: \texttt{facebook/esm2\_t6\_8M\_UR50D}
-  \item Agregação: \textbf{mean-pooling} dos resíduos $\rightarrow$ vetor $\sim$\textbf{320} dims
-  \item Entrada do RF: 11 clássicas + 320 $\approx$ \textbf{331} features
-  \item Artefato: \texttt{data/processed/embeddings/esm2\_all.npz}
+  \item $q_m$ (carga superficial)
+  \item Fração aniônica, LPS, peptidoglicano
+  \item Colesterol, ergosterol, envelope viral
 \end{itemize}
-\vspace{0.35cm}
-\begin{block}{Por que t6 8M?}
-Feito para proteínas; só precisa da sequência; cabe em CPU / HF Space;\\
-complementa o PMI sem exigir estrutura 3D.
+{\scriptsize Tipologia OPM + regras do projeto\\
+(Gram+/Gram$-$/fungo/célula normal\ldots).\\
+$h_m$ na inferência: proxy fixo $0{,}5$.}
 \end{block}
+\end{column}
+\begin{column}{0.46\textwidth}
+\begin{block}{PMI (não é ensaio)}
+\[
+\begin{aligned}
+\mathrm{PMI}=&\,\alpha\,q_p|q_m|+\beta\,h_p h_m\\
+&+\gamma\,\mu H_p-\delta\,\mathrm{col}_m
+\end{aligned}
+\]
+{\scriptsize $\alpha{=}1$; $\beta{=}0{,}5$; $\gamma{=}0{,}3$; $\delta{=}0{,}4$\\
+(pesos fixos de projeto, não aprendidos).}
+\end{block}
+\vspace{0.15cm}
+\begin{block}{Bancada vs PMI}
+\textbf{Bancada / literatura:} MIC (rótulo).\\
+\textbf{PMI:} índice calculado do par.\\
+{\scriptsize PMI\_sel $=$ PMI$_{\mathrm{alvo}}-$PMI$_{\mathrm{normal}}$\\
+(só no ranking, não no RF).}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ----------------------------------------------------------------
+\begin{frame}{Features --- baseline (11) e multimodal}
+\begin{columns}[T]
+\begin{column}{0.52\textwidth}
+\begin{block}{Baseline --- 11 clássicas}
+Peptídeo: $q$, $h$, $\mu H$\\
+Membrana: carga, aniônica, colesterol,\\
+LPS, peptidoglicano, ergosterol, viral\\
++ \textbf{PMI}\\[0.1cm]
+{\scriptsize Deploy Cloud (sem PyTorch).}
+\end{block}
+\vspace{0.2cm}
+\begin{block}{Multimodal --- $+$ ESM-2}
+\texttt{facebook/esm2\_t6\_8M\_UR50D}\\
+mean-pool $\sim$320d $\Rightarrow$ $\approx$\textbf{331} features\\
+{\scriptsize HF Space / local com torch.}
+\end{block}
+\end{column}
+\begin{column}{0.44\textwidth}
+\begin{block}{Por que t6 8M?}
+Só precisa da sequência;\\
+cabe em CPU / Space;\\
+complementa o PMI sem\\
+estrutura 3D.
+\end{block}
+\vspace{0.2cm}
+\begin{block}{SHAP (baseline)}
+Top: $q_p$, \textbf{PMI}, $q_m$.\\
+{\scriptsize Multimodal: ESM agregado\\
+domina; PMI $\approx 0$ no global.}
+\end{block}
+\end{column}
+\end{columns}
 \end{frame}
 
 % ----------------------------------------------------------------
@@ -309,46 +433,80 @@ $p_{\text{calibrada}} = \mathrm{calibrator.predict}([p_{\text{bruta}}])$
 \end{frame}
 
 % ----------------------------------------------------------------
+\begin{frame}{Calibração isotônica --- interpretação visual}
+\begin{center}
+\includegraphics[width=0.96\textwidth,height=0.77\textheight,keepaspectratio]{figures/calibracao_isotonica_visual.png}
+\end{center}
+\vspace{-0.15cm}
+\begin{center}
+{\scriptsize A curva ajusta a escala de probabilidade, mas preserva a ordenação dos candidatos.}
+\end{center}
+\end{frame}
+
+% ----------------------------------------------------------------
 \begin{frame}{Resultados --- Baseline RF}
 \begin{center}
-\renewcommand{\arraystretch}{1.25}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Métrica} & \textbf{LOO} & \textbf{LOPO} \\
-\midrule
-AUC & 0,878 & \textbf{0,878} \\
-Acurácia & 0,833 & 0,744 \\
-F1 (classe positiva) & 0,828 & 0,729 \\
-\bottomrule
-\end{tabular}
+\begin{tikzpicture}[node distance=0.35cm]
+  \node[metric] (a) {{\color{PmMuted}\scriptsize LOPO AUC}\\[0.1cm]{\color{PmGreen}\LARGE\bfseries 0,88}\\[0.05cm]{\scriptsize\color{PmMuted}métrica principal}};
+  \node[metric, right=0.35cm of a] (b) {{\color{PmMuted}\scriptsize LOO AUC}\\[0.1cm]{\color{PmPurple}\LARGE\bfseries 0,88}\\[0.05cm]{\scriptsize\color{PmMuted}referência}};
+  \node[metric, right=0.35cm of b] (c) {{\color{PmMuted}\scriptsize Acurácia LOPO}\\[0.1cm]{\color{PmMembrane}\LARGE\bfseries 0,74}\\[0.05cm]{\scriptsize\color{PmMuted}40 positivos / 90}};
+\end{tikzpicture}
 \end{center}
-\vspace{0.45cm}
+\vspace{0.35cm}
 \begin{itemize}
   \item Modelo: 11 features clássicas + PMI
   \item Deploy: Streamlit Cloud (sem PyTorch)
   \item Calibração: isotônica sobre OOF LOPO
+  \item LOO acc.\ 0,83 · F1+ (LOPO) 0,73
 \end{itemize}
 \end{frame}
 
 % ----------------------------------------------------------------
 \begin{frame}{Resultados --- Multimodal RF + ESM-2}
 \begin{center}
-\renewcommand{\arraystretch}{1.25}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Métrica} & \textbf{LOO} & \textbf{LOPO} \\
-\midrule
-AUC & 0,845 & \textbf{0,809} \\
-\bottomrule
-\end{tabular}
+\begin{tikzpicture}[node distance=0.35cm]
+  \node[metric] (a) {{\color{PmMuted}\scriptsize LOPO AUC}\\[0.1cm]{\color{PmVenomDeep}\LARGE\bfseries 0,81}\\[0.05cm]{\scriptsize\color{PmMuted}métrica principal}};
+  \node[metric, right=0.35cm of a] (b) {{\color{PmMuted}\scriptsize LOO AUC}\\[0.1cm]{\color{PmPurple}\LARGE\bfseries 0,85}\\[0.05cm]{\scriptsize\color{PmMuted}referência}};
+  \node[metric, right=0.35cm of b] (c) {{\color{PmMuted}\scriptsize Acurácia LOPO}\\[0.1cm]{\color{PmMembrane}\LARGE\bfseries 0,69}\\[0.05cm]{\scriptsize\color{PmMuted}40 positivos / 90}};
+\end{tikzpicture}
 \end{center}
-\vspace{0.4cm}
+\vspace{0.35cm}
 \begin{itemize}
-  \item 331 features (clássicas + embedding)
-  \item LOPO cai mais que o baseline: embedding captura similaridade de sequência;\\
-        sem o peptídeo no treino, generaliza um pouco pior nesta família pequena
+  \item Embedding captura similaridade de sequência; no LOPO generaliza um pouco pior nesta família pequena
   \item Deploy: Hugging Face Space / local com \texttt{requirements-space.txt}
 \end{itemize}
+\end{frame}
+
+% ----------------------------------------------------------------
+\begin{frame}{Comparação exploratória --- RF, SVM e XGBoost}
+\begin{center}
+\renewcommand{\arraystretch}{1.18}
+{\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Modelo} & \textbf{AUC LOPO} & \textbf{Acc. LOPO} & \textbf{F1+} & \textbf{Recall+} & \textbf{Brier} \\
+\midrule
+RF baseline & \textbf{0,878} & 0,744 & 0,729 & 0,775 & \textbf{0,140} \\
+XGBoost & 0,847 & 0,756 & 0,738 & 0,775 & 0,173 \\
+SVM RBF & 0,763 & \textbf{0,767} & \textbf{0,774} & \textbf{0,900} & 0,180 \\
+\bottomrule
+\end{tabular}}
+\end{center}
+\vspace{0.25cm}
+\begin{block}{Decisão atual}
+Manter o RF como modelo principal: lidera a AUC LOPO. XGBoost é o candidato para ajuste aninhado futuro.
+\end{block}
+\end{frame}
+
+% ----------------------------------------------------------------
+\begin{frame}{Distribuição das 11 features de entrada}
+\begin{center}
+\includegraphics[width=0.96\textwidth,height=0.78\textheight,keepaspectratio]{figures/distribuicao_features_entrada.png}
+\end{center}
+\vspace{-0.20cm}
+\begin{center}
+{\scriptsize Variáveis clássicas e PMI do baseline; embeddings ESM-2 excluídos (90 observações com MIC).}
+\end{center}
 \end{frame}
 
 % ----------------------------------------------------------------
@@ -420,7 +578,8 @@ API FastAPI (opcional)
 \begin{frame}{Mensagens-chave}
 \begin{enumerate}
   \item \textbf{Dados:} 90 MICs (bancada + literatura), rótulo MIC $\le$ 3,4\,µM
-  \item \textbf{Modelo:} Random Forest (Nível 1 do pipeline InovAI) + PMI; ESM-2 no multimodal
+  \item \textbf{Descritores:} $q$, $h$, $\mu H$ da sequência; membrana tipificada; PMI \textbf{calculado} (não ensaiado)
+  \item \textbf{Modelo:} Random Forest (Nível 1 InovAI) + PMI; ESM-2 no multimodal
   \item \textbf{Validação:} LOPO é a métrica honesta; isotônica calibra o dashboard
   \item \textbf{Resultado:} baseline LOPO AUC $\approx$ \textbf{0,88}; multimodal LOPO AUC $\approx$ \textbf{0,81}
   \item \textbf{Uso:} priorizar candidatos Stigmurin/análogos antes do in vitro
@@ -429,12 +588,23 @@ API FastAPI (opcional)
 
 % ----------------------------------------------------------------
 \begin{frame}[plain]
-\vspace{2.2cm}
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[anchor=south west, inner sep=0pt] at (current page.south west) {%
+      \includegraphics[width=\paperwidth,height=\paperheight]{bg_thanks.png}%
+    };
+  \end{tikzpicture}
+\vspace{1.7cm}
 \begin{center}
-{\color{InovGreen}\Large\bfseries Obrigado}\\[0.5cm]
-{\large Perguntas}\\[1.0cm]
-{\small Código: \texttt{github.com/gbmotta/PepMem-AI}}\\[0.15cm]
-{\scriptsize Artefatos: \texttt{baseline\_mic\_loo.json} · \texttt{multimodal\_mic\_loo.json}}
+{\color{PmWhite}\scriptsize\bfseries INOVAI LAB \;·\; UFRN}\\[0.4cm]
+{\color{PmWhite}\Huge\bfseries Obrigado}\\[0.35cm]
+{\color{white!90}\Large Perguntas}\\[0.85cm]
+{\color{white!80}\small Código: \texttt{github.com/gbmotta/PepMem-AI}}\\[0.15cm]
+{\color{white!65}\scriptsize Artefatos: \texttt{baseline\_mic\_loo.json} · \texttt{multimodal\_mic\_loo.json}}\\[0.85cm]
+\begin{tikzpicture}
+  \node[fill=white, rounded corners=3pt, inner sep=6pt] {%
+    \includegraphics[height=0.95cm]{logos_inovai_ufrn.png}%
+  };
+\end{tikzpicture}
 \end{center}
 \end{frame}
 
