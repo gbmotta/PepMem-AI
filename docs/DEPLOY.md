@@ -112,6 +112,10 @@ Melhor para projetos de ML: CPU gratuita, link estável, fácil de compartilhar.
 6. Aguarde o build (10–20 min na primeira vez por causa do PyTorch). URL final:
    `https://huggingface.co/spaces/SEU_USUARIO/pepmem-ai`
 
+7. **Secrets do Space** (Settings → Variables and secrets): configure o login do dashboard
+   com o mesmo bloco TOML de `[auth.users]` (ver Opção 2 abaixo) ou variáveis
+   `AUTH_USER` / `AUTH_PASSWORD`. Sem isso o app fica bloqueado na tela de login.
+
 ---
 
 ## Opção 2 — Streamlit Community Cloud (como o Gertec)
@@ -128,6 +132,19 @@ Mesmo fluxo do PoC Gertec: repo no GitHub → **New app** no share.streamlit.io.
    - **Python version:** **3.11** ou **3.12** (Advanced settings)
 
 3. Deploy. URL pública: `https://pepmem-ai.streamlit.app` (ou o nome escolhido).
+
+4. **Login (obrigatório em produção):** em *Manage app → Settings → Secrets*, cole:
+
+```toml
+[auth.users]
+admin = "troque-esta-senha"
+colaborador = "outra-senha"
+```
+
+   Sem secrets (e sem `AUTH_USER`/`AUTH_PASSWORD`), o app mostra aviso e **não** libera o dashboard.  
+   Exemplo versionado: [`.streamlit/secrets.toml.example`](../.streamlit/secrets.toml.example).  
+   Local: copie para `.streamlit/secrets.toml` ou use `AUTH_USER` / `AUTH_PASSWORD`.  
+   Bypass **só** em desenvolvimento: `export PEPMEM_AUTH_DISABLED=1`.
 
 > O `requirements.txt` do Cloud é **leve (sem PyTorch)** — usa RF baseline + PMI.  
 > Multimodal (ESM-2) continua no Space HF: https://huggingface.co/spaces/gbmotta/pepmem-ai  

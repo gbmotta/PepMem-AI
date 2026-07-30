@@ -28,6 +28,7 @@ from pepmem.shap_explain import plot_beeswarm, plot_contributions, plot_global_i
 from pepmem.paths import project_root
 
 # Sempre ao lado de app.py no Cloud (evita ImportError de pepmem.narrative)
+from auth import require_login, render_sidebar_auth  # type: ignore  # noqa: E402
 from narrative_lib import (  # type: ignore  # noqa: E402
     llm_status,
     narrate_batch,
@@ -212,6 +213,7 @@ def cached_explain(
 
 
 inject_theme()
+require_login()
 
 # --- estado compartilhado ---
 predictor = get_predictor()
@@ -632,6 +634,7 @@ if "use_charge_batch" not in st.session_state:
 with st.sidebar:
     st.markdown("### PepMem-AI")
     st.caption("InovAI Lab · UFRN · *Tityus stigmurus*")
+    render_sidebar_auth()
 
     modo = "Multimodal (ESM-2)" if HAS_TORCH else "Baseline (Cloud)"
     st.markdown(f"**{modo}**")

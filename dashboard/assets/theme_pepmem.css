@@ -504,3 +504,34 @@ button[data-testid="baseButton-primary"]:hover {
     padding: 0.45rem 0.7rem 1.5rem !important;
   }
 }
+
+/* --- Login --- */
+.pepmem-login-wrap {
+  max-width: 420px;
+  margin: 1.5rem auto 0.5rem auto;
+  text-align: center;
+}
+.pepmem-login-card {
+  padding: 0.5rem 0.75rem 0.25rem;
+}
+.pepmem-login-brand {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+  margin-bottom: 0.35rem;
+}
+.pepmem-login-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--pm-purple);
+  line-height: 1.15;
+  margin-bottom: 0.35rem;
+}
+.pepmem-login-sub {
+  font-size: 0.95rem;
+  color: var(--pm-muted);
+  margin-bottom: 0.25rem;
+}
+
