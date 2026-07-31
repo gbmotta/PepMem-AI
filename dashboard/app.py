@@ -163,29 +163,28 @@ def get_predictor() -> PepMemPredictor:
     return PepMemPredictor(use_embeddings=torch_available())
 
 
-# Peptídeos com MIC/literatura no banco (mic_bench). Os P01–P04/P06–P09 do
-# Quadro CNPq (sequências com *) ficam fora da UI até terem sequência resolvida.
-PROJECT_PEPTIDES_VISIBLE = {
-    "P05", "P10", "P11", "P12", "P13", "P14", "P15", "P16", "P17", "P18",
-}
+@st.cache_data
+def load_project_peptides() -> pd.DataFrame:
+    """Catálogo PepMem-Base-Project (peptídeos do treino / com MIC)."""
+    path = ROOT / "data" / "processed" / "pepmem_base_project.parquet"
+    if not path.exists():
+        csv_path = ROOT / "data" / "processed" / "pepmem_base_project.csv"
+        if csv_path.exists():
+            return pd.read_csv(csv_path)
+        return pd.DataFrame()
+    return pd.read_parquet(path)
 
 
 @st.cache_data
-def load_project_peptides() -> pd.DataFrame:
-    """Catálogo PepMem-Base-Project (só IDs com dados cadastrados)."""
-    path = ROOT / "data" / "processed" / "pepmem_base_project.parquet"
+def load_project_candidates() -> pd.DataFrame:
+    """Análogos CNPq com * — reservados para teste futuro (não entram no treino)."""
+    path = ROOT / "data" / "processed" / "pepmem_base_project_candidates.parquet"
     if not path.exists():
-        # fallback legado
-        csv_path = ROOT / "data" / "processed" / "pepmem_base_project.csv"
+        csv_path = ROOT / "data" / "processed" / "pepmem_base_project_candidates.csv"
         if csv_path.exists():
-            df = pd.read_csv(csv_path)
-        else:
-            return pd.DataFrame()
-    else:
-        df = pd.read_parquet(path)
-    if df.empty or "peptide_id" not in df.columns:
-        return df
-    return df[df["peptide_id"].astype(str).isin(PROJECT_PEPTIDES_VISIBLE)].reset_index(drop=True)
+            return pd.read_csv(csv_path)
+        return pd.DataFrame()
+    return pd.read_parquet(path)
 
 
 @st.cache_data(show_spinner="Gerando beeswarm SHAP...")
@@ -232,6 +231,7 @@ predictor = get_predictor()
 targets = predictor.targets
 target_options = targets.set_index("target_id")["target"].to_dict()
 project_df = load_project_peptides()
+candidates_df = load_project_candidates()
 seq_to_project = (
     {str(r["sequence"]).upper(): r for _, r in project_df.dropna(subset=["sequence"]).iterrows()}
     if not project_df.empty
@@ -1875,15 +1875,26 @@ elif page == "Dados":
             st.json(json.loads(summary_path.read_text(encoding="utf-8")))
 
     with st.container(border=True):
-        tile_title("Peptídeos do projeto", "Stigmurin, StigA, TsAP-2 e análogos com MIC")
+        tile_title("Peptídeos do projeto (treino)", "Com MIC em mic_bench — entram no modelo")
         st.caption(
-            "Exibindo os 10 peptídeos com dados em mic_bench. "
-            "Análogos P01–P04/P06–P09 (Quadro CNPq, sequências com *) ficam ocultos por enquanto."
+            f"{len(project_df)} peptídeos em `pepmem_base_project` "
+            "(Stigmurin / StigA / TsAP com dados cadastrados)."
         )
         if not project_df.empty:
-            view = project_df[["peptide_id", "name", "sequence", "net_charge", "source"]].copy()
-            view["nota"] = "no banco / MIC"
-            show_table(view, max_text_len=40)
+            cols = [c for c in ["peptide_id", "name", "sequence", "net_charge", "source", "split"] if c in project_df.columns]
+            show_table(project_df[cols].copy(), max_text_len=40)
+
+    with st.container(border=True):
+        tile_title("Candidatos CNPq (teste futuro)", "Sequências com * — não entram no treino")
+        st.caption(
+            f"{len(candidates_df)} análogos em `pepmem_base_project_candidates` "
+            "(Quadro 01 da proposta). Reservados para teste quando as sequências forem resolvidas."
+        )
+        if not candidates_df.empty:
+            cols = [c for c in ["peptide_id", "name", "sequence_raw", "sequence", "net_charge", "source", "split"] if c in candidates_df.columns]
+            show_table(candidates_df[cols].copy(), max_text_len=40)
+        else:
+            st.info("Arquivo de candidatos ainda não gerado.")
 
     with st.expander("API local (FastAPI) — integração HTTP"):
         st.markdown(

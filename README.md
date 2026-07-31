@@ -126,7 +126,7 @@ flowchart LR
 |-------|----------|--------------|
 | **[OPM](https://opm.phar.umich.edu/)** | Proteínas e tipos de membrana (8.950 estruturas, 24 membranas) | API REST (`scripts/download_opm.py`) |
 | **[APD6](https://aps.unmc.edu/downloads)** | 3.306 peptídeos antimicrobianos naturais (FASTA 2024) | Download direto (`scripts/download_apd.py`) |
-| **Projeto CNPq** | Análogos Stigmurina / TsAP-2 (P01–P18) | `pepmem_base_project` |
+| **Projeto CNPq** | Análogos Stigmurina / TsAP-2 com MIC (treino) + candidatos com `*` (teste futuro) | `pepmem_base_project` / `pepmem_base_project_candidates` |
 | **Parente 2022** | StigA6, StigA16 + MIC/MBC (cepas MDR) | `pepmem_endpoints` (literatura) |
 | **Literatura do grupo** | MICs ATCC/clínicos (Stigmurin, StigA*, TsAP-2*) | `data/bench/` → import |
 | **CAMP** | AMPs com MIC (24k+) | *Pendente* — site sem bulk download público |
@@ -139,8 +139,9 @@ Arquivos principais em `data/processed/`:
 
 | Arquivo | Linhas | Descrição |
 |---------|--------|-----------|
-| `pepmem_base.parquet` | 3.322 | Projeto (18) + APD (3.304), deduplicados por sequência |
-| `pepmem_base_project.parquet` | 18 | Peptídeos escorpiônicos do projeto (P01–P18) |
+| `pepmem_base.parquet` | ~3.314 | Projeto (treino) + APD, deduplicados por sequência |
+| `pepmem_base_project.parquet` | 10 | Peptídeos do treino (com MIC / sequência resolvida) |
+| `pepmem_base_project_candidates.parquet` | 8 | Análogos CNPq com `*` — teste futuro, fora do treino |
 | `pepmem_base_apd.parquet` | 3.304 | Peptídeos naturais do APD6 |
 | `membrane_targets.parquet` | 34+ | Membranas OPM + alvos experimentais (+ bancada) |
 | `pepmem_endpoints.parquet` | 282 | Scaffold + 24 literatura + 78 bancada (MIC) |
@@ -455,7 +456,7 @@ Guia completo: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 | P05 | TsAP-2 nativo | `FLGMIPGLIGGLISAFK` | Daniele-Silva 2016 |
 | P17 | TsAP-2-A16 | `FLRMIPGLIRGLIRAFR` | Da Costa 2025 |
 | P18 | TsAP-2-A41 | `FLKMIPRLIKRLISAFK` | Da Costa 2025 |
-| P01–P09 | Análogos CNPq / patentes | ver `pepmem_base_project.parquet` | CNPq / INPI |
+| P01–P04, P06–P09 | Análogos CNPq (Quadro 01, `*`) | `pepmem_base_project_candidates` — teste futuro | CNPq / INPI |
 
 Documento consolidado (físico-química + MICs + mapa de estudos): [`docs/peptideos/`](docs/peptideos/).
 

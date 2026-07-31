@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Monta pares peptídeo–membrana com features PMI para modelagem.
 
-Entrada: ``pepmem_base_project.parquet``, ``pepmem_endpoints.parquet`` e alvos
+Entrada: ``pepmem_base_project.parquet`` (treino), ``pepmem_endpoints.parquet`` e alvos.
+Candidatos CNPq (``pepmem_base_project_candidates``) ficam de fora até o teste futuro.
 de membrana (projeto, literatura, bancada). Saída: ``pepmem_pairs.parquet/csv``
 e ``pairs_summary.json``.
 

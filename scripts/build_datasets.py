@@ -355,24 +355,39 @@ def build_pepmem_base(root: Path, out_dir: Path) -> tuple[pd.DataFrame, pd.DataF
         if new_ids:
             print(f"  bancada: novos peptídeos {', '.join(new_ids)}")
 
-    project_df.to_parquet(out_dir / "pepmem_base_project.parquet", index=False)
-    project_df.to_csv(out_dir / "pepmem_base_project.csv", index=False)
+    # Separar: treino (sequência resolvida) vs candidatos CNPq (sequence_raw com *)
+    raw = project_df["sequence_raw"].astype(str) if "sequence_raw" in project_df.columns else pd.Series([""] * len(project_df))
+    is_candidate = raw.str.contains(r"\*", regex=True, na=False)
+    candidates_df = project_df.loc[is_candidate].copy()
+    train_df = project_df.loc[~is_candidate].copy()
+    candidates_df["split"] = "candidates_future_test"
+    train_df["split"] = "train"
+
+    train_df.to_parquet(out_dir / "pepmem_base_project.parquet", index=False)
+    train_df.to_csv(out_dir / "pepmem_base_project.csv", index=False)
+    candidates_df.to_parquet(out_dir / "pepmem_base_project_candidates.parquet", index=False)
+    candidates_df.to_csv(out_dir / "pepmem_base_project_candidates.csv", index=False)
+    print(
+        f"  projeto: {len(train_df)} no treino "
+        f"(pepmem_base_project) · {len(candidates_df)} candidatos "
+        f"(pepmem_base_project_candidates, uso futuro)"
+    )
 
     apd_df = build_apd_base(root / "data" / "raw" / "apd")
     if not apd_df.empty:
-        project_seqs = set(project_df["sequence"].dropna())
+        project_seqs = set(train_df["sequence"].dropna())
         apd_df = apd_df[~apd_df["sequence"].isin(project_seqs)].copy()
         apd_df.to_parquet(out_dir / "pepmem_base_apd.parquet", index=False)
         apd_df.to_csv(out_dir / "pepmem_base_apd.csv", index=False)
 
-    full_df = pd.concat([project_df, apd_df], ignore_index=True, sort=False)
+    full_df = pd.concat([train_df, apd_df], ignore_index=True, sort=False)
     full_df.to_parquet(out_dir / "pepmem_base.parquet", index=False)
     full_df.to_csv(out_dir / "pepmem_base.csv", index=False)
     # Cache de MIC resolvido evita perder peptide_id na etapa de endpoints
     if not resolved_bench_mic.empty:
         cache = out_dir / "_bench_mic_resolved.parquet"
         resolved_bench_mic.to_parquet(cache, index=False)
-    return project_df, apd_df, full_df
+    return train_df, apd_df, full_df
 
 
 def build_pepmem_endpoints(project_df: pd.DataFrame, out_dir: Path) -> pd.DataFrame:
@@ -476,6 +491,13 @@ def build_opm_reference_tables(opm_dir: Path, out_dir: Path) -> None:
             pd.DataFrame(load_json(path)).to_parquet(out_dir / f"opm_{name}.parquet", index=False)
 
 
+def _candidates_count(out_dir: Path) -> int:
+    path = out_dir / "pepmem_base_project_candidates.parquet"
+    if not path.exists():
+        return 0
+    return len(pd.read_parquet(path))
+
+
 def main() -> None:
     """Orquestra construção de todos os datasets e grava ``build_summary.json``."""
     root = Path(__file__).resolve().parents[1]
@@ -500,6 +522,7 @@ def main() -> None:
     summary = {
         "membrane_targets_rows": len(membrane_df),
         "pepmem_base_project_rows": len(project_df),
+        "pepmem_base_project_candidates_rows": _candidates_count(out_dir),
         "pepmem_base_apd_rows": len(apd_df),
         "pepmem_base_total_rows": len(peptides_df),
         "pepmem_endpoints_rows": len(endpoints_df),
