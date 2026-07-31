@@ -1,0 +1,87 @@
+{
+  "updated": "2026-07-30",
+  "commit_note": "Após melhoria PMI (h/μH da sequência, h_m tipificado, esteróis contínuos)",
+  "n_mic_pairs": 90,
+  "n_peptides": 10,
+  "label_rule": "MIC <= 3.4 uM => alta atividade",
+  "validation": "leave-one-peptide-out (LOPO) principal; LOO por amostra referência",
+  "baseline": {
+    "model": "baseline",
+    "n_samples": 90,
+    "n_peptides": 10,
+    "positive_rate": 0.4444444444444444,
+    "loo_auc": 0.8752500000000001,
+    "leave_one_peptide_auc": 0.8535,
+    "loo_accuracy": 0.8333333333333334,
+    "lopo_accuracy": 0.7666666666666667,
+    "lopo_precision_pos": 0.8064516129032258,
+    "lopo_recall_pos": 0.625,
+    "lopo_f1_pos": 0.704225352112676,
+    "per_peptide_auc": {
+      "P05": null,
+      "P10": null,
+      "P11": 0.4,
+      "P12": 0.9545454545454546,
+      "P13": 0.875,
+      "P14": 0.875,
+      "P15": 0.8333333333333334,
+      "P16": 0.95,
+      "P17": 0.8,
+      "P18": 0.6666666666666667
+    },
+    "label_rule": "MIC <= 3.4 uM => alta atividade",
+    "calibration": "isotonic_on_leave_one_peptide_oof",
+    "source_file": "baseline_mic_loo.json",
+    "model_type": "RandomForest baseline (clássicas + PMI)"
+  },
+  "multimodal": {
+    "model": "multimodal",
+    "n_samples": 90,
+    "n_peptides": 10,
+    "positive_rate": 0.4444444444444444,
+    "loo_auc": 0.8455,
+    "leave_one_peptide_auc": 0.8425,
+    "loo_accuracy": 0.7888888888888889,
+    "lopo_accuracy": 0.8,
+    "lopo_precision_pos": 0.72,
+    "lopo_recall_pos": 0.9,
+    "lopo_f1_pos": 0.8,
+    "per_peptide_auc": {
+      "P05": null,
+      "P10": null,
+      "P11": 0.9,
+      "P12": 0.9545454545454546,
+      "P13": 0.875,
+      "P14": 0.875,
+      "P15": 0.8333333333333334,
+      "P16": 0.95,
+      "P17": 0.8,
+      "P18": 0.6666666666666667
+    },
+    "label_rule": "MIC <= 3.4 uM => alta atividade",
+    "calibration": "isotonic_on_leave_one_peptide_oof",
+    "source_file": "multimodal_mic_loo.json",
+    "model_type": "RandomForest + ESM-2 embeddings",
+    "n_features": 331
+  },
+  "display_rounded": {
+    "baseline": {
+      "lopo_auc": 0.85,
+      "loo_auc": 0.88,
+      "lopo_accuracy": 0.77,
+      "lopo_f1_pos": 0.7
+    },
+    "multimodal": {
+      "lopo_auc": 0.84,
+      "loo_auc": 0.85,
+      "lopo_accuracy": 0.8,
+      "lopo_f1_pos": 0.8
+    }
+  },
+  "previous_snapshot_pre_pmi_fix": {
+    "baseline_lopo_auc": 0.8775,
+    "baseline_lopo_accuracy": 0.7444,
+    "multimodal_lopo_auc": 0.8085,
+    "multimodal_lopo_accuracy": 0.6889
+  }
+}

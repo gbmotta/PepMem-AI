@@ -622,9 +622,9 @@ def build():
 
     # ---- 13 Baseline resultados ----
     s = content_slide(prs, "Resultados — Baseline RF", 13)
-    metric_card(s, Inches(0.7), Inches(1.5), "LOPO AUC", "0,88", "métrica principal", CYAN)
+    metric_card(s, Inches(0.7), Inches(1.5), "LOPO AUC", "0,85", "métrica principal", CYAN)
     metric_card(s, Inches(4.7), Inches(1.5), "LOO AUC", "0,88", "referência", PURPLE)
-    metric_card(s, Inches(8.7), Inches(1.5), "Acurácia LOPO", "0,74", "40 positivos / 90", BLUE)
+    metric_card(s, Inches(8.7), Inches(1.5), "Acurácia LOPO", "0,77", "40 positivos / 90", BLUE)
     add_bullets(
         s,
         Inches(0.7),
@@ -635,15 +635,15 @@ def build():
             "Modelo: 11 features clássicas + PMI",
             "Deploy: Streamlit Cloud (sem PyTorch)",
             "Calibração: isotônica sobre OOF LOPO",
-            "LOO acc. 0,83 · F1+ (LOPO) 0,73 · Precision+ 0,69 · Recall+ 0,78",
+            "LOO acc. 0,83 · F1+ (LOPO) 0,70 · Precision+ 0,81 · Recall+ 0,63",
         ],
     )
 
     # ---- 14 Multimodal resultados ----
     s = content_slide(prs, "Resultados — Multimodal RF + ESM-2", 14)
-    metric_card(s, Inches(0.7), Inches(1.5), "LOPO AUC", "0,81", "métrica principal", ORANGE)
+    metric_card(s, Inches(0.7), Inches(1.5), "LOPO AUC", "0,84", "métrica principal", ORANGE)
     metric_card(s, Inches(4.7), Inches(1.5), "LOO AUC", "0,85", "referência", PURPLE)
-    metric_card(s, Inches(8.7), Inches(1.5), "Features", "331", "11 + ESM-2 320d", BLUE)
+    metric_card(s, Inches(8.7), Inches(1.5), "Acurácia LOPO", "0,80", "40 positivos / 90", BLUE)
     add_bullets(
         s,
         Inches(0.7),
@@ -651,8 +651,8 @@ def build():
         Inches(12),
         Inches(2.8),
         [
-            "Embedding captura similaridade de sequência; no LOPO generaliza um pouco pior nesta família pequena",
-            "Acurácia LOPO 0,69 · Precision+ 0,60 · Recall+ 0,90 · F1+ 0,72",
+            "Embedding + PMI tipificado; no LOPO atual aproxima o baseline",
+            "F1+ LOPO 0,80 · Precision+ 0,72 · Recall+ 0,90",
             "Deploy: Hugging Face Space / local com requirements-space.txt",
         ],
     )
@@ -664,7 +664,7 @@ def build():
         tf,
         [
             ("ID      AUC          ID      AUC", 16, True, PURPLE, PP_ALIGN.CENTER, 12),
-            ("P11     0,90         P15     0,83", 16, False, INK, PP_ALIGN.CENTER, 8),
+            ("P11     0,40         P15     0,83", 16, False, INK, PP_ALIGN.CENTER, 8),
             ("P12     0,95         P16     0,95", 16, False, INK, PP_ALIGN.CENTER, 8),
             ("P13     0,88         P17     0,80", 16, False, INK, PP_ALIGN.CENTER, 8),
             ("P14     0,88         P18     0,67", 16, False, INK, PP_ALIGN.CENTER, 8),
@@ -678,7 +678,7 @@ def build():
         Inches(1.5),
         [
             "P05 e P10: AUC por peptídeo indefinida (uma só classe no fold)",
-            "Variabilidade entre análogos — amostra ainda limitada",
+            "P11 caiu após o ajuste de descritores PMI — amostra ainda limitada",
         ],
         size=14,
     )
@@ -735,7 +735,7 @@ def build():
             "Descritores: q, h, μH da sequência; membrana tipificada; PMI calculado (não ensaiado)",
             "Modelo: Random Forest (Nível 1 InovAI) + PMI; ESM-2 no multimodal",
             "Validação: LOPO é a métrica honesta; isotônica calibra o dashboard",
-            "Resultado: baseline LOPO AUC ≈ 0,88; multimodal LOPO AUC ≈ 0,81",
+            "Resultado: baseline LOPO AUC ≈ 0,85; multimodal LOPO AUC ≈ 0,84",
             "Uso: priorizar candidatos Stigmurin/análogos antes do in vitro",
         ],
         size=15,

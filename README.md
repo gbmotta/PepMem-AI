@@ -304,7 +304,7 @@ print(explanation["shap_contributions"][:3])
 - **Features:** 11 descritores clássicos + PMI  
 - **Treino:** ~90 pares MIC (literatura + bancada)  
 - **Rótulo:** alta atividade se MIC ≤ 3,4 µM  
-- **Validação principal:** leave-one-**peptide**-out (LOPO) — AUC tipicamente ~0,87–0,88  
+- **Validação principal:** leave-one-**peptide**-out (LOPO) — AUC **0,854** (último treino; ver `metrics_summary.json`)  
 - **Deploy Cloud:** este é o modelo ativo (sem PyTorch)
 
 ### Multimodal (`multimodal_mic_rf.joblib`)

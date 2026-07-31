@@ -6,7 +6,7 @@
 |-----------------|----------|
 | [DEPLOY.md](DEPLOY.md) | Publicação (HF Spaces, Streamlit Cloud, Render) |
 | [INTERPRETACAO_RESULTADOS.md](INTERPRETACAO_RESULTADOS.md) | Como ler PMI, probabilidades, ranking e SHAP |
-| [TREINO.md](TREINO.md) | Dados, LOPO, calibração e artefatos |
+| [TREINO.md](TREINO.md) | Dados, LOPO, calibração, métricas atuais e artefatos |
 | [exports/](exports/) | Mesmos guias em **PDF** e **DOCX** (`python scripts/export_docs.py`) |
 | [peptideos/](peptideos/) | Documento consolidado (físico-química + MICs) |
 | [pipeline/](pipeline/) | Slides Beamer + **banner A0** de congresso (modelagem/dados/resultados) |

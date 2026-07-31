@@ -151,18 +151,18 @@ Para cada peptídeo P:
 Agregar probs OOF → AUC global + AUC por peptídeo (quando há as duas classes)
 ```
 
-### 6.3 Métricas típicas (último treino commitado)
+### 6.3 Métricas atuais (pós-ajuste PMI, julho/2026)
 
-Ordem de grandeza (podem mudar após `--retrain`):
+Fonte: `data/processed/models/metrics_summary.json` (espelha `*_mic_loo.json`).
 
-| Modelo | LOO amostra AUC | Leave-peptide AUC |
-|--------|-----------------|-------------------|
-| Baseline | ~0,88 | ~0,88 |
-| Multimodal | ~0,85 | ~0,81 |
+| Modelo | LOO amostra AUC | Leave-peptide AUC | Acc. LOPO | F1+ LOPO |
+|--------|-----------------|-------------------|-----------|----------|
+| Baseline | 0,875 | **0,854** | 0,767 | 0,704 |
+| Multimodal | 0,846 | **0,843** | 0,800 | 0,800 |
 
-O multimodal costuma cair mais no LOPO: embeddings capturam similaridade de sequência e, sem o peptídeo no treino, generalizam um pouco pior nessa família pequena.
+Após preencher \(h/\mu H\) pela sequência, tipificar \(h_m\) e usar esteróis contínuos, o **multimodal melhorou** no LOPO; o baseline manteve discriminação boa (~0,85) com acurácia um pouco maior.
 
-Arquivos: `data/processed/models/baseline_mic_loo.json`, `multimodal_mic_loo.json`.
+Arquivos: `baseline_mic_loo.json`, `multimodal_mic_loo.json`, `metrics_summary.json`.
 
 ---
 

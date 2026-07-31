@@ -447,9 +447,9 @@ $p_{\text{calibrada}} = \mathrm{calibrator.predict}([p_{\text{bruta}}])$
 \begin{frame}{Resultados --- Baseline RF}
 \begin{center}
 \begin{tikzpicture}[node distance=0.35cm]
-  \node[metric] (a) {{\color{PmMuted}\scriptsize LOPO AUC}\\[0.1cm]{\color{PmGreen}\LARGE\bfseries 0,88}\\[0.05cm]{\scriptsize\color{PmMuted}métrica principal}};
+  \node[metric] (a) {{\color{PmMuted}\scriptsize LOPO AUC}\\[0.1cm]{\color{PmGreen}\LARGE\bfseries 0,85}\\[0.05cm]{\scriptsize\color{PmMuted}métrica principal}};
   \node[metric, right=0.35cm of a] (b) {{\color{PmMuted}\scriptsize LOO AUC}\\[0.1cm]{\color{PmPurple}\LARGE\bfseries 0,88}\\[0.05cm]{\scriptsize\color{PmMuted}referência}};
-  \node[metric, right=0.35cm of b] (c) {{\color{PmMuted}\scriptsize Acurácia LOPO}\\[0.1cm]{\color{PmMembrane}\LARGE\bfseries 0,74}\\[0.05cm]{\scriptsize\color{PmMuted}40 positivos / 90}};
+  \node[metric, right=0.35cm of b] (c) {{\color{PmMuted}\scriptsize Acurácia LOPO}\\[0.1cm]{\color{PmMembrane}\LARGE\bfseries 0,77}\\[0.05cm]{\scriptsize\color{PmMuted}40 positivos / 90}};
 \end{tikzpicture}
 \end{center}
 \vspace{0.35cm}
@@ -457,7 +457,7 @@ $p_{\text{calibrada}} = \mathrm{calibrator.predict}([p_{\text{bruta}}])$
   \item Modelo: 11 features clássicas + PMI
   \item Deploy: Streamlit Cloud (sem PyTorch)
   \item Calibração: isotônica sobre OOF LOPO
-  \item LOO acc.\ 0,83 · F1+ (LOPO) 0,73
+  \item LOO acc.\ 0,83 · F1+ (LOPO) 0,70
 \end{itemize}
 \end{frame}
 
@@ -465,14 +465,14 @@ $p_{\text{calibrada}} = \mathrm{calibrator.predict}([p_{\text{bruta}}])$
 \begin{frame}{Resultados --- Multimodal RF + ESM-2}
 \begin{center}
 \begin{tikzpicture}[node distance=0.35cm]
-  \node[metric] (a) {{\color{PmMuted}\scriptsize LOPO AUC}\\[0.1cm]{\color{PmVenomDeep}\LARGE\bfseries 0,81}\\[0.05cm]{\scriptsize\color{PmMuted}métrica principal}};
+  \node[metric] (a) {{\color{PmMuted}\scriptsize LOPO AUC}\\[0.1cm]{\color{PmVenomDeep}\LARGE\bfseries 0,84}\\[0.05cm]{\scriptsize\color{PmMuted}métrica principal}};
   \node[metric, right=0.35cm of a] (b) {{\color{PmMuted}\scriptsize LOO AUC}\\[0.1cm]{\color{PmPurple}\LARGE\bfseries 0,85}\\[0.05cm]{\scriptsize\color{PmMuted}referência}};
-  \node[metric, right=0.35cm of b] (c) {{\color{PmMuted}\scriptsize Acurácia LOPO}\\[0.1cm]{\color{PmMembrane}\LARGE\bfseries 0,69}\\[0.05cm]{\scriptsize\color{PmMuted}40 positivos / 90}};
+  \node[metric, right=0.35cm of b] (c) {{\color{PmMuted}\scriptsize Acurácia LOPO}\\[0.1cm]{\color{PmMembrane}\LARGE\bfseries 0,80}\\[0.05cm]{\scriptsize\color{PmMuted}40 positivos / 90}};
 \end{tikzpicture}
 \end{center}
 \vspace{0.35cm}
 \begin{itemize}
-  \item Embedding captura similaridade de sequência; no LOPO generaliza um pouco pior nesta família pequena
+  \item Embedding + PMI tipificado; no LOPO atual aproxima o baseline
   \item Deploy: Hugging Face Space / local com \texttt{requirements-space.txt}
 \end{itemize}
 \end{frame}
@@ -486,15 +486,19 @@ $p_{\text{calibrada}} = \mathrm{calibrator.predict}([p_{\text{bruta}}])$
 \toprule
 \textbf{Modelo} & \textbf{AUC LOPO} & \textbf{Acc. LOPO} & \textbf{F1+} & \textbf{Recall+} & \textbf{Brier} \\
 \midrule
-RF baseline & \textbf{0,878} & 0,744 & 0,729 & 0,775 & \textbf{0,140} \\
-XGBoost & 0,847 & 0,756 & 0,738 & 0,775 & 0,173 \\
-SVM RBF & 0,763 & \textbf{0,767} & \textbf{0,774} & \textbf{0,900} & 0,180 \\
+RF baseline (atual) & \textbf{0,854} & 0,767 & 0,704 & 0,625 & --- \\
+XGBoost (snapshot ant.) & 0,847 & 0,756 & 0,738 & 0,775 & 0,173 \\
+SVM RBF (snapshot ant.) & 0,763 & 0,767 & 0,774 & 0,900 & 0,180 \\
 \bottomrule
 \end{tabular}}
 \end{center}
-\vspace{0.25cm}
+\vspace{0.15cm}
+\begin{center}
+{\scriptsize RF atual: \texttt{metrics\_summary.json}. SVM/XGBoost: comparação pré-ajuste PMI (não retreinados).}
+\end{center}
+\vspace{0.15cm}
 \begin{block}{Decisão atual}
-Manter o RF como modelo principal: lidera a AUC LOPO. XGBoost é o candidato para ajuste aninhado futuro.
+Manter o RF como modelo principal. XGBoost permanece candidato a ajuste aninhado futuro.
 \end{block}
 \end{frame}
 
@@ -518,7 +522,7 @@ Manter o RF como modelo principal: lidera a AUC LOPO. XGBoost é o candidato par
 \toprule
 \textbf{ID} & \textbf{AUC} & \textbf{ID} & \textbf{AUC} \\
 \midrule
-P11 & 0,90 & P15 & 0,83 \\
+P11 & 0,40 & P15 & 0,83 \\
 P12 & 0,95 & P16 & 0,95 \\
 P13 & 0,88 & P17 & 0,80 \\
 P14 & 0,88 & P18 & 0,67 \\
@@ -528,7 +532,7 @@ P14 & 0,88 & P18 & 0,67 \\
 \vspace{0.35cm}
 \begin{itemize}
   \item P05 e P10: AUC por peptídeo indefinida (uma só classe no fold)
-  \item Variabilidade entre análogos --- amostra ainda limitada
+  \item P11 caiu após o ajuste de descritores PMI --- amostra ainda limitada
 \end{itemize}
 \end{frame}
 
@@ -581,7 +585,7 @@ API FastAPI (opcional)
   \item \textbf{Descritores:} $q$, $h$, $\mu H$ da sequência; membrana tipificada; PMI \textbf{calculado} (não ensaiado)
   \item \textbf{Modelo:} Random Forest (Nível 1 InovAI) + PMI; ESM-2 no multimodal
   \item \textbf{Validação:} LOPO é a métrica honesta; isotônica calibra o dashboard
-  \item \textbf{Resultado:} baseline LOPO AUC $\approx$ \textbf{0,88}; multimodal LOPO AUC $\approx$ \textbf{0,81}
+  \item \textbf{Resultado:} baseline LOPO AUC $\approx$ \textbf{0,85}; multimodal LOPO AUC $\approx$ \textbf{0,84}
   \item \textbf{Uso:} priorizar candidatos Stigmurin/análogos antes do in vitro
 \end{enumerate}
 \end{frame}

@@ -242,13 +242,20 @@ Mesma membrana-alvo e mesma regra de carga para todo o lote.
 
 ## 7. Métricas do modelo (sidebar / barra)
 
+Valores atuais (90 MICs, 10 peptídeos) em `data/processed/models/metrics_summary.json`:
+
+| Modelo | LOO amostra AUC | Leave-peptide AUC | Acc. LOPO |
+|--------|-----------------|-------------------|-----------|
+| Baseline | 0,875 | **0,854** | 0,767 |
+| Multimodal | 0,846 | **0,843** | 0,800 |
+
 | Métrica | Significado |
 |---------|-------------|
 | MICs no treino | Número de pares com MIC usados no RF |
 | LOO amostra AUC | Leave-one-out **por par** (otimista se houver análogos) |
 | Leave-peptide AUC | Leave-one-peptide-out (métrica principal de generalização) |
 
-AUC ~0,8 no LOPO indica discriminação boa, mas **não** calibração perfeita em cada caso novo — daí o intervalo e os vizinhos.
+AUC ~0,85 no LOPO indica discriminação boa, mas **não** calibração perfeita em cada caso novo — daí o intervalo e os vizinhos.
 
 ---
 
