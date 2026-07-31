@@ -40,14 +40,17 @@ Exemplo (números ilustrativos):
 
 ### 2.1 PMI (Peptide–Membrane Interaction Index)
 
-Índice **interpretável** (não é a probabilidade do RF). Combina carga, hidrofobicidade, momento hidrofóbico e colesterol:
+Índice **interpretável** (não é a probabilidade do RF). Combina carga, hidrofobicidade, momento hidrofóbico e esterol:
 
 ```text
 PMI = α · q_pep · |q_mem|
     + β · h_pep · h_mem
     + γ · μH_pep
-    − δ · colesterol_mem
+    − δ · esterol_mem
 ```
+
+com `esterol_mem = colesterol + 0,8 · ergosterol`, e `h_mem` por tipo de alvo
+(ou coluna `membrane_hydrophobicity`), não mais 0,5 fixo.
 
 **Pesos padrão atuais**
 
@@ -56,14 +59,14 @@ PMI = α · q_pep · |q_mem|
 | α (alpha) | 1,0 | Atração eletrostática |
 | β (beta) | 0,5 | Compatibilidade hidrofóbica |
 | γ (gamma) | 0,3 | Momento hidrofóbico (anfifilicidade) |
-| δ (delta) | 0,4 | Penalização por colesterol |
+| δ (delta) | 0,4 | Penalização por esterol |
 
 | Termo na fórmula | Variáveis | Papel biológico (simplificado) |
 |------------------|-----------|--------------------------------|
 | α · q_pep · \|q_mem\| | carga do peptídeo × \|carga da membrana\| | Atração eletrostática (peptídeo catiônico × membrana aniônica) |
-| β · h_pep · h_mem | hidrofobicidades | Compatibilidade com a bicamada |
+| β · h_pep · h_mem | hidrofobicidades | Compatibilidade com a bicamada (`h_mem` tipificado) |
 | γ · μH_pep | momento hidrofóbico | Anfifilicidade / tendência a hélice |
-| δ · colesterol_mem | colesterol da membrana | Penaliza membranas tipicamente mamíferas / mais rígidas |
+| δ · esterol_mem | colesterol + 0,8·ergosterol | Penaliza mamíferos / fungos / envelopes mais rígidos |
 
 **Como ler**
 

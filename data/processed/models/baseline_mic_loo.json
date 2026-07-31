@@ -2,12 +2,12 @@
   "n_samples": 90,
   "n_peptides": 10,
   "positive_rate": 0.4444444444444444,
-  "loo_auc": 0.87825,
-  "leave_one_peptide_auc": 0.8775,
+  "loo_auc": 0.8752500000000001,
+  "leave_one_peptide_auc": 0.8535,
   "per_peptide_auc": {
     "P05": null,
     "P10": null,
-    "P11": 0.9,
+    "P11": 0.4,
     "P12": 0.9545454545454546,
     "P13": 0.875,
     "P14": 0.875,
@@ -45,28 +45,28 @@
   },
   "leave_one_peptide_classification_report": {
     "0": {
-      "precision": 0.8,
-      "recall": 0.72,
-      "f1-score": 0.7578947368421053,
+      "precision": 0.7457627118644068,
+      "recall": 0.88,
+      "f1-score": 0.8073394495412844,
       "support": 50.0
     },
     "1": {
-      "precision": 0.6888888888888889,
-      "recall": 0.775,
-      "f1-score": 0.7294117647058823,
+      "precision": 0.8064516129032258,
+      "recall": 0.625,
+      "f1-score": 0.704225352112676,
       "support": 40.0
     },
-    "accuracy": 0.7444444444444445,
+    "accuracy": 0.7666666666666667,
     "macro avg": {
-      "precision": 0.7444444444444445,
-      "recall": 0.7475,
-      "f1-score": 0.7436532507739938,
+      "precision": 0.7761071623838163,
+      "recall": 0.7525,
+      "f1-score": 0.7557824008269802,
       "support": 90.0
     },
     "weighted avg": {
-      "precision": 0.7506172839506173,
-      "recall": 0.7444444444444445,
-      "f1-score": 0.7452356381148951,
+      "precision": 0.7727355567705486,
+      "recall": 0.7666666666666667,
+      "f1-score": 0.7615109617952363,
       "support": 90.0
     }
   },

@@ -1750,12 +1750,14 @@ Cada tipo de membrana tem um “perfil” cadastrado, por exemplo:
 - **Fração aniônica** — quanto a superfície é negativa  
 - **LPS** — típico de Gram-negativas  
 - **Peptidoglicano** — típico de Gram-positivas  
-- **Colesterol** — mais comum em **células de mamíferos** (no PMI, reduz o score)  
-- **Ergosterol** — típico de **fungos**  
+- **Colesterol** — mais comum em **células de mamíferos** (contínuo 0–1; no PMI, reduz o score)  
+- **Ergosterol** — típico de **fungos** (entra no PMI como ~0,8×ergosterol junto ao colesterol)  
 - **Envelope viral** — quando o alvo é vírus envelopado  
 
-Na prática do app, a “hidrofobicidade da membrana” (hₘ) usa um valor **fixo de
-referência (0,5)** — um proxy simples, não uma medida experimental daquele alvo.
+A hidrofobicidade da membrana (**hₘ**) é um **proxy por tipo de alvo**
+(Gram+ ≈0,45, Gram− ≈0,40, fungo/parasita ≈0,55, mamífero ≈0,65, vírus ≈0,60)
+ou o valor tipificado em `membrane_hydrophobicity` — não é medida experimental
+daquele isolado.
 
 **Como ler:** o mesmo peptídeo pode ter PMI e probabilidade bem diferentes
 em *S. aureus* vs célula normal, porque o **perfil do alvo** muda — inclusive
@@ -1778,7 +1780,7 @@ O **PMI** junta, numa conta só, as ideias acima:
 | α qₚ ∣qₘ∣ | 1,0 | peptídeo positivo e membrana negativa | atração elétrica |
 | β hₚ hₘ | 0,5 | hidrofobicidades compatíveis | “encaixe” na bicamada |
 | γ μHₚ | 0,3 | anfifilicidade | faces hidrofóbica/hidrofílica bem definidas |
-| − δ colₘ | 0,4 | muito colesterol | penaliza alvos mais mamíferos / rígidos |
+| − δ colₘ | 0,4 | muito esterol (colesterol + 0,8·ergosterol) | penaliza mamíferos / fungos / envelopes rígidos |
 
 Esses pesos (α, β, γ, δ) foram **definidos no projeto** — não são treinados pelo
 Random Forest. O RF **usa** o PMI como uma das entradas.

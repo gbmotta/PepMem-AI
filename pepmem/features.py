@@ -72,26 +72,32 @@ def peptide_row_from_sequence(sequence: str, net_charge: float | None = None) ->
     row = df.iloc[0].to_dict()
     if net_charge is None:
         row["net_charge"] = row.get("net_charge_computed")
+    from pepmem.pmi import peptide_h, peptide_mu_h
+
     row["q_peptide"] = peptide_q(row)
-    row["h_peptide"] = float(row.get("hydrophobicity_computed") or 0)
-    row["mu_h_peptide"] = float(row.get("hydrophobic_moment") or 0)
+    row["h_peptide"] = peptide_h(row)
+    row["mu_h_peptide"] = peptide_mu_h(row)
     return row
 
 
 def pair_features(peptide: dict[str, Any], target: pd.Series) -> dict[str, Any]:
     """Junta descritores do peptídeo e do alvo e calcula o PMI do par."""
-    from pepmem.pmi import compute_pmi
+    from pepmem.pmi import compute_pmi, membrane_h_proxy, sterol_penalty
 
-    # Hidrofobicidade de membrana proxy (constante no baseline atual)
-    h_m = 0.5
+    explicit_h = target.get("membrane_hydrophobicity")
+    if explicit_h is None or (isinstance(explicit_h, float) and pd.isna(explicit_h)):
+        explicit_h = target.get("hydrophobicity")
+    h_m = membrane_h_proxy(target.get("target_type"), explicit=explicit_h)
     chol = float(target.get("cholesterol") or 0)
+    ergo = float(target.get("ergosterol") or 0)
+    sterol = sterol_penalty(chol, ergo)
     pmi = compute_pmi(
         peptide["q_peptide"],
         float(target["surface_charge"]),
         peptide["h_peptide"],
         h_m,
         peptide["mu_h_peptide"],
-        chol,
+        sterol,
     )
     return {
         "peptide_id": peptide.get("peptide_id"),
@@ -102,12 +108,14 @@ def pair_features(peptide: dict[str, Any], target: pd.Series) -> dict[str, Any]:
         "q_peptide": peptide["q_peptide"],
         "h_peptide": peptide["h_peptide"],
         "mu_h_peptide": peptide["mu_h_peptide"],
+        "h_membrane": h_m,
         "surface_charge": float(target["surface_charge"]),
         "anionic_fraction": float(target.get("anionic_fraction") or 0),
         "cholesterol": chol,
         "lps": float(target.get("lps") or 0),
         "peptidoglycan": float(target.get("peptidoglycan") or 0),
-        "ergosterol": float(target.get("ergosterol") or 0),
+        "ergosterol": ergo,
+        "sterol_penalty": sterol,
         "viral_envelope": float(target.get("viral_envelope") or 0),
         "pmi": pmi,
     }

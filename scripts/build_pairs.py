@@ -23,7 +23,15 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from pmi import compute_pmi, compute_pmi_sel, peptide_h, peptide_mu_h, peptide_q
+from pmi import (
+    compute_pmi,
+    compute_pmi_sel,
+    membrane_h_proxy,
+    peptide_h,
+    peptide_mu_h,
+    peptide_q,
+    sterol_penalty,
+)
 
 
 from bench_mic import load_bench_targets
@@ -31,12 +39,12 @@ from bench_mic import load_bench_targets
 
 # --- alvos da literatura (cepas UFPEDA, Parente 2022) ---
 LITERATURE_TARGETS = [
-    {"target_id": "S_aureus_UFPEDA1040", "target": "Staphylococcus aureus UFPEDA1040", "target_type": "Gram+", "surface_charge": -0.80, "anionic_fraction": 0.60, "lps": 0, "peptidoglycan": 1, "teichoic_acid": 1, "cholesterol": 0, "ergosterol": 0, "viral_envelope": 0},
-    {"target_id": "S_aureus_UFPEDA1051", "target": "Staphylococcus aureus UFPEDA1051", "target_type": "Gram+", "surface_charge": -0.80, "anionic_fraction": 0.60, "lps": 0, "peptidoglycan": 1, "teichoic_acid": 1, "cholesterol": 0, "ergosterol": 0, "viral_envelope": 0},
-    {"target_id": "S_aureus_UFPEDA1058", "target": "Staphylococcus aureus UFPEDA1058", "target_type": "Gram+", "surface_charge": -0.80, "anionic_fraction": 0.60, "lps": 0, "peptidoglycan": 1, "teichoic_acid": 1, "cholesterol": 0, "ergosterol": 0, "viral_envelope": 0},
-    {"target_id": "S_aureus_UFPEDA1059", "target": "Staphylococcus aureus UFPEDA1059", "target_type": "Gram+", "surface_charge": -0.80, "anionic_fraction": 0.60, "lps": 0, "peptidoglycan": 1, "teichoic_acid": 1, "cholesterol": 0, "ergosterol": 0, "viral_envelope": 0},
-    {"target_id": "P_aeruginosa_UFPEDA261", "target": "Pseudomonas aeruginosa UFPEDA261", "target_type": "Gram-", "surface_charge": -0.90, "anionic_fraction": 0.65, "lps": 1, "peptidoglycan": 1, "teichoic_acid": 0, "cholesterol": 0, "ergosterol": 0, "viral_envelope": 0},
-    {"target_id": "P_aeruginosa_UFPEDA262", "target": "Pseudomonas aeruginosa UFPEDA262", "target_type": "Gram-", "surface_charge": -0.90, "anionic_fraction": 0.65, "lps": 1, "peptidoglycan": 1, "teichoic_acid": 0, "cholesterol": 0, "ergosterol": 0, "viral_envelope": 0},
+    {"target_id": "S_aureus_UFPEDA1040", "target": "Staphylococcus aureus UFPEDA1040", "target_type": "Gram+", "surface_charge": -0.80, "anionic_fraction": 0.60, "lps": 0, "peptidoglycan": 1, "teichoic_acid": 1, "cholesterol": 0.0, "ergosterol": 0.0, "membrane_hydrophobicity": 0.45, "viral_envelope": 0},
+    {"target_id": "S_aureus_UFPEDA1051", "target": "Staphylococcus aureus UFPEDA1051", "target_type": "Gram+", "surface_charge": -0.80, "anionic_fraction": 0.60, "lps": 0, "peptidoglycan": 1, "teichoic_acid": 1, "cholesterol": 0.0, "ergosterol": 0.0, "membrane_hydrophobicity": 0.45, "viral_envelope": 0},
+    {"target_id": "S_aureus_UFPEDA1058", "target": "Staphylococcus aureus UFPEDA1058", "target_type": "Gram+", "surface_charge": -0.80, "anionic_fraction": 0.60, "lps": 0, "peptidoglycan": 1, "teichoic_acid": 1, "cholesterol": 0.0, "ergosterol": 0.0, "membrane_hydrophobicity": 0.45, "viral_envelope": 0},
+    {"target_id": "S_aureus_UFPEDA1059", "target": "Staphylococcus aureus UFPEDA1059", "target_type": "Gram+", "surface_charge": -0.80, "anionic_fraction": 0.60, "lps": 0, "peptidoglycan": 1, "teichoic_acid": 1, "cholesterol": 0.0, "ergosterol": 0.0, "membrane_hydrophobicity": 0.45, "viral_envelope": 0},
+    {"target_id": "P_aeruginosa_UFPEDA261", "target": "Pseudomonas aeruginosa UFPEDA261", "target_type": "Gram-", "surface_charge": -0.90, "anionic_fraction": 0.65, "lps": 1, "peptidoglycan": 1, "teichoic_acid": 0, "cholesterol": 0.0, "ergosterol": 0.0, "membrane_hydrophobicity": 0.40, "viral_envelope": 0},
+    {"target_id": "P_aeruginosa_UFPEDA262", "target": "Pseudomonas aeruginosa UFPEDA262", "target_type": "Gram-", "surface_charge": -0.90, "anionic_fraction": 0.65, "lps": 1, "peptidoglycan": 1, "teichoic_acid": 0, "cholesterol": 0.0, "ergosterol": 0.0, "membrane_hydrophobicity": 0.40, "viral_envelope": 0},
 ]
 
 
@@ -66,10 +74,15 @@ def build_pairs() -> pd.DataFrame:
             h_p = peptide_h(pep)
             mu_p = peptide_mu_h(pep)
             q_m = float(mem["surface_charge"])
-            h_m = float(mem.get("hydrophobicity", mem.get("hydrophobicity_computed", 0.5)) or 0.5)
+            h_m = membrane_h_proxy(
+                mem.get("target_type"),
+                explicit=mem.get("membrane_hydrophobicity", mem.get("hydrophobicity")),
+            )
             chol = float(mem.get("cholesterol", 0) or 0)
+            ergo = float(mem.get("ergosterol", 0) or 0)
+            sterol = sterol_penalty(chol, ergo)
 
-            pmi = compute_pmi(q_p, q_m, h_p, h_m, mu_p, chol)
+            pmi = compute_pmi(q_p, q_m, h_p, h_m, mu_p, sterol)
 
             rows.append(
                 {
@@ -81,12 +94,14 @@ def build_pairs() -> pd.DataFrame:
                     "q_peptide": q_p,
                     "h_peptide": h_p,
                     "mu_h_peptide": mu_p,
+                    "h_membrane": h_m,
                     "surface_charge": q_m,
                     "anionic_fraction": mem.get("anionic_fraction"),
                     "cholesterol": chol,
                     "lps": mem.get("lps"),
                     "peptidoglycan": mem.get("peptidoglycan"),
                     "ergosterol": mem.get("ergosterol"),
+                    "sterol_penalty": sterol,
                     "viral_envelope": mem.get("viral_envelope"),
                     "pmi": pmi,
                 }

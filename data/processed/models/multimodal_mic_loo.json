@@ -335,8 +335,8 @@
     "esm2_318",
     "esm2_319"
   ],
-  "loo_auc": 0.845,
-  "leave_one_peptide_auc": 0.8085,
+  "loo_auc": 0.8455,
+  "leave_one_peptide_auc": 0.8425,
   "per_peptide_auc": {
     "P05": null,
     "P10": null,
@@ -351,55 +351,55 @@
   },
   "loo_classification_report": {
     "0": {
-      "precision": 0.8478260869565217,
-      "recall": 0.78,
-      "f1-score": 0.8125,
+      "precision": 0.8604651162790697,
+      "recall": 0.74,
+      "f1-score": 0.7956989247311828,
       "support": 50.0
     },
     "1": {
-      "precision": 0.75,
-      "recall": 0.825,
-      "f1-score": 0.7857142857142857,
+      "precision": 0.723404255319149,
+      "recall": 0.85,
+      "f1-score": 0.7816091954022989,
       "support": 40.0
     },
-    "accuracy": 0.8,
+    "accuracy": 0.7888888888888889,
     "macro avg": {
-      "precision": 0.7989130434782609,
-      "recall": 0.8025,
-      "f1-score": 0.7991071428571428,
+      "precision": 0.7919346857991094,
+      "recall": 0.7949999999999999,
+      "f1-score": 0.7886540600667409,
       "support": 90.0
     },
     "weighted avg": {
-      "precision": 0.8043478260869565,
-      "recall": 0.8,
-      "f1-score": 0.8005952380952381,
+      "precision": 0.7995491780746606,
+      "recall": 0.7888888888888889,
+      "f1-score": 0.7894368228072343,
       "support": 90.0
     }
   },
   "leave_one_peptide_classification_report": {
     "0": {
-      "precision": 0.8666666666666667,
-      "recall": 0.52,
-      "f1-score": 0.65,
+      "precision": 0.9,
+      "recall": 0.72,
+      "f1-score": 0.8,
       "support": 50.0
     },
     "1": {
-      "precision": 0.6,
+      "precision": 0.72,
       "recall": 0.9,
-      "f1-score": 0.72,
+      "f1-score": 0.8,
       "support": 40.0
     },
-    "accuracy": 0.6888888888888889,
+    "accuracy": 0.8,
     "macro avg": {
-      "precision": 0.7333333333333334,
-      "recall": 0.71,
-      "f1-score": 0.685,
+      "precision": 0.81,
+      "recall": 0.81,
+      "f1-score": 0.8,
       "support": 90.0
     },
     "weighted avg": {
-      "precision": 0.7481481481481482,
-      "recall": 0.6888888888888889,
-      "f1-score": 0.6811111111111111,
+      "precision": 0.82,
+      "recall": 0.8,
+      "f1-score": 0.8,
       "support": 90.0
     }
   },

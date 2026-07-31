@@ -30,17 +30,21 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from pepmem.peptide_utils import compute_mean_hydrophobicity, compute_net_charge  # noqa: E402
-from pepmem.pmi import DEFAULT_WEIGHTS, hydrophobic_moment  # noqa: E402
+from pepmem.pmi import (  # noqa: E402
+    DEFAULT_WEIGHTS,
+    hydrophobic_moment,
+    membrane_h_proxy,
+    sterol_penalty,
+)
 from train_utils import CLASSIC_FEATURES, load_mic_pairs, make_rf_pipeline  # noqa: E402
 
 OUT_DIR = ROOT / "data" / "processed" / "models"
-H_MEMBRANE = 0.5  # mesmo proxy de pepmem.features
 
 
 def _prepare_components(df: pd.DataFrame) -> pd.DataFrame:
-    """Preenche q/h/μH a partir da sequência quando faltam (como na inferência)."""
+    """Preenche q/h/μH e h_m/esterol a partir da sequência/alvo quando faltam."""
     out = df.copy()
-    qs, hs, mus = [], [], []
+    qs, hs, mus, hms, sterols = [], [], [], [], []
     for _, row in out.iterrows():
         seq = str(row.get("sequence") or "")
         q = row.get("q_peptide")
@@ -52,12 +56,26 @@ def _prepare_components(df: pd.DataFrame) -> pd.DataFrame:
         mu = row.get("mu_h_peptide")
         if mu is None or (isinstance(mu, float) and np.isnan(mu)):
             mu = hydrophobic_moment(seq) if seq else 0.0
+        hm = row.get("h_membrane")
+        if hm is None or (isinstance(hm, float) and np.isnan(hm)):
+            hm = membrane_h_proxy(row.get("target_type"))
+        chol = row.get("cholesterol")
+        chol = 0.0 if chol is None or (isinstance(chol, float) and np.isnan(chol)) else float(chol)
+        ergo = row.get("ergosterol")
+        ergo = 0.0 if ergo is None or (isinstance(ergo, float) and np.isnan(ergo)) else float(ergo)
+        st = row.get("sterol_penalty")
+        if st is None or (isinstance(st, float) and np.isnan(st)):
+            st = sterol_penalty(chol, ergo)
         qs.append(float(q))
         hs.append(float(h))
         mus.append(float(mu))
+        hms.append(float(hm))
+        sterols.append(float(st))
     out["q_peptide"] = qs
     out["h_peptide"] = hs
     out["mu_h_peptide"] = mus
+    out["h_membrane"] = hms
+    out["sterol_penalty"] = sterols
     out["surface_charge"] = out["surface_charge"].astype(float).fillna(0.0)
     out["cholesterol"] = out["cholesterol"].astype(float).fillna(0.0)
     return out
@@ -70,12 +88,12 @@ def compute_pmi_vector(
     gamma: float,
     delta: float,
 ) -> np.ndarray:
-    """PMI = α q|q_m| + β h h_m + γ μH − δ col."""
+    """PMI = α q|q_m| + β h h_m + γ μH − δ esterol."""
     return (
         alpha * df["q_peptide"].to_numpy() * np.abs(df["surface_charge"].to_numpy())
-        + beta * df["h_peptide"].to_numpy() * H_MEMBRANE
+        + beta * df["h_peptide"].to_numpy() * df["h_membrane"].to_numpy()
         + gamma * df["mu_h_peptide"].to_numpy()
-        - delta * df["cholesterol"].to_numpy()
+        - delta * df["sterol_penalty"].to_numpy()
     )
 
 
@@ -222,7 +240,8 @@ def main() -> None:
         "n_pairs": int(len(df)),
         "n_peptides": int(df["peptide_id"].nunique()),
         "n_grid": len(grid),
-        "h_membrane_proxy": H_MEMBRANE,
+        "h_membrane_note": "proxy por target_type / membrane_hydrophobicity (não mais 0.5 fixo)",
+        "sterol_note": "sterol_penalty = cholesterol + 0.8*ergosterol",
         "warning": (
             "Pesos calibrados em dataset pequeno (~10 peptídeos). "
             "LOPO aninhado reduz vazamento, mas não elimina overfitting."
