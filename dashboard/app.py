@@ -163,17 +163,29 @@ def get_predictor() -> PepMemPredictor:
     return PepMemPredictor(use_embeddings=torch_available())
 
 
+# Peptídeos com MIC/literatura no banco (mic_bench). Os P01–P04/P06–P09 do
+# Quadro CNPq (sequências com *) ficam fora da UI até terem sequência resolvida.
+PROJECT_PEPTIDES_VISIBLE = {
+    "P05", "P10", "P11", "P12", "P13", "P14", "P15", "P16", "P17", "P18",
+}
+
+
 @st.cache_data
 def load_project_peptides() -> pd.DataFrame:
-    """Catálogo PepMem-Base-Project (IDs PXX e sequências de referência)."""
+    """Catálogo PepMem-Base-Project (só IDs com dados cadastrados)."""
     path = ROOT / "data" / "processed" / "pepmem_base_project.parquet"
     if not path.exists():
         # fallback legado
         csv_path = ROOT / "data" / "processed" / "pepmem_base_project.csv"
         if csv_path.exists():
-            return pd.read_csv(csv_path)
-        return pd.DataFrame()
-    return pd.read_parquet(path)
+            df = pd.read_csv(csv_path)
+        else:
+            return pd.DataFrame()
+    else:
+        df = pd.read_parquet(path)
+    if df.empty or "peptide_id" not in df.columns:
+        return df
+    return df[df["peptide_id"].astype(str).isin(PROJECT_PEPTIDES_VISIBLE)].reset_index(drop=True)
 
 
 @st.cache_data(show_spinner="Gerando beeswarm SHAP...")
@@ -1863,26 +1875,14 @@ elif page == "Dados":
             st.json(json.loads(summary_path.read_text(encoding="utf-8")))
 
     with st.container(border=True):
-        tile_title("Peptídeos do projeto", "Stigmurin, StigA, TsAP-2 e análogos")
+        tile_title("Peptídeos do projeto", "Stigmurin, StigA, TsAP-2 e análogos com MIC")
         st.caption(
-            "P01–P09 podem ter sequência placeholder — preferir P10–P18 para testes."
+            "Exibindo os 10 peptídeos com dados em mic_bench. "
+            "Análogos P01–P04/P06–P09 (Quadro CNPq, sequências com *) ficam ocultos por enquanto."
         )
         if not project_df.empty:
             view = project_df[["peptide_id", "name", "sequence", "net_charge", "source"]].copy()
-            native_seqs = set(
-                project_df.loc[project_df["peptide_id"].isin(["P05", "P10"]), "sequence"].astype(str)
-            )
-
-            def flag(row):
-                pid = str(row["peptide_id"])
-                seq = str(row["sequence"])
-                if pid in {"P01", "P02", "P03", "P04", "P06", "P07", "P08", "P09"} and seq in native_seqs:
-                    return "placeholder?"
-                if pid in {"P10", "P11", "P12", "P13", "P14", "P15", "P16", "P05", "P17", "P18"}:
-                    return "no banco / MIC"
-                return ""
-
-            view["nota"] = view.apply(flag, axis=1)
+            view["nota"] = "no banco / MIC"
             show_table(view, max_text_len=40)
 
     with st.expander("API local (FastAPI) — integração HTTP"):
