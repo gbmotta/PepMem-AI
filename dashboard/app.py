@@ -1757,27 +1757,17 @@ quando o alvo **não** é microbiano.
             r"\mathrm{PMI} = \alpha\, q_p |q_m| + \beta\, h_p h_m "
             r"+ \gamma\, \mu H_p - \delta\, \mathrm{col}_m"
         )
-        st.markdown("O **PMI** junta, numa conta só, as ideias acima:")
-        _pmi_rows = [
-            (r"\alpha\, q_p |q_m|", "peso 1,0", "peptídeo positivo e membrana negativa", "atração elétrica"),
-            (r"\beta\, h_p h_m", "peso 0,5", "hidrofobicidades compatíveis", "“encaixe” na bicamada"),
-            (r"\gamma\, \mu H_p", "peso 0,3", "anfifilicidade", "faces hidrofóbica/hidrofílica bem definidas"),
-            (r"- \delta\, \mathrm{col}_m", "peso 0,4", "muito colesterol", "penaliza alvos mais mamíferos / rígidos"),
-        ]
-        h1, h2, h3, h4 = st.columns([2.2, 0.9, 2.2, 2.0])
-        h1.markdown("**Peça da fórmula**")
-        h2.markdown("**Peso**")
-        h3.markdown("**O que favorece**")
-        h4.markdown("**Em português**")
-        for latex_term, peso, favorece, pt in _pmi_rows:
-            c1, c2, c3, c4 = st.columns([2.2, 0.9, 2.2, 2.0])
-            with c1:
-                st.latex(latex_term)
-            c2.markdown(peso)
-            c3.markdown(favorece)
-            c4.markdown(pt)
         st.markdown(
             """
+O **PMI** junta, numa conta só, as ideias acima:
+
+| Peça da fórmula | Peso | O que favorece | Em português |
+|-----------------|------|----------------|--------------|
+| α qₚ ∣qₘ∣ | 1,0 | peptídeo positivo e membrana negativa | atração elétrica |
+| β hₚ hₘ | 0,5 | hidrofobicidades compatíveis | “encaixe” na bicamada |
+| γ μHₚ | 0,3 | anfifilicidade | faces hidrofóbica/hidrofílica bem definidas |
+| − δ colₘ | 0,4 | muito colesterol | penaliza alvos mais mamíferos / rígidos |
+
 Esses pesos (α, β, γ, δ) foram **definidos no projeto** — não são treinados pelo
 Random Forest. O RF **usa** o PMI como uma das entradas.
 
