@@ -1779,15 +1779,15 @@ Random Forest. O RF **usa** o PMI como uma das entradas.
         )
 
     with st.container(border=True):
-        tile_title("6. PMI_sel (seletividade)", "Em palavras: prefere o patógeno ou a célula humana?")
+        tile_title("6. PMIₛₑₗ (seletividade)", "Em palavras: prefere o patógeno ou a célula humana?")
         st.latex(r"\mathrm{PMI_{sel}} = \mathrm{PMI_{alvo}} - \mathrm{PMI_{célula\ normal}}")
         st.markdown(
             """
 Comparamos o PMI no **alvo de interesse** (bactéria, fungo…) com o PMI na
 **célula normal** de referência.
 
-- **PMI_sel positivo** → o índice “gosta” mais do alvo do que da célula humana  
-- **PMI_sel negativo ou perto de zero** → pouca vantagem (ou preferência pela célula normal)
+- **PMIₛₑₗ positivo** → o índice “gosta” mais do alvo do que da célula humana  
+- **PMIₛₑₗ negativo ou perto de zero** → pouca vantagem (ou preferência pela célula normal)
 
 Isso entra no **ranking** como um bônus leve. **Não** é uma feature do Random Forest
 na classificação de alta atividade.
