@@ -1641,10 +1641,26 @@ elif page == "Fórmulas":
         tile_title("1. Carga líquida do peptídeo (q)", "Em palavras: o peptídeo é mais “positivo” ou “negativo”?")
         st.markdown(
             """
-Peptídeos antimicrobianos costumam ter carga **positiva**. Membranas bacterianas
-costumam ser **negativas**. Cargas opostas se atraem — por isso a carga entra no cálculo.
+Peptídeos antimicrobianos costumam ter carga **positiva**. Muitas membranas
+**microbianas** (bactérias) têm superfície **negativa** — cargas opostas se atraem,
+e por isso a carga do peptídeo entra no cálculo.
 
-Como estimamos a carga a pH próximo de 7 (condição biológica típica):
+**E se a membrana não for microbiana?**  
+A **carga do peptídeo (q)** continua sendo calculada do mesmo jeito (só depende
+da sequência). O que muda é o **perfil do alvo**:
+
+- **Célula de mamífero / normal / tumoral** — em geral menos aniônica que bactéria;
+  costuma ter **colesterol**, o que no PMI **penaliza** a interação (termo −δ·colesterol).
+  Ou seja: mesmo peptídeo “positivo” pode ter PMI mais baixo nesses alvos.
+- **Fungo** — perfil próprio (ex.: **ergosterol** no cadastro), distinto de bactéria
+  e de mamífero.
+- **Vírus envelopado** — usa o descritor de envelope viral do alvo escolhido.
+
+Em resumo: q descreve o **peptídeo**; se o alvo não é microbiano, a diferença aparece
+nos **descritores da membrana** e no **PMI/probabilidade** daquele par — não numa
+fórmula de carga diferente.
+
+Como estimamos a carga do peptídeo a pH próximo de 7 (condição biológica típica):
 
 | Letra na sequência | Efeito na carga | Em português |
 |--------------------|-----------------|--------------|
@@ -1659,14 +1675,14 @@ medida/anotada, **usamos essa** em vez da soma automática.
         )
 
     with st.container(border=True):
-        tile_title("2. Hidrofobicidade (h)", "Em palavras: o peptídeo “gosta” mais de água ou de gordura?")
+        tile_title("2. Hidrofobicidade (h)", "Em palavras: o peptídeo é mais hidrofóbico ou hidrofílico?")
         st.latex(r"h_p = \frac{1}{L}\sum_{i=1}^{L} H(\mathrm{AA}_i)")
         st.markdown(
             """
-Cada aminoácido tem um “escore de gordura/água” na escala **Kyte–Doolittle**
-(padrão clássico em bioquímica). Valores **altos** = mais hidrofóbicos (preferem
-ambiente lipídico, como o interior da membrana). Valores **baixos/negativos** =
-mais hidrofílicos (preferem água).
+Cada aminoácido tem um escore na escala **Kyte–Doolittle** (padrão clássico em
+bioquímica). Valores **altos** = mais hidrofóbicos (preferem ambiente lipídico,
+como o interior da membrana). Valores **baixos/negativos** = mais hidrofílicos
+(preferem meio aquoso).
 
 A fórmula acima só faz a **média** desses escores em toda a sequência
 (L = número de letras / comprimento do peptídeo).
@@ -1677,13 +1693,13 @@ Exemplos de escores individuais:
 - **K** (lisina) ≈ −3,9 → bem hidrofílica / carregada  
 - **R** (arginina) ≈ −4,5 → bem hidrofílica / carregada  
 
-**Como ler:** um *h* médio mais alto sugere peptídeo com face mais “gordurosa”,
+**Como ler:** um *h* médio mais alto sugere peptídeo com face mais “hidrofóbica”,
 o que pode ajudar a entrar na membrana — mas sozinho não decide a atividade.
             """
         )
 
     with st.container(border=True):
-        tile_title("3. Momento hidrofóbico (μH)", "Em palavras: o peptídeo tem “dois lados” (água × gordura)?")
+        tile_title("3. Momento hidrofóbico (μH)", "Em palavras: o peptídeo tem “dois lados” (hidrofóbico × hidrofílico)?")
         st.latex(
             r"\mu H_p = \frac{1}{L}\sqrt{"
             r"\Big(\sum_i H_i\cos(i\theta)\Big)^2 + "
@@ -1694,14 +1710,14 @@ o que pode ajudar a entrar na membrana — mas sozinho não decide a atividade.
 Muitos AMPs, em contato com a membrana, se organizam como uma **hélice**
 (espiral). Nessa geometria, aminoácidos hidrofóbicos podem ficar de um lado
 e os hidrofílicos/carregados do outro — isso se chama **anfifilicidade**
-(“dois gostos”: água e gordura).
+(faces hidrofóbica e hidrofílica).
 
 O **momento hidrofóbico** (método de Eisenberg) mede o quanto essa separação
 de faces é forte. Usamos o ângulo típico de hélice α (**100°** entre resíduos
 vizinhos na espiral).
 
 **Como ler:**
-- **μH alto** → faces bem separadas (um lado “gordo”, outro “aquoso/carregado”)  
+- **μH alto** → faces bem separadas (um lado hidrofóbico, outro hidrofílico/carregado)  
 - **μH baixo** → distribuição mais misturada  
 
 Isso ajuda a explicar por que alguns peptídeos “encostam” melhor na membrana.
@@ -1713,23 +1729,25 @@ Isso ajuda a explicar por que alguns peptídeos “encostam” melhor na membran
         st.markdown(
             """
 Aqui o número **não** sai da sequência do peptídeo. Ele vem do **alvo** que você
-escolheu (ex.: *S. aureus*, *E. coli*, fungo, célula normal).
+escolheu (bactéria, fungo, vírus, célula normal/tumoral…).
 
 Cada tipo de membrana tem um “perfil” cadastrado, por exemplo:
 
-- **Carga superficial (qₘ)** — em geral negativa em bactérias  
+- **Carga superficial (qₘ)** — tipicamente bem negativa em muitas bactérias;
+  em células de mamífero costuma ser **menos extrema**
 - **Fração aniônica** — quanto a superfície é negativa  
 - **LPS** — típico de Gram-negativas  
 - **Peptidoglicano** — típico de Gram-positivas  
-- **Colesterol** — mais comum em células de mamíferos  
-- **Ergosterol** — típico de fungos  
+- **Colesterol** — mais comum em **células de mamíferos** (no PMI, reduz o score)  
+- **Ergosterol** — típico de **fungos**  
 - **Envelope viral** — quando o alvo é vírus envelopado  
 
 Na prática do app, a “hidrofobicidade da membrana” (hₘ) usa um valor **fixo de
 referência (0,5)** — um proxy simples, não uma medida experimental daquele alvo.
 
-**Como ler:** o mesmo peptídeo pode ter PMI e probabilidade diferentes
-conforme a membrana, porque o perfil do alvo muda.
+**Como ler:** o mesmo peptídeo pode ter PMI e probabilidade bem diferentes
+em *S. aureus* vs célula normal, porque o **perfil do alvo** muda — inclusive
+quando o alvo **não** é microbiano.
             """
         )
 
@@ -1739,17 +1757,27 @@ conforme a membrana, porque o perfil do alvo muda.
             r"\mathrm{PMI} = \alpha\, q_p |q_m| + \beta\, h_p h_m "
             r"+ \gamma\, \mu H_p - \delta\, \mathrm{col}_m"
         )
+        st.markdown("O **PMI** junta, numa conta só, as ideias acima:")
+        _pmi_rows = [
+            (r"\alpha\, q_p |q_m|", "peso 1,0", "peptídeo positivo e membrana negativa", "atração elétrica"),
+            (r"\beta\, h_p h_m", "peso 0,5", "hidrofobicidades compatíveis", "“encaixe” na bicamada"),
+            (r"\gamma\, \mu H_p", "peso 0,3", "anfifilicidade", "faces hidrofóbica/hidrofílica bem definidas"),
+            (r"- \delta\, \mathrm{col}_m", "peso 0,4", "muito colesterol", "penaliza alvos mais mamíferos / rígidos"),
+        ]
+        h1, h2, h3, h4 = st.columns([2.2, 0.9, 2.2, 2.0])
+        h1.markdown("**Peça da fórmula**")
+        h2.markdown("**Peso**")
+        h3.markdown("**O que favorece**")
+        h4.markdown("**Em português**")
+        for latex_term, peso, favorece, pt in _pmi_rows:
+            c1, c2, c3, c4 = st.columns([2.2, 0.9, 2.2, 2.0])
+            with c1:
+                st.latex(latex_term)
+            c2.markdown(peso)
+            c3.markdown(favorece)
+            c4.markdown(pt)
         st.markdown(
-            r"""
-O **PMI** junta, numa conta só, as ideias acima:
-
-| Peça da fórmula | O que favorece | Em português |
-|-----------------|----------------|--------------|
-| α · q_peptídeo × módulo(q_membrana), peso 1,0 | peptídeo positivo e membrana negativa | atração elétrica |
-| β · h_peptídeo × h_membrana, peso 0,5 | hidrofobicidades compatíveis | “encaixe” na bicamada |
-| γ · μH do peptídeo, peso 0,3 | anfifilicidade | faces água/gordura bem definidas |
-| menos δ · colesterol, peso 0,4 | muito colesterol | penaliza alvos mais mamíferos / rígidos |
-
+            """
 Esses pesos (α, β, γ, δ) foram **definidos no projeto** — não são treinados pelo
 Random Forest. O RF **usa** o PMI como uma das entradas.
 
