@@ -1,0 +1,13 @@
+{
+  "alpha": 1.5,
+  "beta": 0.25,
+  "gamma": 0.6,
+  "delta": 0.0,
+  "source": "calibrate_pmi_weights.py full-fit on 90 MIC pairs",
+  "nested_lopo_auc_pmi": 0.6295,
+  "default_auc_pmi_full": 0.8245,
+  "calibrated_auc_pmi_full": 0.8300000000000001,
+  "default_auc_rf_lopo": 0.8395,
+  "calibrated_auc_rf_lopo": 0.8365,
+  "warning": "Pesos calibrados em dataset pequeno (~10 peptídeos). LOPO aninhado reduz vazamento, mas não elimina overfitting."
+}

@@ -1,0 +1,126 @@
+{
+  "n_pairs": 90,
+  "n_peptides": 10,
+  "n_grid": 500,
+  "h_membrane_proxy": 0.5,
+  "warning": "Pesos calibrados em dataset pequeno (~10 peptídeos). LOPO aninhado reduz vazamento, mas não elimina overfitting.",
+  "default_weights": {
+    "alpha": 1.0,
+    "beta": 0.5,
+    "gamma": 0.3,
+    "delta": 0.4
+  },
+  "default_auc_pmi_full": 0.8245,
+  "default_auc_rf_lopo": 0.8395,
+  "nested_lopo_auc_pmi": 0.6295,
+  "nested_folds": [
+    {
+      "peptide_id": "P05",
+      "n_test": 11,
+      "train_auc_pmi": 0.782051282051282,
+      "test_auc_pmi": null,
+      "alpha": 1.5,
+      "beta": 0.25,
+      "gamma": 0.6,
+      "delta": 0.0
+    },
+    {
+      "peptide_id": "P10",
+      "n_test": 9,
+      "train_auc_pmi": 0.7926829268292683,
+      "test_auc_pmi": null,
+      "alpha": 1.5,
+      "beta": 0.25,
+      "gamma": 0.6,
+      "delta": 0.0
+    },
+    {
+      "peptide_id": "P11",
+      "n_test": 15,
+      "train_auc_pmi": 0.8578571428571429,
+      "test_auc_pmi": 0.4,
+      "alpha": 0.5,
+      "beta": 1.0,
+      "gamma": 0.6,
+      "delta": 0.0
+    },
+    {
+      "peptide_id": "P12",
+      "n_test": 15,
+      "train_auc_pmi": 0.835832083958021,
+      "test_auc_pmi": 0.7954545454545454,
+      "alpha": 1.5,
+      "beta": 0.25,
+      "gamma": 0.6,
+      "delta": 0.0
+    },
+    {
+      "peptide_id": "P13",
+      "n_test": 5,
+      "train_auc_pmi": 0.846655328798186,
+      "test_auc_pmi": 0.125,
+      "alpha": 0.5,
+      "beta": 0.25,
+      "gamma": 0.45,
+      "delta": 0.0
+    },
+    {
+      "peptide_id": "P14",
+      "n_test": 5,
+      "train_auc_pmi": 0.8404195011337867,
+      "test_auc_pmi": 0.125,
+      "alpha": 1.5,
+      "beta": 0.0,
+      "gamma": 0.6,
+      "delta": 0.0
+    },
+    {
+      "peptide_id": "P15",
+      "n_test": 9,
+      "train_auc_pmi": 0.8488943488943489,
+      "test_auc_pmi": 0.6666666666666667,
+      "alpha": 1.5,
+      "beta": 0.0,
+      "gamma": 0.6,
+      "delta": 0.0
+    },
+    {
+      "peptide_id": "P16",
+      "n_test": 9,
+      "train_auc_pmi": 0.8155279503105589,
+      "test_auc_pmi": 0.8,
+      "alpha": 2.0,
+      "beta": 0.25,
+      "gamma": 0.6,
+      "delta": 0.0
+    },
+    {
+      "peptide_id": "P17",
+      "n_test": 6,
+      "train_auc_pmi": 0.8419825072886298,
+      "test_auc_pmi": 0.2,
+      "alpha": 0.5,
+      "beta": 1.0,
+      "gamma": 0.6,
+      "delta": 0.0
+    },
+    {
+      "peptide_id": "P18",
+      "n_test": 6,
+      "train_auc_pmi": 0.8648648648648649,
+      "test_auc_pmi": 0.33333333333333337,
+      "alpha": 1.5,
+      "beta": 0.25,
+      "gamma": 0.6,
+      "delta": 0.0
+    }
+  ],
+  "calibrated_weights_full_fit": {
+    "alpha": 1.5,
+    "beta": 0.25,
+    "gamma": 0.6,
+    "delta": 0.0
+  },
+  "calibrated_auc_pmi_full": 0.8300000000000001,
+  "calibrated_auc_rf_lopo": 0.8365
+}
